@@ -13,7 +13,7 @@ God's Eye is approximately 90% functionally complete. The path to production is 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: UI Alignment and Auth Routing** - Eliminate all functional divergences between Stitch mockups and the plan spec; route Welcome.jsx and fix AuthGate (completed 2026-03-30)
-- [ ] **Phase 2: Backend Wiring and Data Integrity** - Wire skill injection into agent prompts, fix SkillStore container path, surface NSE data freshness in UI
+- [x] **Phase 2: Backend Wiring and Data Integrity** - Wire skill injection into agent prompts, fix SkillStore container path, surface NSE data freshness in UI (completed 2026-03-30)
 - [ ] **Phase 3: Frontend Polish and UX Completeness** - Add loading states, empty states, error states, live market ticker, CSV export, Learning/Skills page, and dark mode consistency
 - [ ] **Phase 4: Production Deployment and Verification** - Deploy to Railway and Vercel with persistent volumes, correct CORS, wss:// WebSocket, and documented env vars
 
@@ -50,7 +50,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Fix LEARNING_SKILL_DIR env var (BACK-02) and seed SkillStore with 5 skills (BACK-01)
-- [ ] 02-02-PLAN.md — Populate AlgoQuantAgent interaction_effects from computed signals (BACK-04)
+- [x] 02-02-PLAN.md — Populate AlgoQuantAgent interaction_effects from computed signals (BACK-04)
 - [x] 02-03-PLAN.md — Expose data_source in simulate response and render amber fallback banner in Dashboard (BACK-03)
 
 ### Phase 3: Frontend Polish and UX Completeness
@@ -86,6 +86,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
-| 2. Backend Wiring and Data Integrity | 2/3 | In Progress|  |
+| 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | 0/TBD | Not started | - |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |
