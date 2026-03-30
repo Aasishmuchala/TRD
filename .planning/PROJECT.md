@@ -33,14 +33,14 @@ Deliver accurate, explainable multi-agent market direction calls that a derivati
 - ✓ WebSocket VITE_WS_BASE env var for production — v1.0
 - ✓ .env.example files documenting all vars — v1.0
 
-### Active
+### Active (v2.0 — Backtesting & Signal Engine)
 
-- [ ] Fix WebSocket data_source propagation (fallback banner invisible via streaming path)
-- [ ] Persist quant_llm_balance in backend settings handler
-- [ ] Populate graduation criteria fields in history API response
-- [ ] Migrate PaperTrading.jsx from utils/colors to constants/agents import
-- [ ] Actually deploy to Railway + Vercel (config ready, needs credentials)
-- [ ] Historical price data backfill from NSE (backtesting enabler)
+- [ ] Historical OHLCV data backfill from Dhan (Nifty, Bank Nifty)
+- [ ] Backtest engine: replay past scenarios through agents vs actual market moves
+- [ ] Technical signal engine (RSI, VWAP, Supertrend, OI change, VIX regime)
+- [ ] Combined signal scoring (agent sentiment + technicals → actionable score)
+- [ ] Backtest results dashboard with accuracy, P&L, drawdown metrics
+- [ ] Dhan-only data source (error on failure, no silent fallbacks)
 
 ### Out of Scope
 
@@ -53,13 +53,25 @@ Deliver accurate, explainable multi-agent market direction calls that a derivati
 - Social features / chat — not relevant to intelligence product
 - Freeform chatbot layer — would dilute structured simulation paradigm
 
+## Current Milestone: v2.0 Backtesting & Signal Engine
+
+**Goal:** Prove God's Eye has a tradeable edge by backtesting against historical Nifty/Bank Nifty data and building a technical signal engine that combines agent sentiment with indicators.
+
+**Target features:**
+- Historical OHLCV backfill via Dhan Data API
+- Backtest engine replaying scenarios through agents
+- Technical indicators (RSI, VWAP, Supertrend, OI change)
+- Combined scoring: sentiment + technicals → signal
+- Results dashboard: accuracy, P&L, max drawdown
+- Nifty & Bank Nifty options focus
+
 ## Context
 
-- **v1.0 shipped:** 4 phases, 14 plans, 32 commits in one session
-- **Codebase:** Python/FastAPI backend + React/Tailwind frontend, both production-ready
-- **Deployment:** Config files ready (Railway + Vercel), pending user credentials
-- **Known gaps:** 2 partial requirements (WebSocket data_source, quant_llm_balance persistence), graduation criteria fields not yet in history API
-- **Sub-repo structure:** gods-eye/ has its own .git
+- **v1.0 shipped:** 4 phases, 14 plans — UI alignment, backend wiring, frontend polish, deployment config
+- **v1.0 post-fixes:** WebSocket data_source, quant_llm_balance persistence, Dhan integration, agent reasoning UI
+- **Current state:** Dhan API wired as sole data source, Kimi K2.5 via OpenRouter for LLM, simulations working locally
+- **Trading focus:** Nifty & Bank Nifty options only
+- **Codebase:** Python/FastAPI backend + React/Tailwind frontend
 
 ## Constraints
 
@@ -82,10 +94,13 @@ Deliver accurate, explainable multi-agent market direction calls that a derivati
 | Single worker gunicorn (-w 1) | Mutable config singleton breaks with multiple workers | ✓ Good — prevents state desync |
 | VITE_WS_BASE env var for WebSocket | Vercel + Railway split means different hosts | ✓ Good — production-ready pattern |
 | Seed 5 skills at startup | Empty SkillStore means no LEARNED PATTERNS block | ✓ Good — immediate value |
+| Dhan as sole data source | NSE scraping unreliable, Dhan is authenticated + stable | ✓ Good — clean errors instead of silent fallback |
+| OpenRouter + Kimi K2.5 | Cost-effective, capable model for agent reasoning | — Pending (testing) |
+| Nifty/BankNifty options focus | Start narrow, prove edge, then expand | — Pending |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
 ---
-*Last updated: 2026-03-30 after v1.0 milestone*
+*Last updated: 2026-03-31 after v2.0 milestone start*

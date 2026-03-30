@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-03-30T13:41:59.325Z"
-last_activity: 2026-03-30
+milestone: v2.0
+milestone_name: backtesting-signal-engine
+status: planning
+stopped_at: null
+last_updated: "2026-03-31T00:00:00.000Z"
+last_activity: 2026-03-31
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -21,13 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Deliver accurate, explainable multi-agent market direction calls that a derivatives trader on Dalal Street would actually use before market open.
-**Current focus:** Phase 04 — production-deployment-and-verification
+**Current focus:** v2.0 — Backtesting & Signal Engine
 
 ## Current Position
 
-Phase: 04
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-31 — Milestone v2.0 started
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
