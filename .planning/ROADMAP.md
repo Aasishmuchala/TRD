@@ -67,9 +67,9 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Per-round progress "Round X of 3" in SimulationStream; error/empty states for Settings, PaperTrading, AgentDetail (FE-01, FE-02, FE-03)
-- [ ] 03-02-PLAN.md — Add Bank Nifty to backend market snapshot and MarketTicker component (FE-04)
-- [ ] 03-03-PLAN.md — CSV export on History page; new Skills page at /skills with sidebar nav item (FE-05, FE-06)
+- [x] 03-01-PLAN.md — Per-round progress "Round X of 3" in SimulationStream; error/empty states for Settings, PaperTrading, AgentDetail (FE-01, FE-02, FE-03)
+- [x] 03-02-PLAN.md — Add Bank Nifty to backend market snapshot and MarketTicker component (FE-04)
+- [x] 03-03-PLAN.md — CSV export on History page; new Skills page at /skills with sidebar nav item (FE-05, FE-06)
 - [ ] 03-04-PLAN.md — Dark mode palette consistency audit across Welcome, PaperTrading, AccuracyPanel, FeedbackPanel, ScenarioPanel (FE-07)
 
 ### Phase 4: Production Deployment and Verification
@@ -93,5 +93,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
 | 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
-| 3. Frontend Polish and UX Completeness | 0/4 | Not started | - |
+| 3. Frontend Polish and UX Completeness | 3/4 | In Progress|  |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |
