@@ -18,7 +18,13 @@ from app.api.schemas import (
     SimulationResult,
     PresetScenario,
     AggregatorResult,
+    BacktestRunRequest,
+    BacktestRunResponse,
+    BacktestRunSummary,
+    BacktestDayResponse,
 )
+from app.engine.backtest_engine import BacktestEngine
+import dataclasses
 from app.api.errors import safe_error_response, log_error_safely
 from app.engine.orchestrator import Orchestrator
 from app.engine.aggregator import Aggregator
@@ -41,6 +47,7 @@ protected_router = APIRouter(prefix="/api", tags=["simulation"], dependencies=[D
 
 # Initialize components
 tracker = PredictionTracker()
+backtest_engine = BacktestEngine()
 
 
 class SimulateRequest(BaseModel):
@@ -899,3 +906,95 @@ async def capture_oi_snapshot():
         result["banknifty"] = None
 
     return {"date": today, "captured": result}
+
+
+# ─── Backtest Engine endpoints ────────────────────────────────────────────────
+
+@protected_router.post("/backtest/run", response_model=BacktestRunResponse)
+async def run_backtest(request: BacktestRunRequest):
+    """Run a backtest over a historical date range.
+
+    mock_mode=True (default): Uses mock agent responses — fast, no LLM cost.
+    mock_mode=False: Calls Claude/GPT for each agent per day — slow and costly.
+
+    Stores result in SQLite backtest_runs table for later retrieval.
+    """
+    try:
+        result = await backtest_engine.run_backtest(
+            instrument=request.instrument,
+            from_date=request.from_date,
+            to_date=request.to_date,
+            mock_mode=request.mock_mode,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Backtest failed: {exc}")
+
+    return _serialize_backtest_result(result)
+
+
+@protected_router.get("/backtest/results/{run_id}", response_model=BacktestRunResponse)
+async def get_backtest_result(run_id: str):
+    """Retrieve a previously stored backtest run by ID."""
+    import sqlite3, json
+    from app.config import config
+
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT result_json FROM backtest_runs WHERE run_id = ?", (run_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Backtest run {run_id!r} not found")
+
+    from app.engine.backtest_engine import BacktestRunResult, BacktestDayResult
+    raw = json.loads(row["result_json"])
+    # Reconstruct from stored JSON — result_json was stored via dataclasses.asdict()
+    # Re-hydrate as BacktestRunResult for serialisation
+    days = [BacktestDayResult(**d) for d in raw["days"]]
+    result = BacktestRunResult(**{**raw, "days": days})
+    return _serialize_backtest_result(result)
+
+
+def _serialize_backtest_result(result) -> BacktestRunResponse:
+    """Convert BacktestRunResult dataclass into BacktestRunResponse Pydantic model.
+
+    Computes cumulative_pnl_points in the API layer (not stored in engine output).
+    """
+    cumulative = 0.0
+    day_responses = []
+    for day in result.days:
+        cumulative += day.pnl_points
+        day_responses.append(BacktestDayResponse(
+            date=day.date,
+            next_date=day.next_date,
+            nifty_close=day.nifty_close,
+            nifty_next_close=day.nifty_next_close,
+            actual_move_pct=round(day.actual_move_pct, 4),
+            predicted_direction=day.predicted_direction,
+            predicted_conviction=round(day.predicted_conviction, 2),
+            direction_correct=day.direction_correct,
+            pnl_points=round(day.pnl_points, 2),
+            cumulative_pnl_points=round(cumulative, 2),
+            per_agent_directions=day.per_agent_directions,
+            signals=day.signals,
+        ))
+
+    summary = BacktestRunSummary(
+        run_id=result.run_id,
+        instrument=result.instrument,
+        from_date=result.from_date,
+        to_date=result.to_date,
+        mock_mode=result.mock_mode,
+        day_count=len(result.days),
+        overall_accuracy=round(result.overall_accuracy, 4),
+        win_rate_pct=round(result.overall_accuracy * 100, 2),
+        per_agent_accuracy={k: round(v, 4) for k, v in result.per_agent_accuracy.items()},
+        total_pnl_points=round(result.total_pnl_points, 2),
+        created_at=result.created_at,
+    )
+
+    return BacktestRunResponse(summary=summary, days=day_responses)
