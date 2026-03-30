@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v2.0
-milestone_name: backtesting-signal-engine
-status: planning
-stopped_at: null
-last_updated: "2026-03-31T00:00:00.000Z"
-last_activity: 2026-03-31
+milestone_name: Backtesting & Signal Engine
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-30T20:34:28.390Z"
+last_activity: 2026-03-30
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
-**Current focus:** v2.0 Phase 5 — Historical Data Backfill
+**Current focus:** Phase 05 — historical-data-backfill
 
 ## Current Position
 
-Phase: 5 of 9 (Historical Data Backfill)
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-03-31 — v2.0 roadmap created (phases 5-9)
+Phase: 05 (historical-data-backfill) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity (v1.0 reference):**
+
 - Total plans completed: 14
 - Average duration: ~2 min/plan
 - Total execution time: ~0.5 hours
@@ -50,6 +51,7 @@ Progress: [░░░░░░░░░░] 0%
 | 9 | TBD | - | - |
 
 *Updated after each plan completion*
+| Phase 05 P01 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -59,6 +61,9 @@ Progress: [░░░░░░░░░░] 0%
 - [v1.0]: Nifty/Bank Nifty options focus — start narrow, prove edge, then expand
 - [v1.0]: SQLite at /app/data on Railway — persistent volume, survives redeploys
 - [v1.0]: Single worker gunicorn (-w 1) — mutable config singleton breaks multi-worker
+- [Phase 05]: DhanFetchError in dhan_client.py so raise site and definition are co-located; historical_store imports from there
+- [Phase 05]: BACKFILL_YEARS=2 guarantees 252+ trading days accounting for Indian market holidays
+- [Phase 05]: fetched_at column stores fetch timestamp (not price date) — enables same-day cache freshness check
 
 ### Pending Todos
 
@@ -71,6 +76,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31
-Stopped at: Roadmap created for v2.0 (phases 5-9)
+Last session: 2026-03-30T20:34:28.386Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

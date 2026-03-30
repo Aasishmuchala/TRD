@@ -7,10 +7,10 @@
 
 ### Historical Data
 
-- [ ] **HIST-01**: System can fetch and store daily OHLCV data for Nifty 50 from Dhan API (minimum 1 year history)
-- [ ] **HIST-02**: System can fetch and store daily OHLCV data for Bank Nifty from Dhan API (minimum 1 year history)
-- [ ] **HIST-03**: System can fetch and store historical India VIX daily close values
-- [ ] **HIST-04**: Historical data is cached locally in SQLite and refreshed daily during market hours
+- [x] **HIST-01**: System can fetch and store daily OHLCV data for Nifty 50 from Dhan API (minimum 1 year history)
+- [x] **HIST-02**: System can fetch and store daily OHLCV data for Bank Nifty from Dhan API (minimum 1 year history)
+- [x] **HIST-03**: System can fetch and store historical India VIX daily close values
+- [x] **HIST-04**: Historical data is cached locally in SQLite and refreshed daily during market hours
 
 ### Technical Signals
 
@@ -64,10 +64,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HIST-01 | Phase 5 — Historical Data Backfill | Pending |
-| HIST-02 | Phase 5 — Historical Data Backfill | Pending |
-| HIST-03 | Phase 5 — Historical Data Backfill | Pending |
-| HIST-04 | Phase 5 — Historical Data Backfill | Pending |
+| HIST-01 | Phase 5 — Historical Data Backfill | Complete |
+| HIST-02 | Phase 5 — Historical Data Backfill | Complete |
+| HIST-03 | Phase 5 — Historical Data Backfill | Complete |
+| HIST-04 | Phase 5 — Historical Data Backfill | Complete |
 | TECH-01 | Phase 6 — Technical Signal Engine | Pending |
 | TECH-02 | Phase 6 — Technical Signal Engine | Pending |
 | TECH-03 | Phase 6 — Technical Signal Engine | Pending |

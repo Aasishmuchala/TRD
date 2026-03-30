@@ -122,7 +122,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Add DhanFetchError + fetch_historical_candles; create HistoricalStore with SQLite schema and cache-first fetch logic
+- [x] 05-01-PLAN.md — Add DhanFetchError + fetch_historical_candles; create HistoricalStore with SQLite schema and cache-first fetch logic
 - [ ] 05-02-PLAN.md — Wire historical endpoints (GET /api/market/historical/{instrument}, POST backfill) and startup auto-backfill hook
 
 ### Phase 6: Technical Signal Engine
@@ -183,7 +183,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 2. Backend Wiring and Data Integrity | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | v1.0 | 4/4 | Complete | 2026-03-30 |
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
-| 5. Historical Data Backfill | v2.0 | 0/TBD | Not started | - |
+| 5. Historical Data Backfill | v2.0 | 1/2 | In Progress|  |
 | 6. Technical Signal Engine | v2.0 | 0/TBD | Not started | - |
 | 7. Backtest Engine | v2.0 | 0/TBD | Not started | - |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
