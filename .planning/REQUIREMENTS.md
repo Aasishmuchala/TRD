@@ -92,41 +92,41 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UI-01 | Phase 1 | Pending |
-| UI-02 | Phase 1 | Pending |
-| UI-03 | Phase 1 | Pending |
-| UI-04 | Phase 1 | Pending |
-| UI-05 | Phase 1 | Pending |
-| UI-06 | Phase 1 | Pending |
-| UI-07 | Phase 1 | Pending |
-| UI-08 | Phase 1 | Pending |
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| AUTH-04 | Phase 1 | Pending |
-| BACK-01 | Phase 2 | Pending |
-| BACK-02 | Phase 2 | Pending |
-| BACK-03 | Phase 2 | Pending |
-| BACK-04 | Phase 2 | Pending |
-| FE-01 | Phase 3 | Pending |
-| FE-02 | Phase 3 | Pending |
-| FE-03 | Phase 3 | Pending |
-| FE-04 | Phase 3 | Pending |
-| FE-05 | Phase 3 | Pending |
-| FE-06 | Phase 3 | Pending |
-| FE-07 | Phase 3 | Pending |
-| DEP-01 | Phase 4 | Pending |
-| DEP-02 | Phase 4 | Pending |
-| DEP-03 | Phase 4 | Pending |
-| DEP-04 | Phase 4 | Pending |
-| DEP-05 | Phase 4 | Pending |
-| DEP-06 | Phase 4 | Pending |
+| UI-01 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-02 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-03 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-04 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-05 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-06 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-07 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-08 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| AUTH-01 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| AUTH-02 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| AUTH-03 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| AUTH-04 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| BACK-01 | Phase 2 — Backend Wiring and Data Integrity | Pending |
+| BACK-02 | Phase 2 — Backend Wiring and Data Integrity | Pending |
+| BACK-03 | Phase 2 — Backend Wiring and Data Integrity | Pending |
+| BACK-04 | Phase 2 — Backend Wiring and Data Integrity | Pending |
+| FE-01 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-02 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-03 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-04 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-05 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-06 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-07 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| DEP-01 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-02 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-03 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-04 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-05 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-06 | Phase 4 — Production Deployment and Verification | Pending |
 
 **Coverage:**
 - v1 requirements: 29 total
 - Mapped to phases: 29
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-30*
-*Last updated: 2026-03-30 after initial definition*
+*Last updated: 2026-03-30 after roadmap creation*
