@@ -7,6 +7,7 @@ export default function PaperTrading() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [latestSim, setLatestSim] = useState(null)
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,7 +17,7 @@ export default function PaperTrading() {
         setHistory(items)
         if (items.length > 0) setLatestSim(items[0])
       } catch (err) {
-        console.error('Failed to fetch:', err)
+        setFetchError(err.message || 'Failed to load history')
       } finally {
         setLoading(false)
       }
@@ -27,34 +28,93 @@ export default function PaperTrading() {
   const totalSims = history.length
   const minRequired = 20
 
-  // Graduation criteria based on real data
+  // Graduation criteria — plan spec thresholds
   const criteria = [
     {
-      metric: 'Simulations Run',
-      target: `>= ${minRequired}`,
-      current: totalSims,
-      passed: totalSims >= minRequired,
+      metric: 'Directional Accuracy (1-day)',
+      target: '>= 57% over 20 sessions',
+      current: (() => {
+        const withAccuracy = history.filter(h => h.outcome_accuracy_1d != null)
+        if (withAccuracy.length < 5) return 'N/A'
+        const avg = withAccuracy.reduce((s, h) => s + h.outcome_accuracy_1d, 0) / withAccuracy.length
+        return `${(avg * 100).toFixed(1)}%`
+      })(),
+      passed: (() => {
+        const withAccuracy = history.filter(h => h.outcome_accuracy_1d != null)
+        if (withAccuracy.length < 20) return false
+        const avg = withAccuracy.reduce((s, h) => s + h.outcome_accuracy_1d, 0) / withAccuracy.length
+        return avg >= 0.57
+      })(),
     },
     {
-      metric: 'Unique Scenarios',
-      target: '>= 5',
-      current: new Set(history.map(h => h.market_input?.context).filter(Boolean)).size,
-      passed: new Set(history.map(h => h.market_input?.context).filter(Boolean)).size >= 5,
+      metric: 'Directional Accuracy (1-week)',
+      target: '>= 60% over 4 weeks',
+      current: (() => {
+        const withAccuracy = history.filter(h => h.outcome_accuracy_1w != null)
+        if (withAccuracy.length < 4) return 'N/A'
+        const avg = withAccuracy.reduce((s, h) => s + h.outcome_accuracy_1w, 0) / withAccuracy.length
+        return `${(avg * 100).toFixed(1)}%`
+      })(),
+      passed: (() => {
+        const withAccuracy = history.filter(h => h.outcome_accuracy_1w != null)
+        if (withAccuracy.length < 4) return false
+        const avg = withAccuracy.reduce((s, h) => s + h.outcome_accuracy_1w, 0) / withAccuracy.length
+        return avg >= 0.60
+      })(),
     },
     {
-      metric: 'Feedback Engine Active',
-      target: 'Active',
-      current: history.some(h => h.feedback_active) ? 'Yes' : 'No',
-      passed: history.some(h => h.feedback_active),
+      metric: 'Calibration Error',
+      target: '< 15%',
+      current: (() => {
+        const withCalib = history.filter(h => h.calibration_error != null)
+        if (withCalib.length === 0) return 'N/A'
+        const avg = withCalib.reduce((s, h) => s + h.calibration_error, 0) / withCalib.length
+        return `${(avg * 100).toFixed(1)}%`
+      })(),
+      passed: (() => {
+        const withCalib = history.filter(h => h.calibration_error != null)
+        if (withCalib.length === 0) return false
+        const avg = withCalib.reduce((s, h) => s + h.calibration_error, 0) / withCalib.length
+        return avg < 0.15
+      })(),
     },
     {
-      metric: 'Avg Execution Time',
-      target: '< 30s',
-      current: history.length > 0
-        ? Math.round(history.reduce((sum, h) => sum + (h.execution_time_ms || 0), 0) / history.length)
-        : 0,
-      passed: history.length > 0 &&
-        (history.reduce((sum, h) => sum + (h.execution_time_ms || 0), 0) / history.length) < 30000,
+      metric: 'Quant-LLM Agreement',
+      target: '>= 70% when both agree',
+      current: (() => {
+        const withAgreement = history.filter(h => h.aggregator_result?.quant_llm_agreement != null)
+        if (withAgreement.length === 0) return 'N/A'
+        const avg = withAgreement.reduce((s, h) => s + h.aggregator_result.quant_llm_agreement, 0) / withAgreement.length
+        return `${(avg * 100).toFixed(1)}%`
+      })(),
+      passed: (() => {
+        const withAgreement = history.filter(h => h.aggregator_result?.quant_llm_agreement != null)
+        if (withAgreement.length === 0) return false
+        const avg = withAgreement.reduce((s, h) => s + h.aggregator_result.quant_llm_agreement, 0) / withAgreement.length
+        return avg >= 0.70
+      })(),
+    },
+    {
+      metric: 'No Catastrophic Miss',
+      target: 'No >3% move missed with high-confidence wrong call',
+      current: history.some(h => h.catastrophic_miss) ? 'FAIL' : history.length > 0 ? 'PASS' : 'N/A',
+      passed: history.length > 0 && !history.some(h => h.catastrophic_miss),
+    },
+    {
+      metric: 'Internal Consistency',
+      target: '>= 75% across 3 samples',
+      current: (() => {
+        const withConsistency = history.filter(h => h.internal_consistency != null)
+        if (withConsistency.length === 0) return 'N/A'
+        const avg = withConsistency.reduce((s, h) => s + h.internal_consistency, 0) / withConsistency.length
+        return `${(avg * 100).toFixed(1)}%`
+      })(),
+      passed: (() => {
+        const withConsistency = history.filter(h => h.internal_consistency != null)
+        if (withConsistency.length === 0) return false
+        const avg = withConsistency.reduce((s, h) => s + h.internal_consistency, 0) / withConsistency.length
+        return avg >= 0.75
+      })(),
     },
   ]
 
@@ -80,6 +140,21 @@ export default function PaperTrading() {
   return (
     <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
+        {fetchError && !loading && (
+          <div className="terminal-card p-3 border-l-2 border-bear mb-4">
+            <p className="text-xs font-mono text-bear">
+              Could not load history: {fetchError}. Check that the backend is running.
+            </p>
+          </div>
+        )}
+        {!loading && !fetchError && history.length === 0 && (
+          <div className="terminal-card p-5 flex flex-col items-center justify-center gap-2 mb-4">
+            <span className="text-xs font-mono text-onSurfaceDim">NO SIMULATION HISTORY</span>
+            <span className="text-[10px] font-mono text-onSurfaceDim">
+              Run simulations from the Dashboard to start building your Paper Trading record.
+            </span>
+          </div>
+        )}
         {/* Progress Header */}
         <div className="terminal-card p-5 mb-5">
           <div className="flex items-center gap-5">
@@ -229,24 +304,16 @@ export default function PaperTrading() {
                   const dir = agg.final_direction || agg.direction || 'HOLD'
                   const conv = agg.final_conviction || agg.conviction || 0
                   const ts = sim.timestamp ? new Date(sim.timestamp) : null
+                  const dateStr = ts
+                    ? ts.toLocaleString('en-IN', { month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' })
+                    : '--'
 
                   return (
-                    <div key={sim.simulation_id || idx} className="flex items-center justify-between p-2 bg-surface-2 rounded-lg">
-                      <div>
-                        <p className="text-[10px] font-mono text-onSurface">
-                          {ts ? ts.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}
-                        </p>
-                        <p className="text-[9px] font-mono text-onSurfaceDim">{sim.market_input?.context || 'custom'}</p>
-                      </div>
-                      <div className="text-right">
-                        <span
-                          className="text-[10px] font-mono font-bold"
-                          style={{ color: dirColor(dir) }}
-                        >
-                          {dir.replace('_', ' ')}
-                        </span>
-                        <p className="text-[9px] font-mono text-onSurfaceDim">{typeof conv === 'number' ? conv.toFixed(0) : '--'}%</p>
-                      </div>
+                    <div key={sim.simulation_id || idx} className="p-2 bg-surface-2 rounded-lg">
+                      <p className="text-[10px] font-mono text-onSurface">
+                        {dateStr} · {dir.replace('_', ' ')} {typeof conv === 'number' ? conv.toFixed(0) : '--'}%
+                      </p>
+                      <p className="text-[9px] font-mono text-onSurfaceDim">{sim.market_input?.context || 'custom'}</p>
                     </div>
                   )
                 })}

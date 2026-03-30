@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../api/client'
+import { AGENTS } from '../constants/agents'
 
 export default function Welcome() {
   const [apiKey, setApiKey] = useState('')
@@ -58,20 +59,17 @@ export default function Welcome() {
 
         {/* Agent network mini */}
         <div className="flex justify-center gap-2 mb-8">
-          {[
-            { label: 'FII', color: '#FF6B6B' },
-            { label: 'DII', color: '#00E676' },
-            { label: 'RTL', color: '#FFD740' },
-            { label: 'ALG', color: '#00D4E0' },
-            { label: 'PRM', color: '#BB86FC' },
-            { label: 'RBI', color: '#448AFF' },
-          ].map((a) => (
+          {AGENTS.map((agent) => (
             <div
-              key={a.label}
+              key={agent.id}
               className="w-9 h-9 rounded-lg flex items-center justify-center text-[8px] font-mono font-bold"
-              style={{ backgroundColor: `${a.color}15`, border: `1px solid ${a.color}30`, color: a.color }}
+              style={{
+                backgroundColor: `${agent.color}15`,
+                border: `1px solid ${agent.color}30`,
+                color: agent.color
+              }}
             >
-              {a.label}
+              {agent.shortLabel}
             </div>
           ))}
         </div>

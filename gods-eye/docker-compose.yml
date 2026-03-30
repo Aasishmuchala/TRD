@@ -12,11 +12,11 @@ services:
       - GODS_EYE_MODEL=${GODS_EYE_MODEL:-o4-mini}
       - GODS_EYE_DB_PATH=/app/data/gods_eye.db
       - GODS_EYE_LEARNING=true
-      - GODS_EYE_CORS_ORIGINS=http://localhost,http://localhost:80
+      - GODS_EYE_CORS_ORIGINS=${GODS_EYE_CORS_ORIGINS:-http://localhost,http://localhost:80}
       - GODS_EYE_LOG_LEVEL=info
     volumes:
       - db-data:/app/data
-      - skills-data:/root/.gods-eye/skills
+      - skills-data:/app/skills
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]

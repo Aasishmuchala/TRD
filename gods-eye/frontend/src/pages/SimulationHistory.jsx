@@ -62,6 +62,40 @@ export default function SimulationHistory() {
     }
   }
 
+  const handleExport = () => {
+    if (history.length === 0) return
+
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const filename = `gods-eye-history-${dateStr}.csv`
+
+    const headers = ['simulation_id', 'timestamp', 'scenario', 'nifty_spot', 'direction', 'conviction_pct', 'execution_time_ms']
+
+    const rows = history.map((item) => {
+      const agg = item.aggregator_result || {}
+      const dir = agg.final_direction || agg.direction || 'HOLD'
+      const conv = agg.final_conviction ?? agg.conviction ?? 0
+      const ts = item.timestamp || ''
+      return [
+        item.simulation_id || '',
+        ts,
+        item.market_input?.context || 'custom',
+        item.market_input?.nifty_spot?.toString() || '',
+        dir,
+        typeof conv === 'number' ? conv.toFixed(1) : '',
+        item.execution_time_ms?.toFixed(0) || '',
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    })
+
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const totalSims = history.length
 
   return (
@@ -86,6 +120,15 @@ export default function SimulationHistory() {
               {totalSims} simulation{totalSims !== 1 ? 's' : ''} recorded
             </p>
           </div>
+
+          {history.length > 0 && (
+            <button
+              onClick={handleExport}
+              className="btn-secondary font-mono text-[10px] tracking-wider px-3 py-1.5"
+            >
+              EXPORT CSV
+            </button>
+          )}
 
           <div className="flex items-center gap-1 p-0.5 bg-surface-2 rounded-lg">
             {['7D', '30D', '90D', 'All'].map((filter) => (

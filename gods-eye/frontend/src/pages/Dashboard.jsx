@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import ScenarioPanel from '../components/ScenarioPanel'
 import PressurePanel from '../components/PressurePanel'
@@ -17,16 +17,24 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false)
   const [selectedScenario, setSelectedScenario] = useState(null)
   const [toast, setToast] = useState(null)
+  const [dismissedFallback, setDismissedFallback] = useState(false)
+
+  // Reset fallback banner dismissal when a new result arrives
+  useEffect(() => {
+    if (result) setDismissedFallback(false)
+  }, [result])
 
   const handleSimulateClick = (data) => {
     setSelectedScenario(data)
     setShowModal(true)
   }
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (flowData) => {
     setShowModal(false)
     try {
-      await simulate(selectedScenario)
+      // Merge flowData (from ScenarioModal) into the scenario payload when present
+      const payload = flowData ? { ...selectedScenario, flow_data: flowData } : selectedScenario
+      await simulate(payload)
       setToast({ message: 'Simulation complete', type: 'success' })
       setTimeout(() => setToast(null), 3000)
     } catch (err) {
@@ -40,6 +48,26 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="p-4 space-y-4 max-h-[calc(100vh-2.5rem)] overflow-auto relative">
+        {/* NSE Fallback Banner — shown when market data is not live */}
+        {result?.data_source === 'fallback' && !dismissedFallback && (
+          <div
+            role="alert"
+            className="flex items-center justify-between px-4 py-2 rounded-lg text-xs font-mono border bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+          >
+            <span>
+              <span className="font-bold uppercase tracking-wide mr-2">DATA: FALLBACK</span>
+              NSE live data unavailable — simulation used mock market values. Results may not reflect current conditions.
+            </span>
+            <button
+              onClick={() => setDismissedFallback(true)}
+              className="ml-4 text-yellow-400/60 hover:text-yellow-400 transition-colors"
+              aria-label="Dismiss fallback warning"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Toast notification */}
         {toast && (
           <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg text-xs font-mono shadow-lg border transition-all ${

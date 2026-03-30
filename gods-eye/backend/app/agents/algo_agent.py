@@ -93,6 +93,7 @@ class AlgoQuantAgent(BaseAgent):
         key_triggers.append(f"Bollinger Band: {bb_position['level']}")
 
         reasoning = self._build_reasoning(signals, composite, direction)
+        interaction_effects = self._build_interaction_effects(signals, vix_signal)
 
         return AgentResponse(
             agent_name=self.name,
@@ -110,7 +111,7 @@ class AlgoQuantAgent(BaseAgent):
                     "vix_regime": signals["vix_regime"],
                 }
             },
-            interaction_effects={"amplifies": [], "dampens": []},
+            interaction_effects=interaction_effects,
             internal_consistency=1.0,
             reproducible=True,
         )
@@ -231,6 +232,34 @@ class AlgoQuantAgent(BaseAgent):
             return "SELL", min(65, 40 + abs(composite) * 50)
         else:
             return "STRONG_SELL", min(85, 50 + abs(composite) * 50)
+
+    def _build_interaction_effects(
+        self, signals: dict, vix_signal: float
+    ) -> dict:
+        """Derive interaction effects from computed signals for BACK-04 compliance.
+
+        Always returns non-empty amplifies (>= 2 items) and dampens (>= 1 item).
+        """
+        amplifies_base = ["Cross-agent consensus signals", "Technical confirmation"]
+        dampens_base = ["Noise and whipsaws"]
+
+        vix_regime = signals.get("vix_regime", "elevated")
+        if vix_regime == "high_fear":
+            amplifies_base.append("Volatility regime signals")
+            dampens_base.append("Trend-following strategies")
+        elif vix_regime == "low_fear":
+            amplifies_base.append("Momentum strategies")
+            dampens_base.append("Mean-reversion plays")
+        else:
+            amplifies_base.append("Range-bound mean-reversion signals")
+
+        rsi = signals.get("rsi_14", 50.0)
+        if rsi > 70:
+            amplifies_base.append("Overbought divergence signals")
+        elif rsi < 30:
+            amplifies_base.append("Oversold reversal signals")
+
+        return {"amplifies": amplifies_base, "dampens": dampens_base}
 
     def _build_reasoning(
         self, signals: Dict, composite: float, direction: str

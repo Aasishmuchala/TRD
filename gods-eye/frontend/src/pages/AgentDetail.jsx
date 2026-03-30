@@ -56,9 +56,11 @@ export default function AgentDetail() {
   const [accuracy, setAccuracy] = useState(null)
   const [patterns, setPatterns] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => {
     const fetchAgent = async () => {
+      setFetchError(null)
       setLoading(true)
       try {
         const [info, acc, pat] = await Promise.all([
@@ -70,7 +72,7 @@ export default function AgentDetail() {
         setAccuracy(acc)
         setPatterns(pat)
       } catch (err) {
-        console.error(err)
+        setFetchError(err.message || 'Failed to load agent data')
       } finally {
         setLoading(false)
       }
@@ -106,6 +108,12 @@ export default function AgentDetail() {
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING AGENT DATA...</span>
+            </div>
+          ) : fetchError ? (
+            <div className="terminal-card p-3 border-l-2 border-bear">
+              <p className="text-xs font-mono text-bear">
+                Could not load agent data: {fetchError}
+              </p>
             </div>
           ) : (
             <>

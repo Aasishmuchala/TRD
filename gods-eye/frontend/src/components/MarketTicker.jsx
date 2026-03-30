@@ -46,6 +46,7 @@ export default function MarketTicker() {
   }
 
   const niftyUp = data.nifty_change >= 0
+  const bankNiftyUp = (data.bank_nifty_change ?? 0) >= 0
   const vixUp = data.vix_change >= 0
   const fiiPositive = data.fii_net_today >= 0
   const diiPositive = data.dii_net_today >= 0
@@ -92,6 +93,21 @@ export default function MarketTicker() {
           <span className={pctClass(niftyUp)}>
             {niftyUp ? '▲' : '▼'} {formatNum(Math.abs(data.nifty_change), 1)} ({formatNum(Math.abs(data.nifty_change_pct), 2)}%)
           </span>
+        </div>
+
+        <span className="text-[rgba(255,255,255,0.06)]">│</span>
+
+        {/* Bank Nifty */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-onSurfaceMuted">BANK</span>
+          <span className="text-onSurface font-bold">
+            {data.bank_nifty_spot ? formatNum(data.bank_nifty_spot, 1) : '--'}
+          </span>
+          {data.bank_nifty_spot > 0 && (
+            <span className={pctClass(bankNiftyUp)}>
+              {bankNiftyUp ? '▲' : '▼'}{formatNum(Math.abs(data.bank_nifty_change_pct ?? 0), 2)}%
+            </span>
+          )}
         </div>
 
         <span className="text-[rgba(255,255,255,0.06)]">│</span>

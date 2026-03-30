@@ -5,32 +5,20 @@ __pycache__/
 dist/
 build/
 .eggs/
+*.egg
 
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Node
-node_modules/
-
-# Frontend build artifacts
-frontend/dist/
-frontend/dist2/
-frontend/dist_check/
-
-# Vite timestamp files
-*.timestamp-*.mjs
-
-# Environment files
+# Environment
 .env
-.env.local
-.env.production
+.venv/
+venv/
+env/
 
 # Database
 *.db
-*.db-journal
-*.sqlite3
+
+# Node
+node_modules/
+frontend/dist/
 
 # IDE
 .vscode/
@@ -42,18 +30,13 @@ frontend/dist_check/
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-
-# Auth tokens
-auth.json
-
-# Coverage & testing
-.coverage
-.coverage.*
-htmlcov/
-coverage.xml
+# Testing
 .pytest_cache/
+.coverage
+htmlcov/
 
-# Skills data
-skills_data/
+# Alembic
+alembic/versions/__pycache__/
+
+# God's Eye local data
+~/.gods-eye/

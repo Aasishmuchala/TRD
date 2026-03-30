@@ -1,26 +1,22 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
+import { AGENT_ORDER, AGENT_DISPLAY_NAMES, AGENT_COLORS, AGENT_WEIGHTS } from '../constants/agents'
 
 export default function Settings() {
-  const [agentWeights, setAgentWeights] = useState({
-    FII: 0.30,
-    DII: 0.25,
-    RETAIL_FNO: 0.15,
-    ALGO: 0.10,
-    PROMOTER: 0.10,
-    RBI: 0.10,
-  })
+  const [agentWeights, setAgentWeights] = useState({ ...AGENT_WEIGHTS })
   const [simParams, setSimParams] = useState({
     samples_per_agent: 3,
     interaction_rounds: 3,
     temperature: 0.3,
   })
+  const [quantLlmBalance, setQuantLlmBalance] = useState(45)
   const [mockMode, setMockMode] = useState(false)
   const [model, setModel] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -32,8 +28,9 @@ export default function Settings() {
         if (data.temperature != null) setSimParams(prev => ({ ...prev, temperature: data.temperature }))
         if (data.mock_mode != null) setMockMode(data.mock_mode)
         if (data.model) setModel(data.model)
+        if (data.quant_llm_balance != null) setQuantLlmBalance(Math.round(data.quant_llm_balance * 100))
       } catch (err) {
-        console.error('Failed to load settings:', err)
+        setFetchError(err.message || 'Failed to load settings')
       } finally {
         setLoading(false)
       }
@@ -65,6 +62,7 @@ export default function Settings() {
         samples_per_agent: simParams.samples_per_agent,
         interaction_rounds: simParams.interaction_rounds,
         temperature: simParams.temperature,
+        quant_llm_balance: quantLlmBalance / 100,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -76,27 +74,10 @@ export default function Settings() {
   }
 
   const handleReset = () => {
-    setAgentWeights({ FII: 0.30, DII: 0.25, RETAIL_FNO: 0.15, ALGO: 0.10, PROMOTER: 0.10, RBI: 0.10 })
+    setAgentWeights({ ...AGENT_WEIGHTS })
     setSimParams({ samples_per_agent: 3, interaction_rounds: 3, temperature: 0.3 })
+    setQuantLlmBalance(45)
     setSaved(false)
-  }
-
-  const agentLabels = {
-    FII: 'FII Flows Analyst',
-    DII: 'DII Strategy Desk',
-    RETAIL_FNO: 'Retail F&O Desk',
-    ALGO: 'Algo Trading Engine',
-    PROMOTER: 'Promoter Desk',
-    RBI: 'RBI Policy Desk',
-  }
-
-  const agentColors = {
-    FII: '#FF6B6B',
-    DII: '#00E676',
-    RETAIL_FNO: '#FFD740',
-    ALGO: '#00D4E0',
-    PROMOTER: '#BB86FC',
-    RBI: '#448AFF',
   }
 
   if (loading) {
@@ -113,6 +94,13 @@ export default function Settings() {
     <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
         <div className="max-w-3xl">
+          {fetchError && (
+            <div className="terminal-card p-3 border-l-2 border-bear mb-4">
+              <p className="text-xs font-mono text-bear">
+                Settings unavailable: {fetchError}. Showing defaults — changes may not persist.
+              </p>
+            </div>
+          )}
           <h1 className="text-xl font-bold text-onSurface mb-1">Settings</h1>
           <p className="text-[10px] font-mono text-onSurfaceDim mb-5">
             MODEL: {model} | MODE: {mockMode ? 'MOCK' : 'LIVE'}
@@ -128,34 +116,66 @@ export default function Settings() {
             </div>
 
             <div className="space-y-3">
-              {Object.entries(agentWeights).map(([agent, weight]) => (
-                <div key={agent}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: agentColors[agent] || '#8B95A5' }}
-                      />
-                      <span className="text-[11px] font-mono text-onSurface">
-                        {agentLabels[agent] || agent}
+              {AGENT_ORDER.map((agentId) => {
+                const weight = agentWeights[agentId] ?? 0
+                return (
+                  <div key={agentId}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: AGENT_COLORS[agentId] || '#8B95A5' }}
+                        />
+                        <span className="text-[11px] font-mono text-onSurface">
+                          {AGENT_DISPLAY_NAMES[agentId] || agentId}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono font-bold" style={{ color: AGENT_COLORS[agentId] }}>
+                        {(weight * 100).toFixed(0)}%
                       </span>
                     </div>
-                    <span className="text-[11px] font-mono font-bold" style={{ color: agentColors[agent] }}>
-                      {(weight * 100).toFixed(0)}%
-                    </span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="0.5"
+                      step="0.01"
+                      value={weight}
+                      onChange={(e) => handleWeightChange(agentId, e.target.value)}
+                      className="w-full h-1 bg-surface-3 rounded-full appearance-none cursor-pointer accent-primary"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="0.5"
-                    step="0.01"
-                    value={weight}
-                    onChange={(e) => handleWeightChange(agent, e.target.value)}
-                    className="w-full h-1 bg-surface-3 rounded-full appearance-none cursor-pointer accent-primary"
-                  />
-                </div>
-              ))}
+                )
+              })}
             </div>
+          </div>
+
+          {/* Quant / LLM Balance */}
+          <div className="terminal-card p-4 mb-4">
+            <div className="section-header mb-4">Quant / LLM Balance</div>
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Balance</span>
+                <span className="text-[10px] font-mono text-onSurface">
+                  Quant {quantLlmBalance}% / LLM {100 - quantLlmBalance}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={quantLlmBalance}
+                onChange={(e) => { setQuantLlmBalance(parseInt(e.target.value)); setSaved(false) }}
+                className="w-full h-1 bg-surface-3 rounded-full appearance-none cursor-pointer accent-primary"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[9px] font-mono text-onSurfaceDim">Pure Quant</span>
+                <span className="text-[9px] font-mono text-onSurfaceDim">Pure LLM</span>
+              </div>
+            </div>
+            <p className="text-[9px] font-mono text-onSurfaceDim mt-2">
+              Flag conflicts when quant-LLM disagreement exceeds 30%
+            </p>
           </div>
 
           {/* Simulation Parameters */}

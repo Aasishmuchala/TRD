@@ -141,9 +141,10 @@ class MarketDataService:
         vix_task = self._fetch_india_vix()
         fii_dii_task = self._fetch_fii_dii()
         breadth_task = self._fetch_market_breadth()
+        bank_nifty_task = self._fetch_bank_nifty()
 
-        nifty, vix, fii_dii, breadth = await asyncio.gather(
-            nifty_task, vix_task, fii_dii_task, breadth_task
+        nifty, vix, fii_dii, breadth, bank_nifty = await asyncio.gather(
+            nifty_task, vix_task, fii_dii_task, breadth_task, bank_nifty_task
         )
 
         snapshot = {
@@ -158,6 +159,11 @@ class MarketDataService:
             "nifty_close": nifty.get("prev_close", 0),
             "nifty_change": nifty.get("change", 0),
             "nifty_change_pct": nifty.get("change_pct", 0),
+
+            # Bank Nifty
+            "bank_nifty_spot": bank_nifty.get("last", 0),
+            "bank_nifty_change": bank_nifty.get("change", 0),
+            "bank_nifty_change_pct": bank_nifty.get("change_pct", 0),
 
             # VIX
             "india_vix": vix.get("current", 15.0),
@@ -267,6 +273,40 @@ class MarketDataService:
                     }
         # Fallback
         return self._fallback_nifty()
+
+    async def _fetch_bank_nifty(self) -> Dict[str, Any]:
+        """Fetch Bank Nifty index data from NSE."""
+        cached = cache.get("bank_nifty")
+        if cached:
+            return cached
+
+        data = await self._nse.get(
+            f"{NSE_API}/equity-stockIndices?index=NIFTY%20BANK"
+        )
+        if data and "data" in data:
+            for item in data["data"]:
+                symbol = item.get("symbol", item.get("indexSymbol", ""))
+                if "BANK" in symbol.upper() and "NIFTY" in symbol.upper():
+                    last = float(item.get("lastPrice", 0) or 0)
+                    prev = float(item.get("previousClose", 0) or 0)
+                    change = float(item.get("change", last - prev) or 0)
+                    change_pct = float(item.get("pChange", 0) or 0)
+                    if change_pct == 0 and prev > 0:
+                        change_pct = (change / prev) * 100
+                    result = {
+                        "last": last,
+                        "open": float(item.get("open", 0) or 0),
+                        "high": float(item.get("dayHigh", 0) or 0),
+                        "low": float(item.get("dayLow", 0) or 0),
+                        "prev_close": prev,
+                        "change": change,
+                        "change_pct": change_pct,
+                    }
+                    cache.set("bank_nifty", result, ttl=MarketCache.DEFAULT_TTLS.get("spot", 60))
+                    return result
+
+        # Graceful fallback — return zeroed values
+        return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0}
 
     async def _fetch_india_vix(self) -> Dict[str, Any]:
         """Fetch India VIX current value."""

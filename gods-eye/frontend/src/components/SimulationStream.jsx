@@ -41,12 +41,19 @@ export default function SimulationStream({
           {isStreaming && (
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
           )}
-          <span className="section-header mb-0">
-            {streamStatus === 'connecting' ? 'CONNECTING...' :
-             streamStatus === 'streaming' ? 'SIMULATION LIVE' :
-             streamStatus === 'done' ? 'SIMULATION COMPLETE' :
-             'SIMULATION ERROR'}
-          </span>
+          <div>
+            <span className="section-header mb-0">
+              {streamStatus === 'connecting' ? 'CONNECTING...' :
+               streamStatus === 'streaming' ? 'SIMULATION LIVE' :
+               streamStatus === 'done' ? 'SIMULATION COMPLETE' :
+               'SIMULATION ERROR'}
+            </span>
+            {streamStatus === 'streaming' && currentRound > 0 && (
+              <div className="text-[10px] font-mono text-onSurfaceDim mt-0.5">
+                Round {currentRound} of 3 — {ROUND_LABELS[currentRound]}
+              </div>
+            )}
+          </div>
         </div>
         {currentRound > 0 && (
           <div className="flex items-center gap-2">
