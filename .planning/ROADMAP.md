@@ -32,8 +32,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Create src/constants/agents.js (canonical agent definitions: names, labels, colors, weights)
-- [ ] 01-02-PLAN.md — Fix auth routing: restructure App.jsx + simplify AuthGate to redirect to /welcome
+- [x] 01-01-PLAN.md — Create src/constants/agents.js (canonical agent definitions: names, labels, colors, weights)
+- [x] 01-02-PLAN.md — Fix auth routing: restructure App.jsx + simplify AuthGate to redirect to /welcome
 - [ ] 01-03-PLAN.md — Fix sidebar labels, add Quant/LLM slider to Settings, align Welcome agent nodes
 - [ ] 01-04-PLAN.md — Replace PaperTrading graduation criteria (6 plan-spec thresholds), add ScenarioModal flow fields
 
@@ -80,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. UI Alignment and Auth Routing | 0/4 | Not started | - |
+| 1. UI Alignment and Auth Routing | 2/4 | In Progress|  |
 | 2. Backend Wiring and Data Integrity | 0/TBD | Not started | - |
 | 3. Frontend Polish and UX Completeness | 0/TBD | Not started | - |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |

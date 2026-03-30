@@ -20,10 +20,10 @@ Requirements for production release. Each maps to roadmap phases.
 
 ### Auth & Routing
 
-- [ ] **AUTH-01**: Welcome.jsx is routed at /welcome and accessible to unauthenticated users
-- [ ] **AUTH-02**: AuthGate redirects unauthenticated users to /welcome (not blank screen)
-- [ ] **AUTH-03**: User can enter API key on Welcome page and proceed to dashboard
-- [ ] **AUTH-04**: Mock mode accessible from Welcome page without API key
+- [x] **AUTH-01**: Welcome.jsx is routed at /welcome and accessible to unauthenticated users
+- [x] **AUTH-02**: AuthGate redirects unauthenticated users to /welcome (not blank screen)
+- [x] **AUTH-03**: User can enter API key on Welcome page and proceed to dashboard
+- [x] **AUTH-04**: Mock mode accessible from Welcome page without API key
 
 ### Backend Wiring
 
@@ -100,10 +100,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | UI-06 | Phase 1 — UI Alignment and Auth Routing | Pending |
 | UI-07 | Phase 1 — UI Alignment and Auth Routing | Pending |
 | UI-08 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| AUTH-01 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| AUTH-02 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| AUTH-03 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| AUTH-04 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| AUTH-01 | Phase 1 — UI Alignment and Auth Routing | Complete |
+| AUTH-02 | Phase 1 — UI Alignment and Auth Routing | Complete |
+| AUTH-03 | Phase 1 — UI Alignment and Auth Routing | Complete |
+| AUTH-04 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | BACK-01 | Phase 2 — Backend Wiring and Data Integrity | Pending |
 | BACK-02 | Phase 2 — Backend Wiring and Data Integrity | Pending |
 | BACK-03 | Phase 2 — Backend Wiring and Data Integrity | Pending |
