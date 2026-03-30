@@ -136,6 +136,25 @@ async def startup_event():
     setup_logging()
     print(f"Starting God's Eye with model: {config.MODEL}")
 
+    # Trigger historical data backfill on fresh database
+    # Does NOT block startup if Dhan is unavailable — logs warning instead
+    try:
+        from app.data.historical_store import historical_store
+        from app.data.dhan_client import DhanFetchError
+
+        nifty_rows = historical_store._count_rows("NIFTY")
+        if nifty_rows < 10:
+            print("Historical DB is empty — triggering full backfill from Dhan...")
+            results = await historical_store.backfill_all()
+            print(f"Backfill complete: {results}")
+        else:
+            print(f"Historical DB has data ({nifty_rows} Nifty rows) — skipping startup backfill")
+    except DhanFetchError as exc:
+        print(f"WARNING: Startup backfill failed (Dhan unavailable): {exc}")
+        print("Historical data will be fetched on first API request.")
+    except Exception as exc:
+        print(f"WARNING: Startup backfill error: {exc}")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
