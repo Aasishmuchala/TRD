@@ -14,11 +14,11 @@
 
 ### Technical Signals
 
-- [ ] **TECH-01**: System computes RSI (14-period) for Nifty and Bank Nifty from historical data
-- [ ] **TECH-02**: System computes VWAP deviation for intraday context
-- [ ] **TECH-03**: System computes Supertrend indicator (ATR-based) for trend direction
+- [x] **TECH-01**: System computes RSI (14-period) for Nifty and Bank Nifty from historical data
+- [x] **TECH-02**: System computes VWAP deviation for intraday context
+- [x] **TECH-03**: System computes Supertrend indicator (ATR-based) for trend direction
 - [ ] **TECH-04**: System tracks OI change (call/put) from Dhan options chain for sentiment shift detection
-- [ ] **TECH-05**: System classifies VIX regime (low <14, normal 14-20, elevated 20-30, high >30)
+- [x] **TECH-05**: System classifies VIX regime (low <14, normal 14-20, elevated 20-30, high >30)
 
 ### Backtest Engine
 
@@ -68,11 +68,11 @@
 | HIST-02 | Phase 5 — Historical Data Backfill | Complete |
 | HIST-03 | Phase 5 — Historical Data Backfill | Complete |
 | HIST-04 | Phase 5 — Historical Data Backfill | Complete |
-| TECH-01 | Phase 6 — Technical Signal Engine | Pending |
-| TECH-02 | Phase 6 — Technical Signal Engine | Pending |
-| TECH-03 | Phase 6 — Technical Signal Engine | Pending |
+| TECH-01 | Phase 6 — Technical Signal Engine | Complete |
+| TECH-02 | Phase 6 — Technical Signal Engine | Complete |
+| TECH-03 | Phase 6 — Technical Signal Engine | Complete |
 | TECH-04 | Phase 6 — Technical Signal Engine | Pending |
-| TECH-05 | Phase 6 — Technical Signal Engine | Pending |
+| TECH-05 | Phase 6 — Technical Signal Engine | Complete |
 | BT-01 | Phase 7 — Backtest Engine | Pending |
 | BT-02 | Phase 7 — Backtest Engine | Pending |
 | BT-03 | Phase 7 — Backtest Engine | Pending |

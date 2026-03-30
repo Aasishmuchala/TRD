@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: verifying
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-30T20:42:36.492Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-30T20:54:46.573Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
-**Current focus:** Phase 05 — historical-data-backfill
+**Current focus:** Phase 06 — technical-signal-engine
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 06 (technical-signal-engine) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 05 P01 | 3 | 2 tasks | 2 files |
 | Phase 05 P02 | 2 | 3 tasks | 2 files |
+| Phase 06 P01 | 2 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 05]: fetched_at column stores fetch timestamp (not price date) — enables same-day cache freshness check
 - [Phase 05]: DhanFetchError maps to HTTP 502 (not 500) to signal upstream dependency failure explicitly
 - [Phase 05]: Startup backfill uses < 10 row threshold to handle prior partial backfills; Dhan failure logs WARNING not crash
+- [Phase 06]: technical_signals.py is a separate module from signal_engine.py — live simulation uses low_fear/high_fear labels; backtest uses low/normal/elevated/high labels. They coexist.
+- [Phase 06]: classify_vix_regime raises ValueError on negative VIX — real VIX cannot be negative; makes bad data fail loudly
+- [Phase 06]: compute_signals_for_date slices rows using YYYY-MM-DD string comparison (lexicographically correct) to prevent future data leakage
 
 ### Pending Todos
 
@@ -79,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T20:39:07.873Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-03-30T20:54:46.568Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
