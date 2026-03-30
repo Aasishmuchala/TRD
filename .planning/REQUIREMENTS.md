@@ -47,9 +47,9 @@ Requirements for production release. Each maps to roadmap phases.
 - [x] **DEP-01**: Backend deployed to Railway with persistent SQLite volume
 - [x] **DEP-02**: Frontend deployed to Vercel with SPA rewrite and VITE_API_BASE configured
 - [x] **DEP-03**: WebSocket streaming works in production (wss:// to Railway backend)
-- [ ] **DEP-04**: CORS configured for production Vercel domain
+- [x] **DEP-04**: CORS configured for production Vercel domain
 - [x] **DEP-05**: Skills directory uses persistent volume (not ephemeral container storage)
-- [ ] **DEP-06**: Environment variables documented in .env.example
+- [x] **DEP-06**: Environment variables documented in .env.example
 
 ## v2 Requirements
 
@@ -118,9 +118,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | DEP-01 | Phase 4 — Production Deployment and Verification | Complete |
 | DEP-02 | Phase 4 — Production Deployment and Verification | Complete |
 | DEP-03 | Phase 4 — Production Deployment and Verification | Complete |
-| DEP-04 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-04 | Phase 4 — Production Deployment and Verification | Complete |
 | DEP-05 | Phase 4 — Production Deployment and Verification | Complete |
-| DEP-06 | Phase 4 — Production Deployment and Verification | Pending |
+| DEP-06 | Phase 4 — Production Deployment and Verification | Complete |
 
 **Coverage:**
 - v1 requirements: 29 total

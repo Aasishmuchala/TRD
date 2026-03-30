@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: UI Alignment and Auth Routing** - Eliminate all functional divergences between Stitch mockups and the plan spec; route Welcome.jsx and fix AuthGate (completed 2026-03-30)
 - [x] **Phase 2: Backend Wiring and Data Integrity** - Wire skill injection into agent prompts, fix SkillStore container path, surface NSE data freshness in UI (completed 2026-03-30)
 - [x] **Phase 3: Frontend Polish and UX Completeness** - Add loading states, empty states, error states, live market ticker, CSV export, Learning/Skills page, and dark mode consistency (completed 2026-03-30)
-- [ ] **Phase 4: Production Deployment and Verification** - Deploy to Railway and Vercel with persistent volumes, correct CORS, wss:// WebSocket, and documented env vars
+- [x] **Phase 4: Production Deployment and Verification** - Deploy to Railway and Vercel with persistent volumes, correct CORS, wss:// WebSocket, and documented env vars (completed 2026-03-30)
 
 ## Phase Details
 
@@ -87,7 +87,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Fix Dockerfile (1 worker, /app/skills dir), create railway.toml, fix docker-compose skills volume and LEARNING_SKILL_DIR default
 - [x] 04-02-PLAN.md — Fix WebSocket URL to use VITE_WS_BASE env var; create frontend/vercel.json SPA rewrite
-- [ ] 04-03-PLAN.md — Create .env.example files (gods-eye root, backend, frontend) documenting all env vars and CORS configuration
+- [x] 04-03-PLAN.md — Create .env.example files (gods-eye root, backend, frontend) documenting all env vars and CORS configuration
 
 ## Progress
 
@@ -99,4 +99,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
 | 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | 4/4 | Complete   | 2026-03-30 |
-| 4. Production Deployment and Verification | 2/3 | In Progress|  |
+| 4. Production Deployment and Verification | 3/3 | Complete   | 2026-03-30 |

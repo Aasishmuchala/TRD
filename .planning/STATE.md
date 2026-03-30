@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-30T13:31:22.398Z"
+status: verifying
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-30T13:37:26.594Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 
 Phase: 04 (production-deployment-and-verification) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P04 | 43s | 2 tasks | 0 files |
 | Phase 04 P02 | 99s | 2 tasks | 2 files |
 | Phase 04 P01 | 128s | 2 tasks | 4 files |
+| Phase 04 P03 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,9 @@ Recent decisions affecting current work:
 - [Phase 04]: gunicorn -w 1 is authoritative in both Dockerfile CMD and railway.toml startCommand to prevent drift
 - [Phase 04]: railway.toml startCommand uses $PORT instead of hardcoded 8000 — Railway injects dynamic port at runtime
 - [Phase 04]: LEARNING_SKILL_DIR default changed to /app/skills string literal — matches Railway volume mount, no expanduser needed in container
+- [Phase Phase 04]: GODS_EYE_CORS_ORIGINS must be exact Vercel URL — DO NOT use wildcard (*), credentials require exact origins
+- [Phase Phase 04]: Root .env.example is deployment checklist only — backend/.env.example and frontend/.env.example are authoritative
+- [Phase Phase 04]: VITE_WS_BASE format: wss://hostname no trailing slash no path — documented in frontend/.env.example
 
 ### Pending Todos
 
@@ -120,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T13:31:22.394Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-30T13:37:26.590Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
