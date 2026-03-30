@@ -30,6 +30,7 @@ from app.data.market_data import market_data_service
 from app.data.cache import cache
 from app.data.historical_store import historical_store
 from app.data.dhan_client import DhanFetchError
+from app.data.technical_signals import technical_signals, TechnicalSignals
 from app.config import config
 
 # Public router for health checks and auth endpoints
@@ -774,3 +775,127 @@ async def trigger_backfill():
         )
     except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
+
+
+@protected_router.get("/market/signals/{instrument}/{date}")
+async def get_signals_for_date(instrument: str, date: str):
+    """Return full technical signal object for a stored date.
+
+    Path params:
+      instrument: "nifty" or "banknifty" (case-insensitive)
+      date: "YYYY-MM-DD"
+
+    Response shape:
+      {
+        "instrument": str,
+        "date": str,
+        "rsi": float,                   # 0-100, Wilder 14-period
+        "vwap_deviation_pct": float,    # signed %, positive = above VWAP
+        "supertrend": str,              # "bullish" | "bearish"
+        "vix_regime": str,              # "low" | "normal" | "elevated" | "high"
+        "vix_close": float | null,      # raw VIX for that date
+        "oi": {                         # null if no OI snapshot stored for date
+          "call_oi": int,
+          "put_oi": int,
+          "pcr": float,
+          "net_sentiment": str
+        } | null
+      }
+
+    HTTP 400 on invalid instrument. HTTP 404 when no OHLCV rows exist for that date.
+    HTTP 404 when VIX data is missing (not a 500 — VIX being absent is a data gap, not a crash).
+    """
+    inst_upper = instrument.upper()
+    if inst_upper not in ("NIFTY", "BANKNIFTY"):
+        raise HTTPException(status_code=400, detail=f"instrument must be 'nifty' or 'banknifty', got {instrument!r}")
+
+    try:
+        ohlcv_rows = await historical_store.get_ohlcv(inst_upper)
+    except DhanFetchError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    # Check target date exists
+    available_dates = {r["date"] for r in ohlcv_rows}
+    if date not in available_dates:
+        raise HTTPException(status_code=404, detail=f"No OHLCV data for {inst_upper} on {date}")
+
+    # Compute OHLCV-based signals (uses all rows up to date)
+    sigs = TechnicalSignals.compute_signals_for_date(ohlcv_rows, date)
+
+    # VIX regime for that specific date
+    vix_close = None
+    vix_regime = "normal"
+    try:
+        vix_rows = await historical_store.get_vix_closes(to_date=date)
+        if vix_rows:
+            # Find the VIX close on or nearest before the target date
+            matching = [r for r in vix_rows if r["date"] == date]
+            if matching:
+                vix_close = matching[-1]["close"]
+            elif vix_rows:
+                vix_close = vix_rows[-1]["close"]  # use most recent available
+            if vix_close is not None:
+                vix_regime = TechnicalSignals.classify_vix_regime(vix_close)
+    except DhanFetchError:
+        pass  # VIX missing is non-fatal for signal response
+
+    # OI snapshot (optional — None is valid for historical dates before capture)
+    oi_data = historical_store.get_oi_snapshot(inst_upper, date)
+
+    return {
+        "instrument": inst_upper,
+        "date": date,
+        "rsi": sigs.get("rsi"),
+        "vwap_deviation_pct": sigs.get("vwap_deviation_pct"),
+        "supertrend": sigs.get("supertrend"),
+        "vix_regime": vix_regime,
+        "vix_close": vix_close,
+        "oi": oi_data,
+    }
+
+
+@protected_router.post("/market/oi/capture")
+async def capture_oi_snapshot():
+    """Fetch live OI from Dhan and store as today's snapshot for both NIFTY and BANKNIFTY.
+
+    Called manually or by a daily cron after market close to build the OI history.
+    Returns: {"nifty": {...}, "banknifty": {...}} with stored snapshot data.
+
+    Returns 502 if Dhan OI fetch fails. Returns partial result if one instrument fails
+    (logs warning, continues to other instrument).
+    """
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    result = {}
+
+    # NIFTY OI via fetch_options_summary
+    from app.data.dhan_client import dhan_client
+    nifty_oi = await dhan_client.fetch_options_summary()
+    if nifty_oi:
+        historical_store.store_oi_snapshot(
+            "NIFTY", today,
+            call_oi=nifty_oi.get("total_call_oi", 0),
+            put_oi=nifty_oi.get("total_put_oi", 0),
+            pcr=nifty_oi.get("pcr", 1.0),
+        )
+        result["nifty"] = historical_store.get_oi_snapshot("NIFTY", today)
+    else:
+        result["nifty"] = None
+
+    # BANKNIFTY OI via get_option_chain("25")
+    bn_chain = await dhan_client.get_option_chain("25")
+    if bn_chain and "data" in bn_chain:
+        chain = bn_chain["data"]
+        total_call_oi = sum(r.get("oi", 0) or 0 for r in chain if r.get("option_type", "").upper() == "CE")
+        total_put_oi = sum(r.get("oi", 0) or 0 for r in chain if r.get("option_type", "").upper() == "PE")
+        pcr = total_put_oi / total_call_oi if total_call_oi > 0 else 1.0
+        historical_store.store_oi_snapshot(
+            "BANKNIFTY", today,
+            call_oi=total_call_oi,
+            put_oi=total_put_oi,
+            pcr=pcr,
+        )
+        result["banknifty"] = historical_store.get_oi_snapshot("BANKNIFTY", today)
+    else:
+        result["banknifty"] = None
+
+    return {"date": today, "captured": result}
