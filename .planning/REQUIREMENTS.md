@@ -34,9 +34,9 @@ Requirements for production release. Each maps to roadmap phases.
 
 ### Frontend Polish
 
-- [ ] **FE-01**: All pages show proper loading states during API calls
-- [ ] **FE-02**: All pages show meaningful empty states when no data exists
-- [ ] **FE-03**: Error states display actionable messages (not blank screens)
+- [x] **FE-01**: All pages show proper loading states during API calls
+- [x] **FE-02**: All pages show meaningful empty states when no data exists
+- [x] **FE-03**: Error states display actionable messages (not blank screens)
 - [x] **FE-04**: Live market ticker in dashboard header shows real-time Nifty/Sensex/VIX
 - [x] **FE-05**: Simulation history supports CSV/JSON export
 - [x] **FE-06**: Learning/Skills management page shows extracted skills per agent
@@ -108,9 +108,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | BACK-02 | Phase 2 — Backend Wiring and Data Integrity | Complete |
 | BACK-03 | Phase 2 — Backend Wiring and Data Integrity | Complete |
 | BACK-04 | Phase 2 — Backend Wiring and Data Integrity | Complete |
-| FE-01 | Phase 3 — Frontend Polish and UX Completeness | Pending |
-| FE-02 | Phase 3 — Frontend Polish and UX Completeness | Pending |
-| FE-03 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-01 | Phase 3 — Frontend Polish and UX Completeness | Complete |
+| FE-02 | Phase 3 — Frontend Polish and UX Completeness | Complete |
+| FE-03 | Phase 3 — Frontend Polish and UX Completeness | Complete |
 | FE-04 | Phase 3 — Frontend Polish and UX Completeness | Complete |
 | FE-05 | Phase 3 — Frontend Polish and UX Completeness | Complete |
 | FE-06 | Phase 3 — Frontend Polish and UX Completeness | Complete |

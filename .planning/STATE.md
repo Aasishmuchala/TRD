@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-03-30T13:11:08.865Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-30T13:11:25.155Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 4
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P02 | 302s | 1 tasks | 2 files |
 | Phase 03 P02 | 141s | 2 tasks | 2 files |
 | Phase 03 P03 | 3min | 2 tasks | 4 files |
+| Phase 03 P01 | 158s | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Bank Nifty fallback returns zeroed dict — no exception propagated; frontend shows '--' when spot is 0/falsy
 - [Phase 03]: Export button conditionally renders only when history.length > 0 — prevents empty CSV downloads
 - [Phase 03]: Skills page shows up to 5 skills per agent card with overflow indicator; learning toggle failure is silently ignored
+- [Phase 03]: fetchError state added alongside existing loading state in Settings/PaperTrading/AgentDetail — no refactor of loading pattern needed
+- [Phase 03]: AgentDetail fetchError resets to null before each fetch to avoid stale errors on agent selection change
+- [Phase 03]: Error display pattern: terminal-card + border-l-2 border-bear + text-xs font-mono text-bear for all fetch error messages
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T13:10:53.667Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-03-30T13:11:25.151Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None
