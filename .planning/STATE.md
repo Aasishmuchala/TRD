@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-03-30T12:39:32.394Z"
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-30T12:50:13.871Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 7
+  completed_plans: 6
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Deliver accurate, explainable multi-agent market direction calls that a derivatives trader on Dalal Street would actually use before market open.
-**Current focus:** Phase 01 — ui-alignment-and-auth-routing
+**Current focus:** Phase 02 — backend-wiring-and-data-integrity
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 02 (backend-wiring-and-data-integrity) — EXECUTING
+Plan: 3 of 3
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -56,6 +56,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-ui-alignment-and-auth-routing P01 | 2 | 1 tasks | 1 files |
 | Phase 01 P04 | 2 | 2 tasks | 3 files |
 | Phase 01 P03 | 140s | 3 tasks | 3 files |
+| Phase 02 P03 | 2min | 2 tasks | 2 files |
+| Phase 02 P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -78,6 +80,11 @@ Recent decisions affecting current work:
 - [Phase 01]: Sidebar nav labels aligned to plan spec: Dashboard/Agents/History/Paper Trading/Settings
 - [Phase 01]: Settings drives agent weight sliders from AGENT_ORDER via constants import; Quant/LLM default 45/55 stored as decimal in API payload
 - [Phase 01]: Welcome mini-nodes use agent.shortLabel and agent.color from AGENTS constant — no local hardcoded agent data
+- [Phase 02]: For source=live: call get_live_snapshot() separately to extract data_source — build_market_input strips non-underscore fields
+- [Phase 02]: live_data_source initialized to 'fallback' before all branches to prevent NameError across all code paths
+- [Phase 02]: Non-live simulations (scenario/manual) always set data_source=fallback — no NSE fetch occurs in those paths
+- [Phase 02]: LEARNING_SKILL_DIR uses os.getenv() with same pattern as DATABASE_PATH — no new config infrastructure needed
+- [Phase 02]: seed_all() idempotency is name-based — ALL agent key covers cross-agent skills via existing load_skills() merge logic
 
 ### Pending Todos
 
@@ -91,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T12:36:01.816Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-03-30T12:50:13.867Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None

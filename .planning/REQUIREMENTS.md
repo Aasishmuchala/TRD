@@ -27,9 +27,9 @@ Requirements for production release. Each maps to roadmap phases.
 
 ### Backend Wiring
 
-- [ ] **BACK-01**: Learned skills are injected into agent prompts during simulation
-- [ ] **BACK-02**: SkillStore path is configurable via environment variable (not hardcoded to ~/.gods-eye/)
-- [ ] **BACK-03**: NSE data fallback displays visible staleness indicator to user
+- [x] **BACK-01**: Learned skills are injected into agent prompts during simulation
+- [x] **BACK-02**: SkillStore path is configurable via environment variable (not hardcoded to ~/.gods-eye/)
+- [x] **BACK-03**: NSE data fallback displays visible staleness indicator to user
 - [ ] **BACK-04**: Agent interaction_effects populated (amplifies/dampened_by) instead of empty {}
 
 ### Frontend Polish
@@ -104,9 +104,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | AUTH-02 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | AUTH-03 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | AUTH-04 | Phase 1 — UI Alignment and Auth Routing | Complete |
-| BACK-01 | Phase 2 — Backend Wiring and Data Integrity | Pending |
-| BACK-02 | Phase 2 — Backend Wiring and Data Integrity | Pending |
-| BACK-03 | Phase 2 — Backend Wiring and Data Integrity | Pending |
+| BACK-01 | Phase 2 — Backend Wiring and Data Integrity | Complete |
+| BACK-02 | Phase 2 — Backend Wiring and Data Integrity | Complete |
+| BACK-03 | Phase 2 — Backend Wiring and Data Integrity | Complete |
 | BACK-04 | Phase 2 — Backend Wiring and Data Integrity | Pending |
 | FE-01 | Phase 3 — Frontend Polish and UX Completeness | Pending |
 | FE-02 | Phase 3 — Frontend Polish and UX Completeness | Pending |

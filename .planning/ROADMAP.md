@@ -49,9 +49,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Fix LEARNING_SKILL_DIR env var (BACK-02) and seed SkillStore with 5 skills (BACK-01)
+- [x] 02-01-PLAN.md — Fix LEARNING_SKILL_DIR env var (BACK-02) and seed SkillStore with 5 skills (BACK-01)
 - [ ] 02-02-PLAN.md — Populate AlgoQuantAgent interaction_effects from computed signals (BACK-04)
-- [ ] 02-03-PLAN.md — Expose data_source in simulate response and render amber fallback banner in Dashboard (BACK-03)
+- [x] 02-03-PLAN.md — Expose data_source in simulate response and render amber fallback banner in Dashboard (BACK-03)
 
 ### Phase 3: Frontend Polish and UX Completeness
 **Goal**: Every user-facing flow communicates its state (loading, empty, error) clearly, the live market ticker works, simulation history is exportable, the Learning/Skills page is accessible, and the dark mode theme is consistent across all screens
@@ -86,6 +86,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
-| 2. Backend Wiring and Data Integrity | 0/3 | Not started | - |
+| 2. Backend Wiring and Data Integrity | 2/3 | In Progress|  |
 | 3. Frontend Polish and UX Completeness | 0/TBD | Not started | - |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |
