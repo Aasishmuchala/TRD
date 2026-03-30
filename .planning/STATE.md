@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: verifying
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-03-30T21:06:07.297Z"
+status: executing
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-30T21:17:41.315Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
-**Current focus:** Phase 06 — technical-signal-engine
+**Current focus:** Phase 07 — backtest-engine
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 07 (backtest-engine) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P02 | 2 | 3 tasks | 2 files |
 | Phase 06 P01 | 2 | 1 tasks | 3 files |
 | Phase 06 P02 | 5 | 2 tasks | 2 files |
+| Phase 07 P01 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 06]: store_oi_snapshot and get_oi_snapshot are sync methods — OI capture is not latency-sensitive, no async needed
 - [Phase 06]: Signal endpoint returns oi: null (not 404) when OI snapshot missing — historical dates before capture are valid
 - [Phase 06]: No rate limit on GET /market/signals endpoint — called in tight loops by Phase 7 backtest engine
+- [Phase 07]: mock_mode saves/restores config.MOCK_MODE via try/finally — clean even on exception
+- [Phase 07]: backtest_runs stored in same SQLite file (config.DATABASE_PATH) — no second DB file needed
+- [Phase 07]: Next-day lookup from full OHLCV dataset so last signal day is never skipped
 
 ### Pending Todos
 
@@ -87,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T21:02:26.873Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-03-30T21:17:41.307Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

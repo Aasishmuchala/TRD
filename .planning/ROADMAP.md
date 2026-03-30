@@ -154,7 +154,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — BacktestEngine class with SQLite schema, day-loop logic, direction accuracy, and P&L formula
+- [x] 07-01-PLAN.md — BacktestEngine class with SQLite schema, day-loop logic, direction accuracy, and P&L formula
 - [ ] 07-02-PLAN.md — POST /api/backtest/run and GET /api/backtest/results/{run_id} endpoints with Pydantic schemas
 
 ### Phase 8: Signal Scoring
@@ -193,6 +193,6 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 7. Backtest Engine | v2.0 | 0/2 | Not started | - |
+| 7. Backtest Engine | v2.0 | 1/2 | In Progress|  |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
 | 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
