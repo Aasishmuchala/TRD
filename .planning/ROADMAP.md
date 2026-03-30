@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: UI Alignment and Auth Routing** - Eliminate all functional divergences between Stitch mockups and the plan spec; route Welcome.jsx and fix AuthGate (completed 2026-03-30)
 - [x] **Phase 2: Backend Wiring and Data Integrity** - Wire skill injection into agent prompts, fix SkillStore container path, surface NSE data freshness in UI (completed 2026-03-30)
-- [ ] **Phase 3: Frontend Polish and UX Completeness** - Add loading states, empty states, error states, live market ticker, CSV export, Learning/Skills page, and dark mode consistency
+- [x] **Phase 3: Frontend Polish and UX Completeness** - Add loading states, empty states, error states, live market ticker, CSV export, Learning/Skills page, and dark mode consistency (completed 2026-03-30)
 - [ ] **Phase 4: Production Deployment and Verification** - Deploy to Railway and Vercel with persistent volumes, correct CORS, wss:// WebSocket, and documented env vars
 
 ## Phase Details
@@ -70,7 +70,7 @@ Plans:
 - [x] 03-01-PLAN.md — Per-round progress "Round X of 3" in SimulationStream; error/empty states for Settings, PaperTrading, AgentDetail (FE-01, FE-02, FE-03)
 - [x] 03-02-PLAN.md — Add Bank Nifty to backend market snapshot and MarketTicker component (FE-04)
 - [x] 03-03-PLAN.md — CSV export on History page; new Skills page at /skills with sidebar nav item (FE-05, FE-06)
-- [ ] 03-04-PLAN.md — Dark mode palette consistency audit across Welcome, PaperTrading, AccuracyPanel, FeedbackPanel, ScenarioPanel (FE-07)
+- [x] 03-04-PLAN.md — Dark mode palette consistency audit across Welcome, PaperTrading, AccuracyPanel, FeedbackPanel, ScenarioPanel (FE-07)
 
 ### Phase 4: Production Deployment and Verification
 **Goal**: God's Eye is live and accessible at public Railway and Vercel URLs, with SQLite and SkillStore data persisting across redeploys, WebSocket streaming working over wss://, CORS configured for the production frontend domain, and all environment variables documented
@@ -93,5 +93,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
 | 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
-| 3. Frontend Polish and UX Completeness | 3/4 | In Progress|  |
+| 3. Frontend Polish and UX Completeness | 4/4 | Complete   | 2026-03-30 |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |
