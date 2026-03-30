@@ -28,6 +28,8 @@ from app.memory.prediction_tracker import PredictionTracker
 from app.memory.agent_memory import AgentMemory
 from app.data.market_data import market_data_service
 from app.data.cache import cache
+from app.data.historical_store import historical_store
+from app.data.dhan_client import DhanFetchError
 from app.config import config
 
 # Public router for health checks and auth endpoints
@@ -687,3 +689,88 @@ async def toggle_learning(enabled: bool = True):
         "learning_enabled": config.LEARNING_ENABLED,
         "skill_directory": config.LEARNING_SKILL_DIR,
     }
+
+
+# ─── Historical Data endpoints ────────────────────────────────────────────
+
+@protected_router.get("/market/historical/{instrument}")
+async def get_historical_data(
+    instrument: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+):
+    """Return cached daily OHLCV or VIX data for an instrument.
+
+    Path params:
+        instrument: "nifty", "banknifty", or "vix" (case-insensitive)
+
+    Query params (optional):
+        from_date: YYYY-MM-DD
+        to_date:   YYYY-MM-DD
+
+    Returns:
+        {"instrument": str, "count": int, "data": [...]}
+
+    Raises:
+        404 if instrument name is invalid
+        502 if Dhan API fails (explicit error, no fallback)
+    """
+    instrument_upper = instrument.upper()
+    if instrument_upper not in ("NIFTY", "BANKNIFTY", "VIX"):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown instrument '{instrument}'. Valid: nifty, banknifty, vix",
+        )
+
+    try:
+        if instrument_upper == "VIX":
+            rows = await historical_store.get_vix_closes(
+                from_date=from_date, to_date=to_date
+            )
+        else:
+            rows = await historical_store.get_ohlcv(
+                instrument_upper, from_date=from_date, to_date=to_date
+            )
+    except DhanFetchError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Dhan API error: {exc}",
+        )
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
+
+    return {
+        "instrument": instrument_upper,
+        "count": len(rows),
+        "from_date": from_date,
+        "to_date": to_date,
+        "data": rows,
+    }
+
+
+@protected_router.post("/market/historical/backfill")
+async def trigger_backfill():
+    """Manually trigger a full historical data backfill for all instruments.
+
+    Fetches NIFTY, BANKNIFTY, and VIX from Dhan sequentially.
+    Use this on a fresh database or after extended downtime.
+
+    Returns:
+        {"status": "complete", "rows_stored": {"NIFTY": N, "BANKNIFTY": N, "VIX": N}}
+
+    Raises:
+        502 if Dhan API fails for any instrument
+    """
+    try:
+        results = await historical_store.backfill_all()
+        return {
+            "status": "complete",
+            "rows_stored": results,
+        }
+    except DhanFetchError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Dhan backfill failed: {exc}",
+        )
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
