@@ -2,7 +2,7 @@
 
 ## What This Is
 
-God's Eye is an India-specific multi-agent market intelligence system that simulates the behavioral forces driving Indian equity markets (NSE/BSE). Six AI agents — modeled on FII, DII, Retail F&O, Algo/Quant, Promoter/Insider, and RBI/Policy — independently analyze market scenarios and produce a weighted consensus on market direction and confidence.
+God's Eye is an India-specific multi-agent market intelligence system that simulates the behavioral forces driving Indian equity markets (NSE/BSE). Six AI agents — modeled on FII, DII, Retail F&O, Algo/Quant, Promoter/Insider, and RBI/Policy — independently analyze market scenarios through a 3-round debate and produce a weighted consensus on market direction and confidence. Features include real-time streaming simulation, accuracy-driven agent weight tuning, auto-learning skill extraction, and a complete React dashboard with agent detail, simulation history, paper trading, and skills management.
 
 ## Core Value
 
@@ -12,89 +12,80 @@ Deliver accurate, explainable multi-agent market direction calls that a derivati
 
 ### Validated
 
-- ✓ Backend simulation engine with 3-round agent interaction — existing
-- ✓ 6 LLM agents + 1 quant agent with India-specific personas — existing
-- ✓ Weighted consensus aggregator (quant/LLM hybrid scoring) — existing
-- ✓ REST API + WebSocket streaming for real-time simulation — existing
-- ✓ Live NSE market data fetching with fallback mocks — existing
-- ✓ Accuracy feedback engine (auto-tunes agent weights) — existing
-- ✓ Auto-learning system (skill extraction from simulations) — existing
-- ✓ SQLite persistence with Alembic migrations — existing
-- ✓ OAuth device code auth flow — existing
-- ✓ Rate limiting + CORS — existing
-- ✓ Frontend Dashboard with 6 panels (Scenario, Pressure, Insights, Accuracy, Feedback, Stream) — existing
-- ✓ Frontend Agent Detail page with accuracy/pattern analysis — existing
-- ✓ Frontend Simulation History with outcome recording — existing
-- ✓ Frontend Paper Trading with graduation tracker — existing
-- ✓ Frontend Settings with weight sliders + sim params — existing
-- ✓ Frontend Welcome/Auth page — existing (not routed)
-- ✓ Stitch UI mockups (7 HTML screens) in gods-eye-ui/ — existing
+- ✓ Canonical agent constants with plan-spec names, weights, colors — v1.0
+- ✓ Auth routing: /welcome as public entry, AuthGate redirect — v1.0
+- ✓ Sidebar with 5 in-scope nav items only — v1.0
+- ✓ Quant/LLM balance slider at 45/55 default — v1.0
+- ✓ 6 plan-spec graduation criteria with exact thresholds — v1.0
+- ✓ Scenario Modal with all 6 flow data fields — v1.0
+- ✓ Date-based paper trading session format — v1.0
+- ✓ Skill injection into agent prompts via seeded SkillStore — v1.0
+- ✓ Configurable SkillStore path via GODS_EYE_LEARNING_SKILL_DIR — v1.0
+- ✓ AlgoQuantAgent interaction_effects populated — v1.0
+- ✓ Per-round streaming progress labels — v1.0
+- ✓ Error/empty states across Settings, PaperTrading, AgentDetail, Skills — v1.0
+- ✓ Live market ticker (Nifty, Bank Nifty, VIX) — v1.0
+- ✓ CSV export for simulation history — v1.0
+- ✓ Learning/Skills management page — v1.0
+- ✓ Dark mode palette consistency audit — v1.0
+- ✓ Railway deployment config (Dockerfile, railway.toml, volumes) — v1.0
+- ✓ Vercel deployment config (vercel.json, SPA rewrite) — v1.0
+- ✓ WebSocket VITE_WS_BASE env var for production — v1.0
+- ✓ .env.example files documenting all vars — v1.0
 
 ### Active
 
-- [ ] Fix UI/design alignment (agent names, graduation criteria, scope creep in sidebar)
-- [ ] Route Welcome.jsx and fix auth flow
-- [ ] Wire skill injection into agent prompts
-- [ ] Build Learning/Skills management UI
-- [ ] Integrate live market ticker in dashboard
-- [ ] Add simulation history export (CSV/JSON)
-- [ ] Deploy backend (Railway/Render) and frontend (Vercel)
-- [ ] Align Stitch HTML designs with React components
+- [ ] Fix WebSocket data_source propagation (fallback banner invisible via streaming path)
+- [ ] Persist quant_llm_balance in backend settings handler
+- [ ] Populate graduation criteria fields in history API response
+- [ ] Migrate PaperTrading.jsx from utils/colors to constants/agents import
+- [ ] Actually deploy to Railway + Vercel (config ready, needs credentials)
+- [ ] Historical price data backfill from NSE (backtesting enabler)
 
 ### Out of Scope
 
 - Live order execution — simulation tool, not a trading platform
-- Portfolio management — not in scope per plan
-- Backtesting against historical data — Phase 2
-- Mobile app — web-first
+- Portfolio management — not core to market intelligence value
+- Brokerage API integration — educational/research tool
+- Mobile app — web-first; defer to v2+
 - Multi-user / SaaS features — single-user tool
-- Real money or brokerage API integration — educational/research tool
-- Blockchain/crypto features — "Secure Node" hash from Stitch is irrelevant
+- Real-time charting (TradingView) — would dilute simulation focus
+- Social features / chat — not relevant to intelligence product
+- Freeform chatbot layer — would dilute structured simulation paradigm
 
 ## Context
 
-- **Existing codebase:** Brownfield project with functional backend (~95% complete) and frontend (~85% complete)
-- **Two UI sources:** Stitch-generated HTML mockups (gods-eye-ui/) and React components (gods-eye/frontend/src/) — these diverge on agent names, weights, graduation criteria, and sidebar scope
-- **Plan document:** `gods-eye-plan.md` is the source of truth for agent definitions, weights, thresholds, and architecture
-- **Comparison doc:** `stitch-vs-plan-comparison.md` documents 32 differences across 7 categories with clear decisions needed
-- **Tech stack:** Python/FastAPI backend, React/Tailwind/Recharts frontend, SQLite, Claude API
-- **Sub-repo structure:** gods-eye/ has its own .git (separate repo within workspace)
+- **v1.0 shipped:** 4 phases, 14 plans, 32 commits in one session
+- **Codebase:** Python/FastAPI backend + React/Tailwind frontend, both production-ready
+- **Deployment:** Config files ready (Railway + Vercel), pending user credentials
+- **Known gaps:** 2 partial requirements (WebSocket data_source, quant_llm_balance persistence), graduation criteria fields not yet in history API
+- **Sub-repo structure:** gods-eye/ has its own .git
 
 ## Constraints
 
-- **Tech stack**: Python + FastAPI backend, React + Tailwind + Recharts frontend — established, do not change
-- **AI Engine**: Claude API via Anthropic SDK (backend uses generic httpx for multi-provider support)
-- **Database**: SQLite Phase 1, PostgreSQL Phase 2
-- **Deployment**: Vercel (frontend) + Railway/Render (backend)
-- **Agent Architecture**: 6 agents with specific weights (FII 0.30, DII 0.25, Retail 0.15, Algo 0.10, Promoter 0.10, RBI 0.10)
-- **Quant/LLM Balance**: 45% quant / 55% LLM (plan spec)
+- **Tech stack**: Python + FastAPI backend, React + Tailwind + Recharts frontend
+- **AI Engine**: Multi-provider LLM client via httpx (OpenAI, Nous, custom)
+- **Database**: SQLite (persistent volume at /app/data on Railway)
+- **Deployment**: Vercel (frontend) + Railway (backend)
+- **Agent Architecture**: 6 agents with weights (FII 0.30, DII 0.25, Retail 0.15, Algo 0.10, Promoter 0.10, RBI 0.10)
+- **Quant/LLM Balance**: 45% quant / 55% LLM
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use plan agent names everywhere (FII, DII, Retail F&O, Algo/Quant, Promoter, RBI) | Stitch mockups use inconsistent names across screens | — Pending |
-| Use plan's 6 graduation criteria with exact thresholds | Stitch shows different criteria and thresholds | — Pending |
-| Remove sidebar scope creep (Portfolio, Execute Trade, Markets) | Plan explicitly excludes these features | — Pending |
-| Plan spec is source of truth over Stitch HTML | 32 divergences documented; plan has clearer reasoning | — Pending |
-| Quant/LLM default 45/55 | Plan spec; Stitch shows 30/70 which over-weights LLM | — Pending |
+| Use plan agent names everywhere | Stitch mockups used inconsistent names | ✓ Good — all screens now consistent |
+| Use plan's 6 graduation criteria | Stitch showed wrong criteria/thresholds | ✓ Good — exact plan thresholds implemented |
+| Remove sidebar scope creep | Plan explicitly excludes Portfolio/Trade/Markets | ✓ Good — 5 clean nav items |
+| Plan spec is source of truth over Stitch HTML | 32 divergences documented | ✓ Good — React aligned to plan |
+| Quant/LLM default 45/55 | Plan spec; Stitch over-weighted LLM | ✓ Good — slider defaults correctly |
+| Single worker gunicorn (-w 1) | Mutable config singleton breaks with multiple workers | ✓ Good — prevents state desync |
+| VITE_WS_BASE env var for WebSocket | Vercel + Railway split means different hosts | ✓ Good — production-ready pattern |
+| Seed 5 skills at startup | Empty SkillStore means no LEARNED PATTERNS block | ✓ Good — immediate value |
 
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
 
-**After each phase transition:**
-1. Requirements invalidated? Move to Out of Scope with reason
-2. Requirements validated? Move to Validated with phase reference
-3. New requirements emerged? Add to Active
-4. Decisions to log? Add to Key Decisions
-5. "What This Is" still accurate? Update if drifted
-
-**After each milestone:**
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
 ---
-*Last updated: 2026-03-30 after initialization*
+*Last updated: 2026-03-30 after v1.0 milestone*
