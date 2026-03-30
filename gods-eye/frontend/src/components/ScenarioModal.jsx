@@ -1,15 +1,38 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { apiClient } from '../api/client'
 
 export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
-  // Flow data state — user can edit before confirming
-  const [flowData, setFlowData] = useState({
-    fii_net_today: '',
-    fii_5day_avg: '',
-    fii_futures_oi_change: '',
-    dii_net_today: '',
-    dii_5day_avg: '',
-    sip_inflow: '',
-  })
+  // Defaults when market is closed or API unavailable
+  const DEFAULTS = {
+    fii_net_today: -3200,
+    fii_5day_avg: -8400,
+    fii_futures_oi_change: -12,
+    dii_net_today: 2100,
+    dii_5day_avg: 6200,
+    sip_inflow: 21000,
+  }
+
+  const [flowData, setFlowData] = useState(DEFAULTS)
+  const [dataSource, setDataSource] = useState('defaults')
+
+  // Auto-fetch latest market data to pre-fill flow fields
+  useEffect(() => {
+    apiClient.getMarketLive()
+      .then((data) => {
+        if (data && (data.fii_net_today || data.fii_flow_5d)) {
+          setFlowData({
+            fii_net_today: data.fii_net_today || DEFAULTS.fii_net_today,
+            fii_5day_avg: data.fii_flow_5d || DEFAULTS.fii_5day_avg,
+            fii_futures_oi_change: DEFAULTS.fii_futures_oi_change,
+            dii_net_today: data.dii_net_today || DEFAULTS.dii_net_today,
+            dii_5day_avg: data.dii_flow_5d || DEFAULTS.dii_5day_avg,
+            sip_inflow: DEFAULTS.sip_inflow,
+          })
+          setDataSource('live')
+        }
+      })
+      .catch(() => null)
+  }, [])
 
   const handleConfirm = () => {
     // Pass flowData back to parent along with confirmation
@@ -33,7 +56,12 @@ export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
 
         {/* Flow Data */}
         <div className="mb-5">
-          <div className="text-[10px] font-mono text-onSurfaceDim uppercase mb-2">Flow Data</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] font-mono text-onSurfaceDim uppercase">Flow Data</div>
+            <span className={`text-[8px] font-mono ${dataSource === 'live' ? 'text-bull' : 'text-neutral-bright'}`}>
+              {dataSource === 'live' ? 'LIVE DATA' : 'RECENT ESTIMATES'}
+            </span>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {[
               { key: 'fii_net_today',         label: 'FII Net (Today)',  placeholder: '₹ crore' },

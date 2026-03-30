@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { agents as agentColors, agentLabels } from '../utils/colors'
 
 const DIRECTION_COLORS = {
@@ -29,6 +30,8 @@ export default function SimulationStream({
   aggregation,
   streamStatus,
 }) {
+  const [expandedAgent, setExpandedAgent] = useState(null)
+
   if (streamStatus === 'idle') return null
 
   const isStreaming = streamStatus === 'streaming' || streamStatus === 'connecting'
@@ -142,11 +145,15 @@ export default function SimulationStream({
 
                 const dirColor = DIRECTION_COLORS[agentResult.direction] || '#FFC107'
 
+                const cardKey = `${roundNum}-${agentName}`
+                const isExpanded = expandedAgent === cardKey
+
                 return (
                   <div
                     key={agentName}
-                    className="px-3 py-2.5 rounded-lg bg-surface-2 border transition-all duration-300"
-                    style={{ borderColor: `${color}20` }}
+                    className={`px-3 py-2.5 rounded-lg bg-surface-2 border transition-all duration-300 cursor-pointer hover:border-primary/30 ${isExpanded ? 'col-span-3' : ''}`}
+                    style={{ borderColor: isExpanded ? `${color}40` : `${color}20` }}
+                    onClick={() => setExpandedAgent(isExpanded ? null : cardKey)}
                   >
                     {/* Agent name + direction */}
                     <div className="flex items-center justify-between">
@@ -156,16 +163,19 @@ export default function SimulationStream({
                           {label}
                         </span>
                       </div>
-                      <span
-                        className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
-                        style={{
-                          color: dirColor,
-                          backgroundColor: `${dirColor}12`,
-                          border: `1px solid ${dirColor}30`,
-                        }}
-                      >
-                        {agentResult.direction}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
+                          style={{
+                            color: dirColor,
+                            backgroundColor: `${dirColor}12`,
+                            border: `1px solid ${dirColor}30`,
+                          }}
+                        >
+                          {agentResult.direction}
+                        </span>
+                        <span className="text-[8px] text-onSurfaceDim">{isExpanded ? '▾' : '▸'}</span>
+                      </div>
                     </div>
 
                     {/* Conviction bar */}
@@ -189,6 +199,50 @@ export default function SimulationStream({
                     {agentResult.direction_changed && (
                       <div className="mt-1 text-[8px] font-mono text-neutral-bright">
                         Changed from {agentResult.previous_direction}
+                      </div>
+                    )}
+
+                    {/* Expanded reasoning section */}
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-[rgba(255,255,255,0.06)] space-y-2">
+                        {/* Reasoning */}
+                        {agentResult.reasoning && (
+                          <div>
+                            <div className="text-[8px] font-mono text-onSurfaceDim uppercase tracking-wider mb-1">Reasoning</div>
+                            <p className="text-[11px] text-onSurfaceMuted leading-relaxed">
+                              {agentResult.reasoning}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Key Triggers */}
+                        {agentResult.key_triggers && agentResult.key_triggers.length > 0 && (
+                          <div>
+                            <div className="text-[8px] font-mono text-onSurfaceDim uppercase tracking-wider mb-1">Key Triggers</div>
+                            <div className="flex flex-wrap gap-1">
+                              {agentResult.key_triggers.map((trigger) => (
+                                <span
+                                  key={trigger}
+                                  className="text-[9px] font-mono px-1.5 py-0.5 rounded"
+                                  style={{
+                                    color: dirColor,
+                                    backgroundColor: `${dirColor}10`,
+                                    border: `1px solid ${dirColor}20`,
+                                  }}
+                                >
+                                  {trigger}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Time Horizon */}
+                        {agentResult.time_horizon && (
+                          <div className="text-[9px] font-mono text-onSurfaceDim">
+                            Horizon: <span className="text-onSurfaceMuted">{agentResult.time_horizon}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

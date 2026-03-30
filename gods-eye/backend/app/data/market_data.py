@@ -1,10 +1,11 @@
-"""Live Indian market data service — fetches from NSE and public APIs.
+"""Live Indian market data service — Dhan API primary, NSE fallback.
 
-Data sources (all free, no API key required):
-    - NSE India:  Nifty 50, India VIX, Options Chain, FII/DII, Sector Indices
-    - Fallback:   Returns mock data when NSE is unreachable (market hours only)
+Data source priority:
+    1. Dhan API (reliable, authenticated, requires DHAN_ACCESS_TOKEN)
+    2. NSE India scraping (free but flaky, gets blocked under load)
+    3. Fallback mock data (deterministic, always available)
 
-NSE anti-bot handling:
+NSE anti-bot handling (fallback only):
     - First hit to nseindia.com sets session cookies
     - All subsequent requests use that session
     - User-Agent must look like a real browser
@@ -19,6 +20,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from app.data.cache import cache, MarketCache
+from app.data.dhan_client import dhan_client
 
 logger = logging.getLogger("gods_eye.market_data")
 
@@ -120,10 +122,15 @@ class NSESession:
 # Market Data Service
 # ---------------------------------------------------------------------------
 class MarketDataService:
-    """Fetches and caches live Indian market data from NSE."""
+    """Fetches live Indian market data — Dhan primary, NSE fallback."""
 
     def __init__(self):
         self._nse = NSESession()
+        self._dhan = dhan_client
+        if self._dhan.is_configured:
+            logger.info("Dhan API configured — using as primary data source")
+        else:
+            logger.info("Dhan API not configured — using NSE scraping (set DHAN_ACCESS_TOKEN + DHAN_CLIENT_ID for reliable data)")
 
     # ---- High-level methods (used by API routes) ----
 
@@ -182,8 +189,9 @@ class MarketDataService:
             "declines": breadth.get("declines", 0),
             "unchanged": breadth.get("unchanged", 0),
 
-            # Source
-            "data_source": "nse_live" if nifty.get("last", 0) > 0 else "fallback",
+            # Source + error reporting
+            "data_source": "dhan_live" if nifty.get("last", 0) > 0 else "error",
+            "data_error": nifty.get("_error") or (None if nifty.get("last", 0) > 0 else "No live market data available — market may be closed"),
         }
 
         cache.set("live_snapshot", snapshot, ttl=MarketCache.DEFAULT_TTLS["spot"])
@@ -255,7 +263,17 @@ class MarketDataService:
     # ---- NSE Fetchers ----
 
     async def _fetch_nifty50(self) -> Dict[str, Any]:
-        """Fetch Nifty 50 index data."""
+        """Fetch Nifty 50 — Dhan only. Error if Dhan fails."""
+        if self._dhan.is_configured:
+            result = await self._dhan.fetch_nifty50()
+            if result and result.get("last", 0) > 0:
+                logger.debug("Nifty 50 from Dhan API")
+                return result
+            logger.warning("Dhan returned no Nifty data — market may be closed")
+            return self._error_nifty("Dhan API returned no data — market may be closed")
+        logger.error("Dhan API not configured — set DHAN_ACCESS_TOKEN + DHAN_CLIENT_ID")
+        return self._error_nifty("Dhan API not configured")
+        # NSE fallback disabled — Dhan is the only source
         data = await self._nse.get(
             f"{NSE_API}/equity-stockIndices?index=NIFTY%2050"
         )
@@ -275,7 +293,15 @@ class MarketDataService:
         return self._fallback_nifty()
 
     async def _fetch_bank_nifty(self) -> Dict[str, Any]:
-        """Fetch Bank Nifty index data from NSE."""
+        """Fetch Bank Nifty — Dhan only. Error if Dhan fails."""
+        if self._dhan.is_configured:
+            result = await self._dhan.fetch_bank_nifty()
+            if result and result.get("last", 0) > 0:
+                logger.debug("Bank Nifty from Dhan API")
+                return result
+            return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0, "_error": "Dhan returned no Bank Nifty data"}
+        return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0, "_error": "Dhan not configured"}
+        # NSE fallback disabled
         cached = cache.get("bank_nifty")
         if cached:
             return cached
@@ -309,7 +335,15 @@ class MarketDataService:
         return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0}
 
     async def _fetch_india_vix(self) -> Dict[str, Any]:
-        """Fetch India VIX current value."""
+        """Fetch India VIX — Dhan only. Error if Dhan fails."""
+        if self._dhan.is_configured:
+            result = await self._dhan.fetch_india_vix()
+            if result and result.get("current", 0) > 0:
+                logger.debug("India VIX from Dhan API")
+                return result
+            return {"current": 0, "change": 0, "change_pct": 0, "_error": "Dhan returned no VIX data"}
+        return {"current": 0, "change": 0, "change_pct": 0, "_error": "Dhan not configured"}
+        # NSE fallback disabled
         data = await self._nse.get(f"{NSE_API}/allIndices")
         if data and "data" in data:
             for item in data["data"]:
@@ -634,7 +668,17 @@ class MarketDataService:
 
         return "normal"
 
-    # ---- Fallback Data (when NSE is unreachable) ----
+    # ---- Error Data (Dhan failed, no silent fallback) ----
+
+    @staticmethod
+    def _error_nifty(reason: str) -> Dict[str, Any]:
+        """Return zeroed Nifty data with error reason — no fake numbers."""
+        return {
+            "last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0,
+            "change": 0, "change_pct": 0, "_error": reason,
+        }
+
+    # ---- Fallback Data (legacy, kept for preset scenarios) ----
 
     @staticmethod
     def _fallback_nifty() -> Dict[str, Any]:

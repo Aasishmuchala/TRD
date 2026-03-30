@@ -120,8 +120,10 @@ async def websocket_simulate_stream(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         try:
-            await websocket.send_json({"type": "error", "message": "An unexpected error occurred"})
+            await websocket.send_json({"type": "error", "message": str(e)})
             await websocket.close()
         except Exception:
             pass

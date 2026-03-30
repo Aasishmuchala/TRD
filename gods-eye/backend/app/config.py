@@ -56,7 +56,7 @@ class Config:
     LEARNING_MIN_TURNS: int = 3  # Min simulation rounds before review
     LEARNING_SKILL_DIR: str = os.getenv(
         "GODS_EYE_LEARNING_SKILL_DIR",
-        "/app/skills"
+        os.path.join(os.path.expanduser("~"), ".gods-eye", "skills")
     )
 
     def __post_init__(self):
