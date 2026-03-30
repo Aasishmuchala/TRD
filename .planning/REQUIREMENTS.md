@@ -38,8 +38,8 @@ Requirements for production release. Each maps to roadmap phases.
 - [ ] **FE-02**: All pages show meaningful empty states when no data exists
 - [ ] **FE-03**: Error states display actionable messages (not blank screens)
 - [x] **FE-04**: Live market ticker in dashboard header shows real-time Nifty/Sensex/VIX
-- [ ] **FE-05**: Simulation history supports CSV/JSON export
-- [ ] **FE-06**: Learning/Skills management page shows extracted skills per agent
+- [x] **FE-05**: Simulation history supports CSV/JSON export
+- [x] **FE-06**: Learning/Skills management page shows extracted skills per agent
 - [ ] **FE-07**: Dark mode theme consistent across all screens (Apple dark + Claude warm palette)
 
 ### Deployment
@@ -112,8 +112,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | FE-02 | Phase 3 — Frontend Polish and UX Completeness | Pending |
 | FE-03 | Phase 3 — Frontend Polish and UX Completeness | Pending |
 | FE-04 | Phase 3 — Frontend Polish and UX Completeness | Complete |
-| FE-05 | Phase 3 — Frontend Polish and UX Completeness | Pending |
-| FE-06 | Phase 3 — Frontend Polish and UX Completeness | Pending |
+| FE-05 | Phase 3 — Frontend Polish and UX Completeness | Complete |
+| FE-06 | Phase 3 — Frontend Polish and UX Completeness | Complete |
 | FE-07 | Phase 3 — Frontend Polish and UX Completeness | Pending |
 | DEP-01 | Phase 4 — Production Deployment and Verification | Pending |
 | DEP-02 | Phase 4 — Production Deployment and Verification | Pending |
