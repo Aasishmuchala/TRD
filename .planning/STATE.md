@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-30T21:17:41.315Z"
+status: verifying
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-30T22:00:05.119Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 07 (backtest-engine) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P01 | 2 | 1 tasks | 3 files |
 | Phase 06 P02 | 5 | 2 tasks | 2 files |
 | Phase 07 P01 | 3 | 2 tasks | 2 files |
+| Phase 07 P02 | 40 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 07]: mock_mode saves/restores config.MOCK_MODE via try/finally — clean even on exception
 - [Phase 07]: backtest_runs stored in same SQLite file (config.DATABASE_PATH) — no second DB file needed
 - [Phase 07]: Next-day lookup from full OHLCV dataset so last signal day is never skipped
+- [Phase 07]: cumulative_pnl_points computed in API layer so BacktestEngine stays pure — API owns the equity curve shape
+- [Phase 07]: BacktestRunSummary.win_rate_pct convenience field (overall_accuracy * 100) spares Phase 9 dashboard from client-side multiplication
+- [Phase 07]: round_history omitted from BacktestDayResponse — heavy field not needed for aggregate dashboard equity curves
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T21:17:41.307Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-03-30T22:00:05.115Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

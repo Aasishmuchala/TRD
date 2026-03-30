@@ -25,7 +25,7 @@
 - [x] **BT-01**: System can replay a date range through agents using historical data as input
 - [x] **BT-02**: Each backtest day runs a full 3-round simulation with historical market conditions
 - [x] **BT-03**: System compares agent prediction (direction + conviction) against actual next-day Nifty/Bank Nifty move
-- [ ] **BT-04**: System tracks per-agent accuracy, overall accuracy, and conviction calibration across backtest period
+- [x] **BT-04**: System tracks per-agent accuracy, overall accuracy, and conviction calibration across backtest period
 - [x] **BT-05**: System computes P&L assuming simple option strategy (buy ATM CE on BUY, ATM PE on SELL, skip HOLD)
 
 ### Signal Scoring
@@ -76,7 +76,7 @@
 | BT-01 | Phase 7 — Backtest Engine | Complete |
 | BT-02 | Phase 7 — Backtest Engine | Complete |
 | BT-03 | Phase 7 — Backtest Engine | Complete |
-| BT-04 | Phase 7 — Backtest Engine | Pending |
+| BT-04 | Phase 7 — Backtest Engine | Complete |
 | BT-05 | Phase 7 — Backtest Engine | Complete |
 | SIG-01 | Phase 8 — Signal Scoring | Pending |
 | SIG-02 | Phase 8 — Signal Scoring | Pending |

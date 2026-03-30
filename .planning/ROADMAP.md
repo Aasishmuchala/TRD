@@ -103,7 +103,7 @@ Plans:
 
 - [x] **Phase 5: Historical Data Backfill** - Fetch and cache 1+ year of OHLCV data for Nifty, Bank Nifty, and India VIX from Dhan API into SQLite (completed 2026-03-30)
 - [x] **Phase 6: Technical Signal Engine** - Compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime classification from stored historical data (completed 2026-03-30)
-- [ ] **Phase 7: Backtest Engine** - Replay a date range through agents using historical conditions as input and compare predictions against actual next-day moves
+- [x] **Phase 7: Backtest Engine** - Replay a date range through agents using historical conditions as input and compare predictions against actual next-day moves (completed 2026-03-30)
 - [ ] **Phase 8: Signal Scoring** - Produce a combined 0-100 score merging agent sentiment conviction with technical signal alignment into actionable trade signals
 - [ ] **Phase 9: Backtest Dashboard** - Interactive UI for running backtests, viewing accuracy/P&L/drawdown metrics, and drilling into individual backtest days
 
@@ -155,7 +155,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — BacktestEngine class with SQLite schema, day-loop logic, direction accuracy, and P&L formula
-- [ ] 07-02-PLAN.md — POST /api/backtest/run and GET /api/backtest/results/{run_id} endpoints with Pydantic schemas
+- [x] 07-02-PLAN.md — POST /api/backtest/run and GET /api/backtest/results/{run_id} endpoints with Pydantic schemas
 
 ### Phase 8: Signal Scoring
 **Goal**: Every simulation (live or backtest) produces a combined 0-100 signal score that merges agent sentiment conviction with technical alignment, so a trader can see at a glance whether the setup is strong, moderate, or worth skipping
@@ -193,6 +193,6 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 7. Backtest Engine | v2.0 | 1/2 | In Progress|  |
+| 7. Backtest Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
 | 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
