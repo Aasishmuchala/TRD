@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>God's Eye | Multi-Agent Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #131315;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sf-pro-display {
+            font-family: 'Inter', sans-serif; /* Fallback for SF Pro Display */
+            letter-spacing: 0.05em;
+        }
+
+        .glass-card {
+            background: rgba(42, 42, 44, 0.08);
+            backdrop-filter: blur(16px) saturate(120%);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .amber-glow-bg {
+            background: radial-gradient(circle at center, rgba(217, 119, 87, 0.03) 0%, rgba(19, 19, 21, 0) 70%);
+        }
+
+        .primary-gradient {
+            background: linear-gradient(135deg, #FFB59E 0%, #D97757 100%);
+        }
+
+        .hex-line {
+            stroke: #55433D;
+            stroke-width: 1;
+            opacity: 0.3;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#353437",
+              "tertiary-fixed-dim": "#5edac7",
+              "outline-variant": "#55433d",
+              "surface-container": "#1f1f21",
+              "surface-dim": "#131315",
+              "tertiary-fixed": "#7df7e3",
+              "on-tertiary": "#003731",
+              "surface-container-lowest": "#0e0e10",
+              "on-background": "#e4e2e4",
+              "surface-tint": "#ffb59e",
+              "surface-container-highest": "#353437",
+              "background": "#131315",
+              "inverse-on-surface": "#303032",
+              "secondary-container": "#6a3f0a",
+              "tertiary-container": "#09a493",
+              "outline": "#a38c85",
+              "on-tertiary-fixed-variant": "#005047",
+              "on-primary-fixed-variant": "#7a2f15",
+              "on-tertiary-fixed": "#00201c",
+              "on-secondary-fixed-variant": "#673d08",
+              "on-error-container": "#ffdad6",
+              "on-surface": "#e4e2e4",
+              "on-primary-container": "#541400",
+              "surface": "#131315",
+              "primary": "#ffb59e",
+              "error": "#ffb4ab",
+              "on-secondary-fixed": "#2c1600",
+              "primary-container": "#d97757",
+              "tertiary": "#5edac7",
+              "on-primary-fixed": "#390b00",
+              "surface-container-high": "#2a2a2c",
+              "inverse-surface": "#e4e2e4",
+              "inverse-primary": "#99462a",
+              "secondary-fixed-dim": "#f8ba7c",
+              "on-error": "#690005",
+              "secondary-fixed": "#ffdcbd",
+              "on-secondary": "#492900",
+              "primary-fixed-dim": "#ffb59e",
+              "surface-container-low": "#1b1b1d",
+              "surface-bright": "#39393b",
+              "on-primary": "#5c1902",
+              "on-secondary-container": "#e9ac6f",
+              "error-container": "#93000a",
+              "primary-fixed": "#ffdbd0",
+              "secondary": "#f8ba7c",
+              "on-surface-variant": "#dbc1b9",
+              "on-tertiary-container": "#00312b"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-surface text-on-surface flex items-center justify-center min-h-screen">
+<!-- Suppression of Nav Shells as per Focused Journey/Transactional Rule -->
+<!-- Background Layer -->
+<div class="fixed inset-0 bg-gradient-to-b from-[#1C1C1E] to-[#2C2C2E] z-0"></div>
+<div class="fixed inset-0 amber-glow-bg z-10"></div>
+<!-- Main Content Canvas -->
+<main class="relative z-20 flex flex-col items-center justify-center w-full max-w-[1920px] px-8 py-12">
+<!-- Minimal Geometric Eye Icon -->
+<div class="mb-10 relative group">
+<svg class="transition-transform duration-700 group-hover:scale-105" fill="none" height="80" viewbox="0 0 120 80" width="120" xmlns="http://www.w3.org/2000/svg">
+<!-- Outer Arc Top -->
+<path d="M20 40C20 40 40 15 60 15C80 15 100 40 100 40" stroke="#FFB59E" stroke-linecap="round" stroke-width="1.5"></path>
+<!-- Outer Arc Bottom -->
+<path d="M20 40C20 40 40 65 60 65C80 65 100 40 100 40" stroke="#FFB59E" stroke-linecap="round" stroke-width="1.5"></path>
+<!-- Pupil -->
+<circle class="animate-pulse" cx="60" cy="40" fill="#FFB59E" r="10" style="animation-duration: 4s;"></circle>
+</svg>
+</div>
+<!-- Branding Section -->
+<div class="text-center space-y-3 mb-16">
+<h1 class="sf-pro-display text-5xl font-light tracking-[0.25em] text-on-surface uppercase">God's Eye</h1>
+<p class="text-on-surface-variant text-sm tracking-widest font-medium uppercase opacity-60">Multi-Agent Indian Market Intelligence</p>
+</div>
+<!-- Agent Connectivity Visualization (Hexagonal Pattern) -->
+<div class="relative w-72 h-72 mb-16 flex items-center justify-center">
+<svg class="absolute inset-0 w-full h-full" viewbox="0 0 200 200">
+<!-- Connection Lines -->
+<line class="hex-line" x1="100" x2="152" y1="40" y2="70"></line>
+<line class="hex-line" x1="152" x2="152" y1="70" y2="130"></line>
+<line class="hex-line" x1="152" x2="100" y1="130" y2="160"></line>
+<line class="hex-line" x1="100" x2="48" y1="160" y2="130"></line>
+<line class="hex-line" x1="48" x2="48" y1="130" y2="70"></line>
+<line class="hex-line" x1="48" x2="100" y1="70" y2="40"></line>
+<!-- Agent Nodes -->
+<!-- FII (Red glow) -->
+<circle class="shadow-[0_0_12px_rgba(255,180,171,0.4)]" cx="100" cy="40" fill="#FFB4AB" r="6"></circle>
+<text fill="#FFB4AB" font-size="8" font-weight="bold" text-anchor="middle" x="100" y="30">FII</text>
+<!-- DII (Green glow) -->
+<circle class="shadow-[0_0_12px_rgba(94,218,199,0.4)]" cx="152" cy="70" fill="#5EDAC7" r="6"></circle>
+<text fill="#5EDAC7" font-size="8" font-weight="bold" text-anchor="start" x="165" y="73">DII</text>
+<!-- Retail (Red glow) -->
+<circle class="shadow-[0_0_12px_rgba(255,180,171,0.4)]" cx="152" cy="130" fill="#FFB4AB" r="6"></circle>
+<text fill="#FFB4AB" font-size="8" font-weight="bold" text-anchor="start" x="165" y="133">Retail</text>
+<!-- Algo (Coral) -->
+<circle class="shadow-[0_0_12px_rgba(255,181,158,0.4)]" cx="100" cy="160" fill="#FFB59E" r="6"></circle>
+<text fill="#FFB59E" font-size="8" font-weight="bold" text-anchor="middle" x="100" y="175">Algo</text>
+<!-- Promoter (Green glow) -->
+<circle class="shadow-[0_0_12px_rgba(94,218,199,0.4)]" cx="48" cy="130" fill="#5EDAC7" r="6"></circle>
+<text fill="#5EDAC7" font-size="8" font-weight="bold" text-anchor="end" x="35" y="133">Promoter</text>
+<!-- RBI (Gray) -->
+<circle class="shadow-[0_0_12px_rgba(219,193,185,0.4)]" cx="48" cy="70" fill="#DBC1B9" r="6"></circle>
+<text fill="#DBC1B9" font-size="8" font-weight="bold" text-anchor="end" x="35" y="73">RBI</text>
+</svg>
+<!-- Central Node Shadow -->
+<div class="w-12 h-12 rounded-full primary-gradient opacity-20 blur-xl"></div>
+</div>
+<!-- Login / Entry Form -->
+<div class="w-full max-w-[380px] space-y-6">
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">vpn_key</span>
+</div>
+<input class="w-full h-14 pl-12 pr-4 bg-[#3A3A3C] border-none rounded-xl text-on-surface placeholder:text-on-surface-variant/40 focus:ring-1 focus:ring-primary/40 transition-all duration-300 outline-none" placeholder="Claude API Key" type="password"/>
+</div>
+<button class="w-full h-[48px] primary-gradient rounded-xl text-on-primary-fixed-variant font-bold text-sm tracking-widest uppercase shadow-[0px_24px_48px_rgba(217,119,87,0.15)] hover:scale-[1.02] active:scale-95 transition-all duration-300">
+                Get Started
+            </button>
+</div>
+<!-- Footer / Trust Badges -->
+<div class="mt-24 flex flex-col items-center gap-4">
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-full opacity-60">
+<span class="material-symbols-outlined text-xs">lock</span>
+<span class="text-[10px] tracking-wide text-on-surface-variant uppercase font-medium">Stored locally · Never transmitted</span>
+</div>
+<div class="flex items-center gap-4 text-[10px] tracking-widest text-on-surface-variant opacity-30 font-medium uppercase">
+<span>v1.0</span>
+<span class="w-1 h-1 bg-on-surface-variant rounded-full"></span>
+<span>Built with Claude</span>
+</div>
+</div>
+</main>
+<!-- Decorative Corner Accents -->
+<div class="fixed top-0 left-0 w-64 h-64 bg-primary/5 blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-0 right-0 w-96 h-96 bg-primary-container/5 blur-[150px] pointer-events-none"></div>
+</body></html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>God's Eye | Paper Trading Terminal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#353437",
+                        "tertiary-fixed-dim": "#5edac7",
+                        "outline-variant": "#55433d",
+                        "surface-container": "#1f1f21",
+                        "surface-dim": "#131315",
+                        "tertiary-fixed": "#7df7e3",
+                        "on-tertiary": "#003731",
+                        "surface-container-lowest": "#0e0e10",
+                        "on-background": "#e4e2e4",
+                        "surface-tint": "#ffb59e",
+                        "surface-container-highest": "#353437",
+                        "background": "#131315",
+                        "inverse-on-surface": "#303032",
+                        "secondary-container": "#6a3f0a",
+                        "tertiary-container": "#09a493",
+                        "outline": "#a38c85",
+                        "on-tertiary-fixed-variant": "#005047",
+                        "on-primary-fixed-variant": "#7a2f15",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-secondary-fixed-variant": "#673d08",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e4e2e4",
+                        "on-primary-container": "#541400",
+                        "surface": "#131315",
+                        "primary": "#ffb59e",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2c1600",
+                        "primary-container": "#d97757",
+                        "tertiary": "#5edac7",
+                        "on-primary-fixed": "#390b00",
+                        "surface-container-high": "#2a2a2c",
+                        "inverse-surface": "#e4e2e4",
+                        "inverse-primary": "#99462a",
+                        "secondary-fixed-dim": "#f8ba7c",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffdcbd",
+                        "on-secondary": "#492900",
+                        "primary-fixed-dim": "#ffb59e",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-bright": "#39393b",
+                        "on-primary": "#5c1902",
+                        "on-secondary-container": "#e9ac6f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#ffdbd0",
+                        "secondary": "#f8ba7c",
+                        "on-surface-variant": "#dbc1b9",
+                        "on-tertiary-container": "#00312b"
+                    },
+                    fontFamily: {
+                        "headline": ["SF Pro Display", "Inter", "sans-serif"],
+                        "body": ["SF Pro Text", "Inter", "sans-serif"],
+                        "label": ["SF Pro Text", "Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(42, 42, 44, 0.08);
+            backdrop-filter: blur(20px) saturate(120%);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.1);
+        }
+        .perspective-grid {
+            background-image: linear-gradient(to right, rgba(219, 193, 185, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(219, 193, 185, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .amber-glow {
+            box-shadow: 0px 0px 40px rgba(217, 119, 87, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary/30 min-h-screen overflow-x-hidden">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl shadow-[0px_24px_48px_rgba(217,119,87,0.08)]">
+<div class="flex justify-between items-center px-8 h-16 w-full max-w-[1920px] mx-auto relative">
+<div class="flex items-center gap-12">
+<span class="text-2xl font-bold tracking-tighter text-[#E4E2E4] cursor-pointer">God's Eye</span>
+<div class="hidden md:flex gap-8 font-['SF_Pro_Display'] tracking-wide text-sm font-semibold">
+<a class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">NIFTY 50</a>
+<a class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">SENSEX</a>
+<a class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">BANK NIFTY</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs uppercase tracking-widest font-bold text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20">Live</span>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">settings</span>
+</div>
+</div>
+<div class="bg-[#1B1B1D] h-[1px] w-full absolute bottom-0 left-0"></div>
+</div>
+</nav>
+<!-- Side Navigation Shell -->
+<aside class="fixed left-0 top-0 h-full w-64 z-[60] bg-[#1B1B1D] shadow-2xl flex flex-col h-full py-8">
+<div class="px-6 mb-12">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<h2 class="text-[#D97757] font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Terminal</h2>
+</div>
+<p class="text-on-surface-variant text-[10px] font-medium opacity-50">V2.4.0 High-Frequency</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="bg-gradient-to-r from-[#FFB59E]/10 to-transparent text-[#FFB59E] border-l-4 border-[#D97757] py-3 px-6 flex items-center gap-4 cursor-pointer transition-all duration-200">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Dashboard</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Agents</span>
+</div>
+<div class="bg-gradient-to-r from-[#FFB59E]/10 to-transparent text-[#FFB59E] border-l-4 border-[#D97757] py-3 px-6 flex items-center gap-4 cursor-pointer transition-all duration-200">
+<span class="material-symbols-outlined">history</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">History</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Paper Trading</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Settings</span>
+</div>
+</nav>
+<div class="px-6 mt-auto space-y-6">
+<div class="space-y-4 border-t border-outline-variant/20 pt-6">
+<div class="text-[#DBC1B9] flex items-center gap-4 opacity-70 hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-sm">help</span>
+<span class="text-[10px] uppercase tracking-widest font-medium">Help</span>
+</div>
+<div class="text-[#DBC1B9] flex items-center gap-4 opacity-70 hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-sm">logout</span>
+<span class="text-[10px] uppercase tracking-widest font-medium">Sign Out</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-10 min-h-[calc(100vh-64px)] perspective-grid">
+<!-- Top Status Banner -->
+<section class="mb-10">
+<div class="glass-card rounded-2xl p-6 flex justify-between items-center bg-primary/5 amber-glow">
+<div class="flex items-center gap-6">
+<div class="relative w-16 h-16">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-surface-container-highest" cx="32" cy="32" fill="transparent" r="28" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary" cx="32" cy="32" fill="transparent" r="28" stroke="currentColor" stroke-dasharray="175.9" stroke-dashoffset="52.7" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-primary">70%</div>
+</div>
+<div>
+<h1 class="text-2xl font-['SF_Pro_Display'] font-bold tracking-tight text-primary">Paper Trading</h1>
+<p class="text-on-surface-variant font-medium">14 of 20 sessions complete</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="px-4 py-2 bg-surface-container-high rounded-xl border border-outline-variant/10">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Status</p>
+<p class="text-sm font-bold text-tertiary">EVALUATION PHASE</p>
+</div>
+<div class="px-4 py-2 bg-surface-container-high rounded-xl border border-outline-variant/10">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant mb-1">Time Left</p>
+<p class="text-sm font-bold">06:42:11</p>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-12 gap-10">
+<!-- Left Half (48%ish) -->
+<div class="col-span-12 lg:col-span-6 space-y-10">
+<!-- Card 1: Today's Prediction -->
+<div class="glass-card rounded-3xl p-8 relative overflow-hidden">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold mb-4">Today's Prediction</h3>
+<div class="flex items-baseline gap-3">
+<span class="text-5xl font-['SF_Pro_Display'] font-black text-error tracking-tighter">BEARISH</span>
+<span class="text-xl font-bold text-error/60">-0.32</span>
+</div>
+</div>
+<div class="text-right">
+<div class="relative w-24 h-12 overflow-hidden">
+<svg class="w-24 h-24 absolute -top-12 left-0">
+<path d="M 10 90 A 40 40 0 0 1 90 90" fill="transparent" stroke="#353437" stroke-linecap="round" stroke-width="8"></path>
+<path d="M 10 90 A 40 40 0 0 1 90 90" fill="transparent" stroke="#FFB59E" stroke-dasharray="125" stroke-dashoffset="44" stroke-linecap="round" stroke-width="8"></path>
+</svg>
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] font-bold text-on-surface-variant">65%</div>
+</div>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant mt-1">Confidence</p>
+</div>
+</div>
+<div class="flex justify-between items-center py-6 border-t border-outline-variant/10">
+<div class="flex gap-4">
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-error flex items-center justify-center text-error font-bold text-xs bg-error/5">F</div>
+<span class="text-[8px] uppercase tracking-tighter font-bold opacity-40">SELL</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-tertiary flex items-center justify-center text-tertiary font-bold text-xs bg-tertiary/5">D</div>
+<span class="text-[8px] uppercase tracking-tighter font-bold opacity-40">BUY</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-error flex items-center justify-center text-error font-bold text-xs bg-error/5">R</div>
+<span class="text-[8px] uppercase tracking-tighter font-bold opacity-40">SELL</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-surface-variant flex items-center justify-center text-on-surface-variant font-bold text-xs">A</div>
+<span class="text-[8px] uppercase tracking-tighter font-bold opacity-40">SELL</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-error flex items-center justify-center text-error font-bold text-xs bg-error/5">P</div>
+<span class="text-[8px] uppercase tracking-tighter font-bold opacity-40">BUY</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full border-2 border-tertiary flex items-center justify-center text-tertiary font-bold text-xs bg-tertiary/5">RBI</div>
+<span class="text-[8px] uppercase tracking-tighter font-bold opacity-40">HOLD</span>
+</div>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Agent Sync</p>
+<p class="text-xs font-bold text-tertiary">STABLE</p>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-outline-variant/10">
+<p class="text-xs font-semibold text-[#ffb59e]">Quant-LLM Agreement: 72%</p>
+</div>
+</div>
+<!-- Card 2: Accuracy Trend -->
+<div class="glass-card rounded-3xl p-8">
+<div class="flex justify-between items-center mb-10">
+<h3 class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold">Accuracy Trend</h3>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant">Model</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-0.5 border-t border-dashed border-outline-variant"></div>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant">Threshold (57%)</span>
+</div>
+</div>
+</div>
+<div class="h-48 w-full relative">
+<!-- Simulated Line Chart -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 400 100">
+<path d="M 0 80 Q 50 20 100 50 T 200 30 T 300 60 T 400 10" fill="transparent" stroke="#D97757" stroke-linecap="round" stroke-width="3"></path>
+<path d="M 0 80 Q 50 20 100 50 T 200 30 T 300 60 T 400 10 L 400 100 L 0 100 Z" fill="url(#grad)" opacity="0.1"></path>
+<line stroke="#55433D" stroke-dasharray="4" stroke-width="1" x1="0" x2="400" y1="43" y2="43"></line>
+<defs>
+<lineargradient id="grad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#FFB59E;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:transparent;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="absolute bottom-0 w-full flex justify-between text-[8px] uppercase tracking-tighter font-bold text-on-surface-variant opacity-40 pt-4">
+<span>Session 01</span>
+<span>Session 05</span>
+<span>Session 10</span>
+<span>Session 14</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Half (48%ish) -->
+<div class="col-span-12 lg:col-span-6 space-y-10">
+<!-- Card 3: Graduation Checklist -->
+<div class="glass-card rounded-3xl p-8">
+<h3 class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold mb-8">Graduation Checklist</h3>
+<div class="space-y-6">
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-5 h-5 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-tertiary font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-sm font-semibold">1-Day Accuracy ≥ 57%</span>
+</div>
+<span class="text-xs font-bold text-tertiary">64%</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-5 h-5 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-tertiary font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-sm font-semibold">1-Week Accuracy ≥ 60%</span>
+</div>
+<span class="text-xs font-bold text-tertiary">62%</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-5 h-5 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-tertiary font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-sm font-semibold">Calibration Error &lt; 15%</span>
+</div>
+<span class="text-xs font-bold text-tertiary">11%</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-5 h-5 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-tertiary font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-sm font-semibold">Quant-LLM Agreement ≥ 70%</span>
+</div>
+<span class="text-xs font-bold text-tertiary">73%</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-5 h-5 rounded-full bg-secondary flex items-center justify-center">
+<div class="w-1.5 h-1.5 rounded-full bg-on-secondary"></div>
+</div>
+<span class="text-sm font-semibold">No Catastrophic Miss</span>
+</div>
+<span class="text-xs font-bold text-secondary">1 borderline</span>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-5 h-5 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-on-tertiary font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="text-sm font-semibold">Internal Consistency ≥ 75%</span>
+</div>
+<span class="text-xs font-bold text-tertiary">81%</span>
+</div>
+</div>
+</div>
+<!-- Card 4: Recent Sessions -->
+<div class="glass-card rounded-3xl p-8 overflow-hidden">
+<h3 class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold mb-8">Recent Sessions</h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between py-2">
+<div class="flex items-center gap-4">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(94,218,199,0.5)]"></div>
+<span class="text-xs font-medium">Mar 29 · BEAR 65%</span>
+</div>
+<div class="flex items-center gap-8">
+<span class="text-xs font-bold text-tertiary">▼ 0.8%</span>
+</div>
+</div>
+<div class="flex items-center justify-between py-2">
+<div class="flex items-center gap-4">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(94,218,199,0.5)]"></div>
+<span class="text-xs font-medium">Mar 28 · BEAR 72%</span>
+</div>
+<div class="flex items-center gap-8">
+<span class="text-xs font-bold text-tertiary">▼ 1.2%</span>
+</div>
+</div>
+<div class="flex items-center justify-between py-2">
+<div class="flex items-center gap-4">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(94,218,199,0.5)]"></div>
+<span class="text-xs font-medium">Mar 27 · BULL 58%</span>
+</div>
+<div class="flex items-center gap-8">
+<span class="text-xs font-bold text-tertiary">▲ 0.3%</span>
+</div>
+</div>
+<div class="flex items-center justify-between py-2">
+<div class="flex items-center gap-4">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(94,218,199,0.5)]"></div>
+<span class="text-xs font-medium">Mar 26 · BULL 81%</span>
+</div>
+<div class="flex items-center gap-8">
+<span class="text-xs font-bold text-tertiary">▲ 1.5%</span>
+</div>
+</div>
+<div class="flex items-center justify-between py-2">
+<div class="flex items-center gap-4">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(94,218,199,0.5)]"></div>
+<span class="text-xs font-medium">Mar 25 · BEAR 74%</span>
+</div>
+<div class="flex items-center gap-8">
+<span class="text-xs font-bold text-tertiary">▼ 1.8%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Actions -->
+<footer class="mt-12 flex justify-end items-center gap-8 pb-10">
+<button class="text-on-surface-variant hover:text-on-surface transition-colors font-bold text-xs uppercase tracking-widest px-6 py-3">
+                Reset Progress
+            </button>
+<button class="flex items-center gap-3 bg-surface-container-highest text-outline cursor-not-allowed font-bold px-10 py-4 rounded-xl text-xs uppercase tracking-widest border border-outline-variant/10" disabled="">
+<span class="material-symbols-outlined text-sm">lock</span>
+                Graduate to Live Mode
+            </button>
+</footer>
+</main>
+</body></html>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>God's Eye | Simulation History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#353437",
+                        "tertiary-fixed-dim": "#5edac7",
+                        "outline-variant": "#55433d",
+                        "surface-container": "#1f1f21",
+                        "surface-dim": "#131315",
+                        "tertiary-fixed": "#7df7e3",
+                        "on-tertiary": "#003731",
+                        "surface-container-lowest": "#0e0e10",
+                        "on-background": "#e4e2e4",
+                        "surface-tint": "#ffb59e",
+                        "surface-container-highest": "#353437",
+                        "background": "#131315",
+                        "inverse-on-surface": "#303032",
+                        "secondary-container": "#6a3f0a",
+                        "tertiary-container": "#09a493",
+                        "outline": "#a38c85",
+                        "on-tertiary-fixed-variant": "#005047",
+                        "on-primary-fixed-variant": "#7a2f15",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-secondary-fixed-variant": "#673d08",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e4e2e4",
+                        "on-primary-container": "#541400",
+                        "surface": "#131315",
+                        "primary": "#ffb59e",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2c1600",
+                        "primary-container": "#d97757",
+                        "tertiary": "#5edac7",
+                        "on-primary-fixed": "#390b00",
+                        "surface-container-high": "#2a2a2c",
+                        "inverse-surface": "#e4e2e4",
+                        "inverse-primary": "#99462a",
+                        "secondary-fixed-dim": "#f8ba7c",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffdcbd",
+                        "on-secondary": "#492900",
+                        "primary-fixed-dim": "#ffb59e",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-bright": "#39393b",
+                        "on-primary": "#5c1902",
+                        "on-secondary-container": "#e9ac6f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#ffdbd0",
+                        "secondary": "#f8ba7c",
+                        "on-surface-variant": "#dbc1b9",
+                        "on-tertiary-container": "#00312b"
+                    },
+                    fontFamily: {
+                        "headline": ["SF Pro Display", "Inter", "sans-serif"],
+                        "body": ["SF Pro Text", "Inter", "sans-serif"],
+                        "label": ["SF Pro Text", "Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(42, 42, 44, 0.08);
+            backdrop-filter: blur(20px) saturate(120%);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.1);
+        }
+        .perspective-grid {
+            background-image: linear-gradient(to right, rgba(219, 193, 185, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(219, 193, 185, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-dot-success {
+            background-color: #5edac7;
+            box-shadow: 0px 0px 8px rgba(94, 218, 199, 0.5);
+        }
+        .status-dot-warning {
+            background: conic-gradient(#5edac7 50%, #f8ba7c 50%);
+            box-shadow: 0px 0px 8px rgba(248, 186, 124, 0.3);
+        }
+        .status-dot-error {
+            background-color: #ffb4ab;
+            box-shadow: 0px 0px 8px rgba(255, 180, 171, 0.5);
+        }
+        .segmented-control {
+            display: inline-flex;
+            gap: 2px;
+            padding: 4px;
+            background: rgba(53, 52, 55, 0.3);
+            border-radius: 0.5rem;
+        }
+        .segmented-button {
+            padding: 6px 14px;
+            border-radius: 0.25rem;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #dbc1b9;
+        }
+        .segmented-button.active {
+            background: #ffb59e;
+            color: #5c1902;
+        }
+        .segmented-button:hover:not(.active) {
+            color: #e4e2e4;
+        }
+        .table-row {
+            display: grid;
+            grid-template-columns: 80px 120px 100px 100px 100px 120px 80px;
+            height: 56px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0 24px;
+            gap: 20px;
+        }
+        .table-header {
+            color: #dbc1b9;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.6;
+        }
+        .table-cell {
+            font-size: 14px;
+            color: #e4e2e4;
+        }
+        .table-cell-muted {
+            color: #dbc1b9;
+            opacity: 0.7;
+        }
+        .trend-up {
+            color: #5edac7;
+        }
+        .trend-down {
+            color: #ffb4ab;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary/30 min-h-screen overflow-x-hidden">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl shadow-[0px_24px_48px_rgba(217,119,87,0.08)]">
+<div class="flex justify-between items-center px-8 h-16 w-full max-w-[1920px] mx-auto relative">
+<div class="flex items-center gap-12">
+<span class="text-2xl font-bold tracking-tighter text-[#E4E2E4] cursor-pointer">God's Eye</span>
+<div class="hidden md:flex gap-8 font-['SF_Pro_Display'] tracking-wide text-sm font-semibold">
+<a class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">NIFTY 50</a>
+<a class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">SENSEX</a>
+<a class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">BANK NIFTY</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs uppercase tracking-widest font-bold text-primary px-3 py-1 rounded-full bg-primary/10 border border-primary/20">Live</span>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">settings</span>
+</div>
+</div>
+<div class="bg-[#1B1B1D] h-[1px] w-full absolute bottom-0 left-0"></div>
+</div>
+</nav>
+<!-- Side Navigation Shell -->
+<aside class="fixed left-0 top-0 h-full w-64 z-[60] bg-[#1B1B1D] shadow-2xl flex flex-col h-full py-8">
+<div class="px-6 mb-12">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<h2 class="text-[#D97757] font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Terminal</h2>
+</div>
+<p class="text-on-surface-variant text-[10px] font-medium opacity-50">V2.4.0 High-Frequency</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Dashboard</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Agents</span>
+</div>
+<div class="bg-gradient-to-r from-[#FFB59E]/10 to-transparent text-[#FFB59E] border-l-4 border-[#D97757] py-3 px-6 flex items-center gap-4 cursor-pointer transition-all duration-200">
+<span class="material-symbols-outlined">history</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">History</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Paper Trading</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Settings</span>
+</div>
+</nav>
+<div class="px-6 mt-auto space-y-6">
+<div class="space-y-4 pt-6 border-t border-outline-variant/20">
+<div class="text-[#DBC1B9] flex items-center gap-4 opacity-70 hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-sm">help</span>
+<span class="text-[10px] uppercase tracking-widest font-medium">Help</span>
+</div>
+<div class="text-[#DBC1B9] flex items-center gap-4 opacity-70 hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-sm">logout</span>
+<span class="text-[10px] uppercase tracking-widest font-medium">Sign Out</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-10 min-h-[calc(100vh-64px)] perspective-grid">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-10">
+<div>
+<h1 class="text-4xl font-['SF_Pro_Display'] font-bold tracking-tight text-on-surface mb-2">History</h1>
+</div>
+<div class="segmented-control">
+<button class="segmented-button">7D</button>
+<button class="segmented-button active">30D</button>
+<button class="segmented-button">90D</button>
+<button class="segmented-button">All</button>
+</div>
+</div>
+
+<!-- Main Table Card -->
+<div class="glass-card rounded-3xl overflow-hidden mb-10">
+<!-- Table Header -->
+<div class="table-row bg-[#1f1f21]/50 border-b border-white/10">
+<div class="table-header">Date</div>
+<div class="table-header">Scenario</div>
+<div class="table-header">Call</div>
+<div class="table-header">Confidence</div>
+<div class="table-header">1-Day</div>
+<div class="table-header">1-Week</div>
+<div class="table-header">Result</div>
+</div>
+
+<!-- Table Rows -->
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 29</div>
+<div class="table-cell table-cell-muted">Manual</div>
+<div class="table-cell"><span class="trend-down">▼ BEAR</span></div>
+<div class="table-cell">65%</div>
+<div class="table-cell"><span class="trend-down">▼ 0.8%</span></div>
+<div class="table-cell table-cell-muted">pending</div>
+<div class="text-center"><span class="status-dot status-dot-success"></span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 28</div>
+<div class="table-cell table-cell-muted">Expiry Week</div>
+<div class="table-cell"><span class="trend-down">▼ BEAR</span></div>
+<div class="table-cell">72%</div>
+<div class="table-cell"><span class="trend-down">▼ 1.2%</span></div>
+<div class="table-cell"><span class="trend-down">▼ 2.1%</span></div>
+<div class="text-center"><span class="status-dot status-dot-success"></span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 27</div>
+<div class="table-cell table-cell-muted">Manual</div>
+<div class="table-cell"><span class="trend-up">▲ BULL</span></div>
+<div class="table-cell">58%</div>
+<div class="table-cell"><span class="trend-up">▲ 0.3%</span></div>
+<div class="table-cell"><span class="trend-down">▼ 0.5%</span></div>
+<div class="text-center"><span class="status-dot status-dot-warning"></span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 26</div>
+<div class="table-cell table-cell-muted">RBI Cut</div>
+<div class="table-cell"><span class="trend-up">▲ BULL</span></div>
+<div class="table-cell">81%</div>
+<div class="table-cell"><span class="trend-up">▲ 1.5%</span></div>
+<div class="table-cell"><span class="trend-up">▲ 2.2%</span></div>
+<div class="text-center"><span class="status-dot status-dot-success"></span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 25</div>
+<div class="table-cell table-cell-muted">FII Exodus</div>
+<div class="table-cell"><span class="trend-down">▼ BEAR</span></div>
+<div class="table-cell">74%</div>
+<div class="table-cell"><span class="trend-down">▼ 1.8%</span></div>
+<div class="table-cell"><span class="trend-down">▼ 3.1%</span></div>
+<div class="text-center"><span class="status-dot status-dot-success"></span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 24</div>
+<div class="table-cell table-cell-muted">Manual</div>
+<div class="table-cell"><span class="trend-up">▲ BULL</span></div>
+<div class="table-cell">52%</div>
+<div class="table-cell"><span class="trend-down">▼ 0.4%</span></div>
+<div class="table-cell"><span class="trend-down">▼ 0.9%</span></div>
+<div class="text-center"><span style="font-size: 12px; color: #ffb4ab;">✕</span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 21</div>
+<div class="table-cell table-cell-muted">Budget</div>
+<div class="table-cell"><span class="trend-up">▲ BULL</span></div>
+<div class="table-cell">69%</div>
+<div class="table-cell"><span class="trend-up">▲ 0.9%</span></div>
+<div class="table-cell"><span class="trend-up">▲ 1.7%</span></div>
+<div class="text-center"><span class="status-dot status-dot-success"></span></div>
+</div>
+
+<div class="table-row">
+<div class="table-cell table-cell-muted">Mar 20</div>
+<div class="table-cell table-cell-muted">Manual</div>
+<div class="table-cell"><span class="trend-down">▼ BEAR</span></div>
+<div class="table-cell">61%</div>
+<div class="table-cell"><span class="trend-down">▼ 0.2%</span></div>
+<div class="table-cell"><span class="trend-up">▲ 0.5%</span></div>
+<div class="text-center"><span class="status-dot status-dot-warning"></span></div>
+</div>
+</div>
+
+<!-- Bottom Metric Cards -->
+<div class="grid grid-cols-3 gap-10 mt-10">
+<!-- Card 1: Accuracy -->
+<div class="glass-card rounded-3xl p-8">
+<p class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold mb-6">Accuracy</p>
+<p class="text-5xl font-['SF_Pro_Display'] font-bold text-primary mb-4">64%</p>
+<p class="text-xs font-semibold text-tertiary">↑ 3% vs prior month</p>
+</div>
+
+<!-- Card 2: Calibration -->
+<div class="glass-card rounded-3xl p-8">
+<p class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold mb-6">Calibration</p>
+<div class="flex gap-2 mb-6">
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<div class="w-3 h-3 rounded-full bg-tertiary/30"></div>
+<div class="w-3 h-3 rounded-full bg-tertiary/20"></div>
+</div>
+<p class="text-sm font-semibold text-on-surface-variant">Error: <span class="text-primary">11%</span></p>
+</div>
+
+<!-- Card 3: Agent Ranking -->
+<div class="glass-card rounded-3xl p-8">
+<p class="text-on-surface-variant text-xs uppercase tracking-[0.2em] font-bold mb-6">Agent Ranking</p>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">RBI</span>
+<div class="flex items-center gap-3 flex-1 ml-4">
+<div class="h-1.5 bg-tertiary rounded-full" style="width: 73%;"></div>
+<span class="text-xs font-bold w-10 text-right">73%</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">FII</span>
+<div class="flex items-center gap-3 flex-1 ml-4">
+<div class="h-1.5 bg-tertiary rounded-full" style="width: 68%;"></div>
+<span class="text-xs font-bold w-10 text-right">68%</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">DII</span>
+<div class="flex items-center gap-3 flex-1 ml-4">
+<div class="h-1.5 bg-tertiary rounded-full" style="width: 65%;"></div>
+<span class="text-xs font-bold w-10 text-right">65%</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">Algo</span>
+<div class="flex items-center gap-3 flex-1 ml-4">
+<div class="h-1.5 bg-secondary rounded-full" style="width: 63%;"></div>
+<span class="text-xs font-bold w-10 text-right">63%</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">Retail</span>
+<div class="flex items-center gap-3 flex-1 ml-4">
+<div class="h-1.5 bg-secondary rounded-full" style="width: 58%;"></div>
+<span class="text-xs font-bold w-10 text-right">58%</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm font-medium">Promoter</span>
+<div class="flex items-center gap-3 flex-1 ml-4">
+<div class="h-1.5 bg-secondary rounded-full" style="width: 55%;"></div>
+<span class="text-xs font-bold w-10 text-right">55%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

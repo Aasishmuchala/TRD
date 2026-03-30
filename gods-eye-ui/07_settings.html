@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>God's Eye - Terminal Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #131315;
+            color: #E4E2E4;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        /* Custom range slider styling for "Apple-style" */
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #2A2A2C;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            margin-top: -7px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        /* Active fill simulation via linear gradient would need JS, so we use a fallback aesthetic */
+        .slider-coral::-webkit-slider-runnable-track {
+            background: linear-gradient(to right, #D97757 0%, #D97757 50%, #2A2A2C 50%, #2A2A2C 100%);
+        }
+        .glass-panel {
+            background: rgba(42, 42, 44, 0.08);
+            backdrop-filter: blur(16px) saturate(120%);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#353437",
+                        "tertiary-fixed-dim": "#5edac7",
+                        "outline-variant": "#55433d",
+                        "surface-container": "#1f1f21",
+                        "surface-dim": "#131315",
+                        "tertiary-fixed": "#7df7e3",
+                        "on-tertiary": "#003731",
+                        "surface-container-lowest": "#0e0e10",
+                        "on-background": "#e4e2e4",
+                        "surface-tint": "#ffb59e",
+                        "surface-container-highest": "#353437",
+                        "background": "#131315",
+                        "inverse-on-surface": "#303032",
+                        "secondary-container": "#6a3f0a",
+                        "tertiary-container": "#09a493",
+                        "outline": "#a38c85",
+                        "on-tertiary-fixed-variant": "#005047",
+                        "on-primary-fixed-variant": "#7a2f15",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-secondary-fixed-variant": "#673d08",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e4e2e4",
+                        "on-primary-container": "#541400",
+                        "surface": "#131315",
+                        "primary": "#ffb59e",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2c1600",
+                        "primary-container": "#d97757",
+                        "tertiary": "#5edac7",
+                        "on-primary-fixed": "#390b00",
+                        "surface-container-high": "#2a2a2c",
+                        "inverse-surface": "#e4e2e4",
+                        "inverse-primary": "#99462a",
+                        "secondary-fixed-dim": "#f8ba7c",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffdcbd",
+                        "on-secondary": "#492900",
+                        "primary-fixed-dim": "#ffb59e",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-bright": "#39393b",
+                        "on-primary": "#5c1902",
+                        "on-secondary-container": "#e9ac6f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#ffdbd0",
+                        "secondary": "#f8ba7c",
+                        "on-surface-variant": "#dbc1b9",
+                        "on-tertiary-container": "#00312b"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface overflow-hidden">
+<!-- Top Navigation Shell (Contextual Suppression Check: Active for global nav context) -->
+<nav class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl shadow-[0px_24px_48px_rgba(217,119,87,0.08)]">
+<div class="flex justify-between items-center px-8 h-16 w-full max-w-[1920px] mx-auto relative">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold tracking-tighter text-[#E4E2E4]">God's Eye</span>
+<div class="hidden md:flex gap-6 font-['SF_Pro_Display'] tracking-wide text-sm font-semibold">
+<span class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">NIFTY 50</span>
+<span class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">SENSEX</span>
+<span class="text-[#DBC1B9] hover:text-[#E4E2E4] transition-colors cursor-pointer">BANK NIFTY</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-primary text-xs font-bold uppercase tracking-widest">Live</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-white/5 p-2 rounded-full cursor-pointer transition-all">notifications</span>
+<span class="material-symbols-outlined text-primary p-2 rounded-full cursor-pointer transition-all bg-white/5">settings</span>
+</div>
+<div class="bg-[#1B1B1D] h-[1px] w-full absolute bottom-0 left-0"></div>
+</div>
+</nav>
+<div class="flex h-screen pt-16">
+<!-- Sidebar Shell (Active: History/Settings context) -->
+<aside class="fixed left-0 top-0 h-full w-64 z-[60] bg-[#1B1B1D] flex flex-col py-8 shadow-2xl">
+<div class="px-8 mb-12">
+<h2 class="text-[#D97757] font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Terminal</h2>
+<p class="text-on-surface-variant text-[10px] opacity-60">V2.4.0 High-Frequency</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Dashboard</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Agents</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">history</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">History</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">science</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Paper Trading</span>
+</div>
+<div class="pt-8 pb-4 px-8">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-[0.2em] font-bold">Preferences</p>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">vpn_key</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">API Keys</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">database</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Data Sources</span>
+</div>
+<!-- Active Item -->
+<div class="bg-gradient-to-r from-[#FFB59E]/10 to-transparent text-[#FFB59E] border-l-4 border-[#D97757] py-3 px-6 flex items-center gap-4 transition-all">
+<span class="material-symbols-outlined">scale</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Agent Weights</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Prompts</span>
+</div>
+<div class="text-[#DBC1B9] py-3 px-6 flex items-center gap-4 opacity-70 hover:bg-[#2A2A2C] hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">notifications_active</span>
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium">Alerts</span>
+</div>
+</nav>
+<div class="mt-auto px-6 space-y-2">
+<div class="text-[#DBC1B9] py-2 flex items-center gap-4 opacity-70 hover:opacity-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-sm">logout</span>
+<span class="text-[10px] uppercase tracking-widest font-medium">Sign Out</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 bg-[#131315] p-12 overflow-y-auto">
+<div class="max-w-4xl mx-auto space-y-16">
+<!-- Header Section -->
+<header class="space-y-2">
+<h1 class="text-4xl font-bold tracking-tight text-on-surface font-['SF_Pro_Display']">Agent Weights</h1>
+<p class="text-on-surface-variant text-lg">Define the influence hierarchy of intelligence nodes in the final execution model.</p>
+</header>
+<!-- Section 1: Agent Rows -->
+<section class="space-y-8">
+<div class="flex justify-between items-end">
+<div class="space-y-1">
+<h3 class="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">Primary Distribution</h3>
+<div class="flex items-center gap-2 text-tertiary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-2xl font-mono font-medium tracking-tighter">Total: 1.00</span>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl border border-white/5">
+<div class="flex flex-col text-right">
+<span class="text-xs font-bold">Auto-tune from accuracy data</span>
+<span class="text-[10px] text-on-surface-variant">Adjust weights based on past performance</span>
+</div>
+<!-- Apple Style Toggle -->
+<div class="w-12 h-6 bg-primary rounded-full relative cursor-pointer shadow-inner">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-md"></div>
+</div>
+</div>
+</div>
+<!-- Agents Bento-ish Grid -->
+<div class="space-y-4">
+<!-- Agent Row 1 -->
+<div class="glass-panel p-6 rounded-3xl flex items-center gap-8 transition-all hover:bg-white/5">
+<div class="w-12 h-12 rounded-2xl bg-[#D97757]/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">account_balance</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between mb-4">
+<span class="text-sm font-bold tracking-wide uppercase">FII (Foreign Institutional)</span>
+<span class="text-sm font-mono text-primary font-bold">0.30</span>
+</div>
+<input class="w-full slider-coral" max="100" min="0" type="range" value="30"/>
+</div>
+</div>
+<!-- Agent Row 2 -->
+<div class="glass-panel p-6 rounded-3xl flex items-center gap-8 transition-all hover:bg-white/5">
+<div class="w-12 h-12 rounded-2xl bg-[#D97757]/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">corporate_fare</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between mb-4">
+<span class="text-sm font-bold tracking-wide uppercase">DII (Domestic Institutional)</span>
+<span class="text-sm font-mono text-primary font-bold">0.25</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="25"/>
+</div>
+</div>
+<!-- Agent Row 3 -->
+<div class="glass-panel p-6 rounded-3xl flex items-center gap-8 transition-all hover:bg-white/5">
+<div class="w-12 h-12 rounded-2xl bg-[#D97757]/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">language</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between mb-4">
+<span class="text-sm font-bold tracking-wide uppercase">Retail F&O</span>
+<span class="text-sm font-mono text-primary font-bold">0.15</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="15"/>
+</div>
+</div>
+<!-- Agent Row 4 -->
+<div class="glass-panel p-6 rounded-3xl flex items-center gap-8 transition-all hover:bg-white/5">
+<div class="w-12 h-12 rounded-2xl bg-[#D97757]/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">news</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between mb-4">
+<span class="text-sm font-bold tracking-wide uppercase">Algo/Quant</span>
+<span class="text-sm font-mono text-primary font-bold">0.10</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="10"/>
+</div>
+</div>
+<!-- Agent Row 5 -->
+<div class="glass-panel p-6 rounded-3xl flex items-center gap-8 transition-all hover:bg-white/5">
+<div class="w-12 h-12 rounded-2xl bg-[#D97757]/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">show_chart</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between mb-4">
+<span class="text-sm font-bold tracking-wide uppercase">Promoter/Insider</span>
+<span class="text-sm font-mono text-primary font-bold">0.10</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="10"/>
+</div>
+</div>
+<!-- Agent Row 6 -->
+<div class="glass-panel p-6 rounded-3xl flex items-center gap-8 transition-all hover:bg-white/5">
+<div class="w-12 h-12 rounded-2xl bg-[#D97757]/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">psychology</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between mb-4">
+<span class="text-sm font-bold tracking-wide uppercase">RBI/Policy</span>
+<span class="text-sm font-mono text-primary font-bold">0.10</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="10"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: Simulation -->
+<section class="space-y-6 pt-8 border-t border-white/5">
+<h3 class="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">Simulation Parameters</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="glass-panel p-6 rounded-3xl space-y-4">
+<div class="flex justify-between items-center">
+<label class="text-sm font-medium">Samples per Agent</label>
+<span class="text-lg font-mono text-primary">3</span>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center hover:bg-white/10 transition-all">-</button>
+<button class="flex-1 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center hover:bg-white/10 transition-all">+</button>
+</div>
+</div>
+<div class="glass-panel p-6 rounded-3xl space-y-4">
+<div class="flex justify-between items-center">
+<label class="text-sm font-medium">Interaction Rounds</label>
+<span class="text-lg font-mono text-primary">3</span>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center hover:bg-white/10 transition-all">-</button>
+<button class="flex-1 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center hover:bg-white/10 transition-all">+</button>
+</div>
+</div>
+<div class="glass-panel p-6 rounded-3xl space-y-4 md:col-span-2">
+<div class="flex justify-between items-center">
+<label class="text-sm font-medium">Temperature (Stochasticity)</label>
+<span class="text-lg font-mono text-primary">0.3</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="30"/>
+</div>
+</div>
+</section>
+<!-- Section 3: Quant / LLM Balance -->
+<section class="space-y-6 pt-8 border-t border-white/5">
+<h3 class="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant">Model Architecture</h3>
+<div class="glass-panel p-8 rounded-3xl space-y-8">
+<div class="space-y-4">
+<div class="flex justify-between items-center font-bold text-xs uppercase tracking-widest px-1">
+<span class="text-secondary">Quant Focus</span>
+<span class="text-primary">LLM Reasoning</span>
+</div>
+<input class="w-full h-2 bg-surface-container-highest rounded-full" max="100" min="0" type="range" value="55"/>
+<p class="text-[11px] text-on-surface-variant text-center opacity-60">Balanced approach: quant signals provide verifiable grounding, LLM agents provide narrative reasoning.</p>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-error">warning</span>
+<div class="flex flex-col">
+<span class="text-sm font-bold">Flag high uncertainty</span>
+<span class="text-[10px] text-on-surface-variant">Flag when quant-LLM disagreement exceeds 30%</span>
+</div>
+</div>
+<!-- Apple Style Toggle ON -->
+<div class="w-12 h-6 bg-primary rounded-full relative cursor-pointer shadow-inner">
+<div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-md"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Actions -->
+<footer class="flex items-center justify-between pt-12 pb-24">
+<button class="text-on-surface-variant hover:text-on-surface text-sm font-bold transition-colors">Reset to Default Configuration</button>
+<div class="flex gap-4">
+<button class="px-8 py-3 rounded-2xl border border-outline-variant/30 text-on-surface font-bold hover:bg-white/5 transition-all">Discard Changes</button>
+<button class="px-12 py-3 rounded-2xl bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed-variant font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">Save Changes</button>
+</div>
+</footer>
+</div>
+</main>
+</div>
+<!-- Background Decorative Elements -->
+<div class="fixed top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
+<div class="fixed bottom-0 left-0 w-[600px] h-[600px] bg-tertiary/5 rounded-full blur-[100px] -z-10 pointer-events-none -translate-x-1/3 translate-y-1/3"></div>
+</body></html>

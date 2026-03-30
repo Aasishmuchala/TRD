@@ -1,0 +1,156 @@
+"""Pydantic schemas for API requests and responses."""
+
+from datetime import datetime
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field
+
+
+class MarketInput(BaseModel):
+    """Market data input for simulation."""
+
+    nifty_spot: float = Field(..., description="Nifty 50 current price")
+    nifty_open: float = Field(default=None, description="Nifty 50 open price")
+    nifty_high: float = Field(default=None, description="Nifty 50 high price")
+    nifty_low: float = Field(default=None, description="Nifty 50 low price")
+    nifty_close: float = Field(default=None, description="Nifty 50 close price")
+
+    india_vix: float = Field(..., description="India VIX level")
+
+    fii_flow_5d: float = Field(..., description="5-day FII flow in USD millions")
+    dii_flow_5d: float = Field(..., description="5-day DII flow in USD millions")
+
+    usd_inr: float = Field(..., description="USD/INR exchange rate")
+    dxy: float = Field(..., description="US Dollar Index")
+
+    pcr_index: float = Field(..., description="Put-Call Ratio for index options")
+    pcr_stock: float = Field(default=1.0, description="Put-Call Ratio for stocks")
+
+    max_pain: float = Field(..., description="Max pain level for current expiry")
+    dte: int = Field(..., description="Days to expiration for current contract")
+
+    rsi_14: float = Field(default=None, description="RSI(14) value")
+    macd_signal: float = Field(default=None, description="MACD signal line")
+
+    context: str = Field(
+        default="normal",
+        description="Market context (normal, expiry, budget, election, etc.)",
+    )
+
+    historical_prices: Optional[List[float]] = Field(
+        default=None, description="Historical closing prices for last N days"
+    )
+
+
+class TimeframeView(BaseModel):
+    """Multi-timeframe view from an agent."""
+
+    timeframe: str  # "intraday", "weekly", "monthly"
+    direction: str  # "STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"
+    conviction: float
+    key_levels: Dict[str, float]
+    resistance: float
+    support: float
+
+
+class AgentResponse(BaseModel):
+    """Response from a single agent."""
+
+    agent_name: str
+    agent_type: str  # "QUANT" or "LLM"
+    direction: str  # "STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"
+    conviction: float = Field(..., ge=0, le=100, description="Conviction 0-100")
+    reasoning: str
+    key_triggers: List[str]
+    time_horizon: str  # "Intraday", "Weekly", "Quarterly", "Yearly"
+
+    views: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict, description="Multi-timeframe views"
+    )
+    interaction_effects: Dict[str, List[str]] = Field(
+        default_factory=lambda: {"amplifies": [], "dampens": []},
+        description="Effects on other agents' views",
+    )
+
+    internal_consistency: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="Consistency score for LLM agents"
+    )
+    reproducible: bool = Field(
+        default=False, description="True for deterministic agents"
+    )
+    sample_variance: float = Field(
+        default=0.0, description="Variance across multiple samples"
+    )
+
+
+class AggregatorResult(BaseModel):
+    """Final aggregated market view."""
+
+    final_direction: str
+    final_conviction: float
+    consensus_score: float = Field(
+        ..., ge=-100, le=100, description="Weighted consensus score"
+    )
+    conflict_level: str  # "HIGH_AGREEMENT", "MODERATE", "TUG_OF_WAR"
+    conflict_gap: float
+    quant_consensus: str
+    llm_consensus: str
+    agreement_boost: float
+    quant_llm_agreement: Optional[float] = Field(
+        default=None,
+        description="0-1 score of how much quant and LLM sub-systems agree",
+    )
+    agent_breakdown: Dict[str, Dict[str, Any]]
+
+
+class SimulationResult(BaseModel):
+    """Complete simulation result."""
+
+    model_config = {"protected_namespaces": ()}
+
+    simulation_id: str
+    timestamp: datetime
+    market_input: MarketInput
+    agents_output: Dict[str, AgentResponse]
+    round_history: List[Dict[str, Any]]
+    aggregator_result: AggregatorResult
+    execution_time_ms: float
+    model_used: str
+    feedback_active: bool = Field(default=False, description="Whether accuracy feedback engine is active")
+    tuned_weights: Optional[Dict[str, float]] = Field(default=None, description="Accuracy-tuned agent weights")
+
+
+class PresetScenario(BaseModel):
+    """Preset market scenario."""
+
+    scenario_id: str
+    name: str
+    description: str
+    market_data: MarketInput
+    expected_direction: str = Field(
+        default="UNKNOWN", description="Expected market direction"
+    )
+
+
+class PredictionLog(BaseModel):
+    """Stored prediction for accuracy tracking."""
+
+    prediction_id: str
+    simulation_id: str
+    timestamp: datetime
+    market_input: MarketInput
+    predicted_direction: str
+    predicted_conviction: float
+    agents_output: Dict[str, AgentResponse]
+    actual_direction: Optional[str] = None
+    check_timestamp: Optional[datetime] = None
+    accuracy: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class SimulationHistory(BaseModel):
+    """Paginated history of simulations."""
+
+    total_count: int
+    page: int
+    page_size: int
+    items: List[SimulationResult]

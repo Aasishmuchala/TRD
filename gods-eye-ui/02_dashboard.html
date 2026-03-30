@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>God's Eye | Financial Intelligence Terminal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-variant": "#353437",
+              "tertiary-fixed-dim": "#5edac7",
+              "outline-variant": "#55433d",
+              "surface-container": "#1f1f21",
+              "surface-dim": "#131315",
+              "tertiary-fixed": "#7df7e3",
+              "on-tertiary": "#003731",
+              "surface-container-lowest": "#0e0e10",
+              "on-background": "#e4e2e4",
+              "surface-tint": "#ffb59e",
+              "surface-container-highest": "#353437",
+              "background": "#131315",
+              "inverse-on-surface": "#303032",
+              "secondary-container": "#6a3f0a",
+              "tertiary-container": "#09a493",
+              "outline": "#a38c85",
+              "on-tertiary-fixed-variant": "#005047",
+              "on-primary-fixed-variant": "#7a2f15",
+              "on-tertiary-fixed": "#00201c",
+              "on-secondary-fixed-variant": "#673d08",
+              "on-error-container": "#ffdad6",
+              "on-surface": "#e4e2e4",
+              "on-primary-container": "#541400",
+              "surface": "#131315",
+              "primary": "#ffb59e",
+              "error": "#ffb4ab",
+              "on-secondary-fixed": "#2c1600",
+              "primary-container": "#d97757",
+              "tertiary": "#5edac7",
+              "on-primary-fixed": "#390b00",
+              "surface-container-high": "#2a2a2c",
+              "inverse-surface": "#e4e2e4",
+              "inverse-primary": "#99462a",
+              "secondary-fixed-dim": "#f8ba7c",
+              "on-error": "#690005",
+              "secondary-fixed": "#ffdcbd",
+              "on-secondary": "#492900",
+              "primary-fixed-dim": "#ffb59e",
+              "surface-container-low": "#1b1b1d",
+              "surface-bright": "#39393b",
+              "on-primary": "#5c1902",
+              "on-secondary-container": "#e9ac6f",
+              "error-container": "#93000a",
+              "primary-fixed": "#ffdbd0",
+              "secondary": "#f8ba7c",
+              "on-surface-variant": "#dbc1b9",
+              "on-tertiary-container": "#00312b"
+            },
+            fontFamily: {
+              "headline": ["SF Pro Display", "Inter", "sans-serif"],
+              "body": ["SF Pro Text", "Inter", "sans-serif"],
+              "label": ["SF Pro Text", "Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #131315;
+            color: #E4E2E4;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(42, 42, 44, 0.08);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .arc-gauge {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 35;
+        }
+    </style>
+</head>
+<body class="overflow-hidden h-screen flex flex-col">
+<!-- TopNavBar Implementation -->
+<nav class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl shadow-[0px_24px_48px_rgba(217,119,87,0.08)] h-16 flex items-center px-8">
+<div class="flex justify-between items-center w-full max-w-[1920px] mx-auto">
+<!-- Brand -->
+<div class="flex items-center gap-3">
+<div class="relative w-6 h-6 flex items-center justify-center">
+<div class="absolute inset-0 border-2 border-[#D97757] rounded-full opacity-30"></div>
+<div class="w-3 h-3 bg-[#FFB59E] rounded-full shadow-[0_0_12px_#FFB59E]"></div>
+</div>
+<span class="text-2xl font-bold tracking-tighter text-[#E4E2E4] font-headline">God's Eye</span>
+</div>
+<!-- Center Indices -->
+<div class="hidden md:flex items-center gap-12">
+<div class="flex items-center gap-4">
+<span class="text-sm font-semibold tracking-wide text-[#A1A1A6]">NIFTY 50</span>
+<span class="text-xl font-bold text-white tracking-tight">22,487.35</span>
+<span class="bg-error-container/20 text-error px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_drop_down</span> 1.2%
+                    </span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-sm font-semibold tracking-wide text-[#A1A1A6]">SENSEX</span>
+<span class="text-xl font-bold text-white tracking-tight">73,892.10</span>
+</div>
+</div>
+<!-- Right Controls -->
+<div class="flex items-center gap-8">
+<div class="flex flex-col items-end">
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium text-white">India VIX 14.2</span>
+<div class="w-2 h-2 bg-tertiary rounded-full animate-pulse shadow-[0_0_8px_#5EDAC7]"></div>
+<span class="text-[10px] uppercase tracking-widest text-tertiary font-bold">Live</span>
+</div>
+<span class="text-xs text-[#A1A1A6]">09:45 IST</span>
+</div>
+<div class="flex items-center gap-4 text-[#DBC1B9]">
+<span class="material-symbols-outlined cursor-pointer hover:text-white transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-white transition-colors" data-icon="settings">settings</span>
+</div>
+</div>
+</div>
+<div class="bg-[#1B1B1D] h-[1px] w-full absolute bottom-0 left-0"></div>
+</nav>
+<!-- SideNavBar (Hidden/Suppressed as per user focus on dashboard layout) -->
+<!-- Main Content Area -->
+<main class="flex-1 mt-16 flex p-6 gap-6 overflow-hidden">
+<!-- LEFT PANEL: Scenario (28%) -->
+<aside class="w-[28%] flex flex-col gap-6">
+<div class="glass-card flex-1 p-8 rounded-xl flex flex-col">
+<div class="mb-10">
+<h2 class="text-xs font-medium tracking-[0.2em] text-[#DBC1B9] uppercase mb-1">Scenario</h2>
+<div class="h-0.5 w-8 bg-[#D97757]"></div>
+</div>
+<div class="space-y-8 flex-1">
+<div class="flex justify-between items-center group">
+<span class="text-[#DBC1B9] font-medium">Nifty Spot</span>
+<span class="text-xl font-bold text-white group-hover:text-primary transition-colors">22,487.35</span>
+</div>
+<div class="flex justify-between items-center group">
+<span class="text-[#DBC1B9] font-medium">India VIX</span>
+<span class="text-xl font-bold text-white">14.20</span>
+</div>
+<div class="flex justify-between items-center group">
+<span class="text-[#DBC1B9] font-medium">FII Flow</span>
+<span class="text-xl font-bold text-error tracking-tight">-₹8,400 Cr</span>
+</div>
+<div class="flex justify-between items-center group">
+<span class="text-[#DBC1B9] font-medium">DII Flow</span>
+<span class="text-xl font-bold text-tertiary tracking-tight">+₹6,200 Cr</span>
+</div>
+<div class="pt-8">
+<div class="flex flex-wrap gap-3">
+<button class="px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-bold hover:bg-primary/10 transition-all">RBI Cut</button>
+<button class="px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-bold hover:bg-primary/10 transition-all">FII Exit</button>
+<button class="px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-bold hover:bg-primary/10 transition-all">Budget</button>
+<button class="px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-bold hover:bg-primary/10 transition-all">Expiry</button>
+</div>
+</div>
+</div>
+<button class="w-full h-12 bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed-variant font-bold rounded-xl shadow-[0_12px_24px_rgba(217,119,87,0.2)] hover:scale-[1.02] active:scale-95 transition-all">
+                    Run Simulation
+                </button>
+</div>
+</aside>
+<!-- CENTER PANEL: Market Pressure (44%) -->
+<section class="w-[44%] flex flex-col gap-6">
+<div class="glass-card flex-1 p-8 rounded-xl flex flex-col">
+<div class="mb-8">
+<h2 class="text-xs font-medium tracking-[0.2em] text-[#DBC1B9] uppercase mb-1">Market Pressure</h2>
+<div class="h-0.5 w-8 bg-[#D97757]"></div>
+</div>
+<!-- Agent Grid -->
+<div class="grid grid-cols-1 gap-6 mb-12">
+<!-- Agent Row -->
+<div class="flex items-center gap-6">
+<div class="w-24 text-sm font-bold text-[#E4E2E4]">FII</div>
+<div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute right-0 h-full w-[75%] bg-gradient-to-l from-error to-error-container/40 rounded-full"></div>
+</div>
+<div class="w-16 text-right text-xs font-bold text-error">75%</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-24 text-sm font-bold text-[#E4E2E4]">DII</div>
+<div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute left-0 h-full w-[60%] bg-gradient-to-r from-tertiary to-tertiary-container/40 rounded-full"></div>
+</div>
+<div class="w-16 text-right text-xs font-bold text-tertiary">60%</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-24 text-sm font-bold text-[#E4E2E4]">Retail</div>
+<div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute left-0 h-full w-[45%] bg-gradient-to-r from-tertiary to-tertiary-container/40 rounded-full"></div>
+</div>
+<div class="w-16 text-right text-xs font-bold text-tertiary">45%</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-24 text-sm font-bold text-[#E4E2E4]">Algo</div>
+<div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute right-0 h-full w-[82%] bg-gradient-to-l from-error to-error-container/40 rounded-full"></div>
+</div>
+<div class="w-16 text-right text-xs font-bold text-error">82%</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-24 text-sm font-bold text-[#E4E2E4]">Promoter</div>
+<div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute left-0 h-full w-[20%] bg-gradient-to-r from-tertiary to-tertiary-container/40 rounded-full"></div>
+</div>
+<div class="w-16 text-right text-xs font-bold text-tertiary">20%</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-24 text-sm font-bold text-[#E4E2E4]">RBI</div>
+<div class="flex-1 h-2 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="absolute left-0 h-full w-[10%] bg-surface-variant rounded-full"></div>
+</div>
+<div class="w-16 text-right text-xs font-bold text-[#A1A1A6]">Neutral</div>
+</div>
+</div>
+<!-- Summary Visualizer -->
+<div class="mt-auto flex items-center justify-around py-8 border-t border-white/5">
+<div class="text-center">
+<h3 class="text-5xl font-extrabold text-error tracking-tighter mb-2">BEARISH</h3>
+<p class="text-xs text-[#DBC1B9] font-medium tracking-widest uppercase">Global Sentiment</p>
+</div>
+<div class="relative flex items-center justify-center">
+<svg class="w-40 h-40 transform -rotate-90">
+<circle cx="80" cy="80" fill="none" r="70" stroke="#2A2A2C" stroke-width="12"></circle>
+<circle cx="80" cy="80" fill="none" r="70" stroke="#FFB4AB" stroke-dasharray="440" stroke-dashoffset="150" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-3xl font-bold text-white">-0.32</span>
+<span class="text-[10px] text-[#A1A1A6] font-bold">SCORE</span>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="bg-surface-container-high/50 p-4 rounded-xl border-l-4 border-primary">
+<p class="text-[10px] text-[#DBC1B9] font-bold uppercase mb-1">Quant-LLM Confidence</p>
+<span class="text-2xl font-bold text-primary">72%</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- RIGHT PANEL: Insights (28%) -->
+<aside class="w-[28%] flex flex-col gap-6">
+<div class="glass-card flex-1 p-8 rounded-xl flex flex-col">
+<div class="mb-10">
+<h2 class="text-xs font-medium tracking-[0.2em] text-[#DBC1B9] uppercase mb-1">Insights</h2>
+<div class="h-0.5 w-8 bg-[#D97757]"></div>
+</div>
+<div class="space-y-0 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+<!-- Insight Card 1 -->
+<div class="py-6 border-b border-white/5 first:pt-0">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#FFB59E]"></div>
+<span class="text-xs font-bold text-primary tracking-widest uppercase">FII Activity</span>
+</div>
+<p class="text-sm leading-relaxed text-[#DBC1B9]">
+                            Heavy liquidations observed in IT and BFSI blocks over the last 48 hours. Net outflow trend suggests defensive positioning ahead of FOMC.
+                        </p>
+</div>
+<!-- Insight Card 2 -->
+<div class="py-6 border-b border-white/5">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_#5EDAC7]"></div>
+<span class="text-xs font-bold text-tertiary tracking-widest uppercase">DII Support</span>
+</div>
+<p class="text-sm leading-relaxed text-[#DBC1B9]">
+                            Domestic institutional buyers are absorbing 65% of the sell-off pressure, primarily in mid-cap manufacturing and energy sectors.
+                        </p>
+</div>
+<!-- Insight Card 3 -->
+<div class="py-6">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-2 h-2 rounded-full bg-error shadow-[0_0_8px_#FFB4AB]"></div>
+<span class="text-xs font-bold text-error tracking-widest uppercase">Retail Panic</span>
+</div>
+<p class="text-sm leading-relaxed text-[#DBC1B9]">
+                            Margin call liquidations triggered at the 22,500 psychological level. Retail conviction has dropped from 64% to 45% in current session.
+                        </p>
+</div>
+</div>
+<!-- Visual Asset / Chart Overlay Hint -->
+<div class="mt-6 rounded-xl overflow-hidden h-32 relative group cursor-pointer">
+<img alt="Financial Market Heatmap" class="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" data-alt="abstract financial heatmap with dark moody tones and glowing orange and green data nodes representing market volatility" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeo_ZJQTveHuJdortQkttoBovgD7yJgXNp8y6rh_mbergrl6tGR3VpLGV7PwIdcXY2w8tM1Va4c-qMTWPrgBoBP2OYiT_DYmA0eEo5TKpQ5B1NurlnqLihquY6qARxPNVinxT4kBUgVTpIzwvbGfVuv03R6M-u8jPHFpL1P1fwJW2XuTt_OzyqMhGDK5YLA4DpDy9DMDVnnmUUgXhYhgQFUQoAoKdKGxdHg9hCsSbclIjWffKE8qIGsRACjgiO0YQoLYbvmwZujWQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+<div class="absolute bottom-4 left-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="query_stats">query_stats</span>
+<span class="text-[10px] font-bold text-white uppercase tracking-tighter">View Sector Heatmap</span>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- BottomBar Implementation -->
+<footer class="h-10 px-8 flex justify-between items-center bg-[#131315] border-t border-white/5">
+<div class="flex items-center gap-6">
+<span class="text-[10px] font-medium text-[#A1A1A6] uppercase tracking-widest">Last run 2m ago</span>
+<div class="h-3 w-[1px] bg-white/10"></div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-medium text-[#A1A1A6] uppercase tracking-widest">Accuracy 64%</span>
+<span class="material-symbols-outlined text-[14px] text-tertiary" data-icon="trending_up">trending_up</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+<span class="text-[10px] font-medium text-[#A1A1A6] uppercase tracking-widest">Connected</span>
+</div>
+</footer>
+</body></html>

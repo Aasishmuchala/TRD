@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GODS_EYE_ENV=production
+      - GODS_EYE_LLM_PROVIDER=${GODS_EYE_LLM_PROVIDER:-openai}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - GODS_EYE_MODEL=${GODS_EYE_MODEL:-o4-mini}
+      - GODS_EYE_DB_PATH=/app/data/gods_eye.db
+      - GODS_EYE_LEARNING=true
+      - GODS_EYE_CORS_ORIGINS=http://localhost,http://localhost:80
+      - GODS_EYE_LOG_LEVEL=info
+    volumes:
+      - db-data:/app/data
+      - skills-data:/root/.gods-eye/skills
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  skills-data:
