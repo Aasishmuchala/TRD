@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-03-30T12:31:04.524Z"
+status: verifying
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-03-30T12:35:58.150Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 ## Current Position
 
 Phase: 01 (ui-alignment-and-auth-routing) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
+Plan: 4 of 4
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,8 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01 P02 | 2 | 2 tasks | 2 files |
 | Phase 01-ui-alignment-and-auth-routing P01 | 2 | 1 tasks | 1 files |
+| Phase 01 P04 | 2 | 2 tasks | 3 files |
+| Phase 01 P03 | 140s | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -71,6 +73,11 @@ Recent decisions affecting current work:
 - [Phase 01]: AuthGate checks localStorage directly (no async API call) — simple, synchronous, no loading state
 - [Phase 01-ui-alignment-and-auth-routing]: Plan spec is source of truth for agent display names: use FII Flows Analyst, DII Strategy Desk, Retail F&O Desk, Algo Trading Engine, Promoter Desk, RBI Policy Desk
 - [Phase 01-ui-alignment-and-auth-routing]: AGENT_ORDER canonical order: FII, DII, RETAIL_FNO, ALGO, PROMOTER, RBI (plan spec — not SimulationStream.jsx order)
+- [Phase 01]: Graduation criteria computed with IIFEs inline — avoids useMemo, keeps each criterion self-contained
+- [Phase 01]: flowData from ScenarioModal passed as flow_data key in simulation payload via Dashboard.handleConfirm — backward-compatible
+- [Phase 01]: Sidebar nav labels aligned to plan spec: Dashboard/Agents/History/Paper Trading/Settings
+- [Phase 01]: Settings drives agent weight sliders from AGENT_ORDER via constants import; Quant/LLM default 45/55 stored as decimal in API payload
+- [Phase 01]: Welcome mini-nodes use agent.shortLabel and agent.color from AGENTS constant — no local hardcoded agent data
 
 ### Pending Todos
 
@@ -84,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T12:31:04.520Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-03-30T12:35:47.837Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
