@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: verifying
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-30T22:03:43.801Z"
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-30T22:14:34.976Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
-**Current focus:** Phase 07 — backtest-engine
+**Current focus:** Phase 08 — signal-scoring
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 08 (signal-scoring) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P02 | 5 | 2 tasks | 2 files |
 | Phase 07 P01 | 3 | 2 tasks | 2 files |
 | Phase 07 P02 | 40 | 2 tasks | 2 files |
+| Phase 08 P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 07]: cumulative_pnl_points computed in API layer so BacktestEngine stays pure — API owns the equity curve shape
 - [Phase 07]: BacktestRunSummary.win_rate_pct convenience field (overall_accuracy * 100) spares Phase 9 dashboard from client-side multiplication
 - [Phase 07]: round_history omitted from BacktestDayResponse — heavy field not needed for aggregate dashboard equity curves
+- [Phase 08]: SignalScorer.score() is a pure static method — no instance state, no side effects; makes it trivially testable and safe to call from any context
+- [Phase 08]: HOLD direction always produces 0 sentiment score regardless of conviction — max score 40, always tier=skip unless 3+ technicals align
+- [Phase 08]: ScoreResult uses @dataclass not Pydantic BaseModel — no HTTP boundary at engine layer; dataclass is lighter and appropriate
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T22:00:05.115Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-03-30T22:14:34.972Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None

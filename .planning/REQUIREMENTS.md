@@ -30,9 +30,9 @@
 
 ### Signal Scoring
 
-- [ ] **SIG-01**: System produces a combined score (0-100) merging agent sentiment with technical signal alignment
-- [ ] **SIG-02**: Score > 70 with technicals aligned = strong signal, 50-70 = moderate, < 50 = skip
-- [ ] **SIG-03**: Signal includes direction, strength, contributing factors, and suggested instrument (Nifty/BankNifty CE/PE)
+- [x] **SIG-01**: System produces a combined score (0-100) merging agent sentiment with technical signal alignment
+- [x] **SIG-02**: Score > 70 with technicals aligned = strong signal, 50-70 = moderate, < 50 = skip
+- [x] **SIG-03**: Signal includes direction, strength, contributing factors, and suggested instrument (Nifty/BankNifty CE/PE)
 
 ### Backtest Dashboard
 
@@ -78,9 +78,9 @@
 | BT-03 | Phase 7 — Backtest Engine | Complete |
 | BT-04 | Phase 7 — Backtest Engine | Complete |
 | BT-05 | Phase 7 — Backtest Engine | Complete |
-| SIG-01 | Phase 8 — Signal Scoring | Pending |
-| SIG-02 | Phase 8 — Signal Scoring | Pending |
-| SIG-03 | Phase 8 — Signal Scoring | Pending |
+| SIG-01 | Phase 8 — Signal Scoring | Complete |
+| SIG-02 | Phase 8 — Signal Scoring | Complete |
+| SIG-03 | Phase 8 — Signal Scoring | Complete |
 | DASH-01 | Phase 9 — Backtest Dashboard | Pending |
 | DASH-02 | Phase 9 — Backtest Dashboard | Pending |
 | DASH-03 | Phase 9 — Backtest Dashboard | Pending |

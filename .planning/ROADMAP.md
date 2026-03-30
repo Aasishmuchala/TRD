@@ -168,7 +168,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — SignalScorer module with ScoreResult dataclass and 60/40 sentiment+technical formula (TDD)
+- [x] 08-01-PLAN.md — SignalScorer module with ScoreResult dataclass and 60/40 sentiment+technical formula (TDD)
 - [ ] 08-02-PLAN.md — Wire signal_score into BacktestDayResult and POST /api/simulate response
 
 ### Phase 9: Backtest Dashboard
