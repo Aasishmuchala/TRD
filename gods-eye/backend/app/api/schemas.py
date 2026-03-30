@@ -154,3 +154,54 @@ class SimulationHistory(BaseModel):
     page: int
     page_size: int
     items: List[SimulationResult]
+
+
+# ── Phase 7: Backtest Engine ──────────────────────────────────────────────────
+
+class BacktestDayResponse(BaseModel):
+    """Single day result in a backtest run."""
+    date: str
+    next_date: str
+    nifty_close: float
+    nifty_next_close: float
+    actual_move_pct: float
+    predicted_direction: str
+    predicted_conviction: float
+    direction_correct: Optional[bool]   # None when HOLD
+    pnl_points: float
+    cumulative_pnl_points: float        # running total up to this day
+    per_agent_directions: Dict[str, str]
+    signals: Dict[str, Any]
+    # round_history omitted from list response — heavy; available via detail endpoint
+
+
+class BacktestRunRequest(BaseModel):
+    """Request body for POST /api/backtest/run."""
+    instrument: str = Field(default="NIFTY", description="NIFTY or BANKNIFTY")
+    from_date: str = Field(..., description="Start date YYYY-MM-DD (inclusive)")
+    to_date: str = Field(..., description="End date YYYY-MM-DD (inclusive)")
+    mock_mode: bool = Field(
+        default=True,
+        description="True = fast mock agents (default); False = real LLM calls"
+    )
+
+
+class BacktestRunSummary(BaseModel):
+    """Summary metrics for a completed backtest run."""
+    run_id: str
+    instrument: str
+    from_date: str
+    to_date: str
+    mock_mode: bool
+    day_count: int
+    overall_accuracy: float             # 0-1 fraction of correct directional calls
+    win_rate_pct: float                 # overall_accuracy * 100 (convenience field)
+    per_agent_accuracy: Dict[str, float]  # agent_key -> 0-1
+    total_pnl_points: float
+    created_at: str
+
+
+class BacktestRunResponse(BaseModel):
+    """Complete response for POST /api/backtest/run and GET /api/backtest/results/{id}."""
+    summary: BacktestRunSummary
+    days: List[BacktestDayResponse]
