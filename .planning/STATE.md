@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-03-30T20:54:46.573Z"
+status: verifying
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-03-30T21:02:26.877Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 06 (technical-signal-engine) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P01 | 3 | 2 tasks | 2 files |
 | Phase 05 P02 | 2 | 3 tasks | 2 files |
 | Phase 06 P01 | 2 | 1 tasks | 3 files |
+| Phase 06 P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 06]: technical_signals.py is a separate module from signal_engine.py — live simulation uses low_fear/high_fear labels; backtest uses low/normal/elevated/high labels. They coexist.
 - [Phase 06]: classify_vix_regime raises ValueError on negative VIX — real VIX cannot be negative; makes bad data fail loudly
 - [Phase 06]: compute_signals_for_date slices rows using YYYY-MM-DD string comparison (lexicographically correct) to prevent future data leakage
+- [Phase 06]: store_oi_snapshot and get_oi_snapshot are sync methods — OI capture is not latency-sensitive, no async needed
+- [Phase 06]: Signal endpoint returns oi: null (not 404) when OI snapshot missing — historical dates before capture are valid
+- [Phase 06]: No rate limit on GET /market/signals endpoint — called in tight loops by Phase 7 backtest engine
 
 ### Pending Todos
 
@@ -83,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T20:54:46.568Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-03-30T21:02:26.873Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None

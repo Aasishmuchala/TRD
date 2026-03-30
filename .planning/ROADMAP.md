@@ -102,7 +102,7 @@ Plans:
 **Milestone Goal:** Prove God's Eye has a tradeable edge by backtesting against historical Nifty/Bank Nifty data and building a technical signal engine that combines agent sentiment with indicators.
 
 - [x] **Phase 5: Historical Data Backfill** - Fetch and cache 1+ year of OHLCV data for Nifty, Bank Nifty, and India VIX from Dhan API into SQLite (completed 2026-03-30)
-- [ ] **Phase 6: Technical Signal Engine** - Compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime classification from stored historical data
+- [x] **Phase 6: Technical Signal Engine** - Compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime classification from stored historical data (completed 2026-03-30)
 - [ ] **Phase 7: Backtest Engine** - Replay a date range through agents using historical conditions as input and compare predictions against actual next-day moves
 - [ ] **Phase 8: Signal Scoring** - Produce a combined 0-100 score merging agent sentiment conviction with technical signal alignment into actionable trade signals
 - [ ] **Phase 9: Backtest Dashboard** - Interactive UI for running backtests, viewing accuracy/P&L/drawdown metrics, and drilling into individual backtest days
@@ -139,7 +139,7 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md -- Create technical_signals.py with RSI-14, VWAP deviation, Supertrend, and VIX regime (pure numpy computation)
-- [ ] 06-02-PLAN.md -- Add oi_snapshots SQLite table, OI store/fetch methods, and GET /api/market/signals/{instrument}/{date} endpoint
+- [x] 06-02-PLAN.md -- Add oi_snapshots SQLite table, OI store/fetch methods, and GET /api/market/signals/{instrument}/{date} endpoint
 
 ### Phase 7: Backtest Engine
 **Goal**: The system can replay any date range through the 6 agents using historical market conditions as input, run a full 3-round simulation per day, compare direction predictions against actual next-day moves, and accumulate per-agent and overall accuracy metrics
@@ -188,7 +188,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 3. Frontend Polish and UX Completeness | v1.0 | 4/4 | Complete | 2026-03-30 |
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 6. Technical Signal Engine | v2.0 | 1/2 | In Progress|  |
+| 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 7. Backtest Engine | v2.0 | 0/TBD | Not started | - |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
 | 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
