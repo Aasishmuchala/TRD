@@ -83,6 +83,24 @@ class HistoricalStore:
             ON historical_vix(date)
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS oi_snapshots (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                instrument    TEXT    NOT NULL,
+                date          TEXT    NOT NULL,
+                call_oi       INTEGER NOT NULL DEFAULT 0,
+                put_oi        INTEGER NOT NULL DEFAULT 0,
+                pcr           REAL    NOT NULL DEFAULT 0.0,
+                net_sentiment TEXT    NOT NULL DEFAULT 'neutral',
+                fetched_at    TEXT    NOT NULL,
+                UNIQUE(instrument, date)
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_oi_instrument_date
+            ON oi_snapshots(instrument, date)
+        """)
+
         conn.commit()
         conn.close()
         logger.info("HistoricalStore schema initialised at %s", self.db_path)
@@ -286,6 +304,58 @@ class HistoricalStore:
             results[instrument] = self._count_rows(instrument)
             await asyncio.sleep(1.0)   # conservative rate-limit between requests
         return results
+
+    def store_oi_snapshot(
+        self,
+        instrument: str,
+        date_str: str,
+        call_oi: int,
+        put_oi: int,
+        pcr: float,
+    ) -> None:
+        """Store or replace an OI snapshot for instrument + date.
+
+        net_sentiment derived from PCR:
+          pcr > 1.2  -> "bullish"  (put-heavy = bearish hedging = contrarian bullish signal)
+          pcr < 0.8  -> "bearish"  (call-heavy = speculative buying = contrarian bearish signal)
+          otherwise  -> "neutral"
+        """
+        if pcr > 1.2:
+            net_sentiment = "bullish"
+        elif pcr < 0.8:
+            net_sentiment = "bearish"
+        else:
+            net_sentiment = "neutral"
+
+        fetched_at = datetime.utcnow().isoformat()
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT OR REPLACE INTO oi_snapshots
+               (instrument, date, call_oi, put_oi, pcr, net_sentiment, fetched_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (instrument, date_str, call_oi, put_oi, round(pcr, 3), net_sentiment, fetched_at),
+        )
+        conn.commit()
+        conn.close()
+        logger.info("Stored OI snapshot for %s on %s (PCR=%.3f)", instrument, date_str, pcr)
+
+    def get_oi_snapshot(self, instrument: str, date_str: str) -> Optional[Dict]:
+        """Return OI snapshot for instrument + date, or None if not stored.
+
+        Returns: {"instrument", "date", "call_oi", "put_oi", "pcr", "net_sentiment"} or None.
+        """
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT instrument, date, call_oi, put_oi, pcr, net_sentiment
+               FROM oi_snapshots WHERE instrument = ? AND date = ?""",
+            (instrument, date_str),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
 
 
 # Global singleton (mirrors dhan_client pattern)
