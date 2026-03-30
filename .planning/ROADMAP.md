@@ -119,7 +119,11 @@ Plans:
   3. India VIX daily close values for the same date range are stored alongside price data and queryable
   4. After a successful backfill, a subsequent fetch within the same trading day returns data from SQLite cache without hitting the Dhan API again
   5. On a fresh database, the system can trigger a full backfill for all three instruments and complete without manual intervention
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Add DhanFetchError + fetch_historical_candles; create HistoricalStore with SQLite schema and cache-first fetch logic
+- [ ] 05-02-PLAN.md — Wire historical endpoints (GET /api/market/historical/{instrument}, POST backfill) and startup auto-backfill hook
 
 ### Phase 6: Technical Signal Engine
 **Goal**: The system can compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime for any date in the historical dataset — every technical input the backtest engine and signal scorer need is available as a structured data object
