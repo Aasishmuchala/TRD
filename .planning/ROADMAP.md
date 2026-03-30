@@ -101,7 +101,7 @@ Plans:
 
 **Milestone Goal:** Prove God's Eye has a tradeable edge by backtesting against historical Nifty/Bank Nifty data and building a technical signal engine that combines agent sentiment with indicators.
 
-- [ ] **Phase 5: Historical Data Backfill** - Fetch and cache 1+ year of OHLCV data for Nifty, Bank Nifty, and India VIX from Dhan API into SQLite
+- [x] **Phase 5: Historical Data Backfill** - Fetch and cache 1+ year of OHLCV data for Nifty, Bank Nifty, and India VIX from Dhan API into SQLite (completed 2026-03-30)
 - [ ] **Phase 6: Technical Signal Engine** - Compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime classification from stored historical data
 - [ ] **Phase 7: Backtest Engine** - Replay a date range through agents using historical conditions as input and compare predictions against actual next-day moves
 - [ ] **Phase 8: Signal Scoring** - Produce a combined 0-100 score merging agent sentiment conviction with technical signal alignment into actionable trade signals
@@ -123,7 +123,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Add DhanFetchError + fetch_historical_candles; create HistoricalStore with SQLite schema and cache-first fetch logic
-- [ ] 05-02-PLAN.md — Wire historical endpoints (GET /api/market/historical/{instrument}, POST backfill) and startup auto-backfill hook
+- [x] 05-02-PLAN.md — Wire historical endpoints (GET /api/market/historical/{instrument}, POST backfill) and startup auto-backfill hook
 
 ### Phase 6: Technical Signal Engine
 **Goal**: The system can compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime for any date in the historical dataset — every technical input the backtest engine and signal scorer need is available as a structured data object
@@ -183,7 +183,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 2. Backend Wiring and Data Integrity | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | v1.0 | 4/4 | Complete | 2026-03-30 |
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
-| 5. Historical Data Backfill | v2.0 | 1/2 | In Progress|  |
+| 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 6. Technical Signal Engine | v2.0 | 0/TBD | Not started | - |
 | 7. Backtest Engine | v2.0 | 0/TBD | Not started | - |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
