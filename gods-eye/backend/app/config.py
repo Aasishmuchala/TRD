@@ -30,6 +30,7 @@ class Config:
     SAMPLES_PER_AGENT: int = 3
     INTERACTION_ROUNDS: int = 3
     TEMPERATURE: float = 0.3
+    QUANT_LLM_BALANCE: float = 0.45  # 0.0 = pure LLM, 1.0 = pure quant
 
     # Database Configuration
     DATABASE_PATH: str = os.getenv(
@@ -53,7 +54,10 @@ class Config:
     # Auto-learning configuration
     LEARNING_ENABLED: bool = os.getenv("GODS_EYE_LEARNING", "true").lower() in ("true", "1", "yes")
     LEARNING_MIN_TURNS: int = 3  # Min simulation rounds before review
-    LEARNING_SKILL_DIR: str = os.path.join(os.path.expanduser("~"), ".gods-eye", "skills")
+    LEARNING_SKILL_DIR: str = os.getenv(
+        "GODS_EYE_LEARNING_SKILL_DIR",
+        "/app/skills"
+    )
 
     def __post_init__(self):
         if self.AGENT_WEIGHTS is None:

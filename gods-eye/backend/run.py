@@ -67,12 +67,15 @@ async def websocket_simulate_stream(websocket: WebSocket):
     try:
         data = await websocket.receive_json()
         market_input = None
+        data_source = "fallback"
 
         if data.get("source") == "live":
             live_data = await market_data_service.build_market_input()
             mi_fields = {k: v for k, v in live_data.items() if not k.startswith("_")}
             market_input = MarketInput(**mi_fields)
             live_extras = {k: v for k, v in live_data.items() if k.startswith("_")}
+            snapshot = await market_data_service.get_live_snapshot()
+            data_source = snapshot.get("data_source", "nse_live")
             await websocket.send_json({"type": "live_data", "data": live_extras})
 
         elif data.get("scenario_id"):
@@ -109,7 +112,7 @@ async def websocket_simulate_stream(websocket: WebSocket):
             return
 
         orchestrator = StreamingOrchestrator()
-        async for event in orchestrator.stream_simulation(market_input):
+        async for event in orchestrator.stream_simulation(market_input, data_source=data_source):
             await websocket.send_json(event)
 
         await websocket.close()

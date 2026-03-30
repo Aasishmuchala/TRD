@@ -55,7 +55,7 @@ class StreamingOrchestrator:
         self.tracker = PredictionTracker()
 
     async def stream_simulation(
-        self, market_data: MarketInput
+        self, market_data: MarketInput, data_source: str = "fallback"
     ) -> AsyncGenerator[dict, None]:
         """Yield simulation events as agents complete.
 
@@ -270,6 +270,7 @@ class StreamingOrchestrator:
             "model_used": config.MODEL,
             "feedback_active": feedback_active,
             "learning_enabled": config.LEARNING_ENABLED,
+            "data_source": data_source,
         }
 
     async def _stream_round(

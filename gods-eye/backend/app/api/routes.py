@@ -66,6 +66,7 @@ async def simulate(req_data: SimulateRequest, request: Request):
     try:
         market_input = None
         live_extras = {}
+        live_data_source = "fallback"  # default; overridden for source=live
 
         # Option 0: Live market data from NSE
         if req_data.source == "live":
@@ -77,6 +78,9 @@ async def simulate(req_data: SimulateRequest, request: Request):
                     live_extras[k] = v
                 else:
                     mi_fields[k] = v
+            # Fetch snapshot to get data_source (build_market_input uses get_live_snapshot internally)
+            snapshot = await market_data_service.get_live_snapshot()
+            live_data_source = snapshot.get("data_source", "nse_live")
             market_input = MarketInput(**mi_fields)
 
         # Option 1: Load from preset scenario
@@ -150,10 +154,14 @@ async def simulate(req_data: SimulateRequest, request: Request):
         tracker.log_simulation(result)
         tracker.log_prediction(result)
 
-        # Attach live market extras if available
+        # Attach live market extras if available, and always include data_source
         response = result.model_dump()
         if live_extras:
             response["live_data"] = live_extras
+            response["data_source"] = live_data_source
+        else:
+            # Non-live simulation (scenario or manual input) — always fallback data
+            response["data_source"] = "fallback"
 
         return response
 
@@ -366,6 +374,7 @@ async def get_settings():
         "samples_per_agent": config.SAMPLES_PER_AGENT,
         "interaction_rounds": config.INTERACTION_ROUNDS,
         "temperature": config.TEMPERATURE,
+        "quant_llm_balance": config.QUANT_LLM_BALANCE,
         "model": config.MODEL,
         "mock_mode": config.MOCK_MODE,
     }
@@ -395,12 +404,18 @@ async def update_settings(settings: dict):
         if 0 <= val <= 1:
             config.TEMPERATURE = val
 
+    if "quant_llm_balance" in settings:
+        val = float(settings["quant_llm_balance"])
+        if 0 <= val <= 1:
+            config.QUANT_LLM_BALANCE = val
+
     return {
         "status": "updated",
         "agent_weights": config.AGENT_WEIGHTS,
         "samples_per_agent": config.SAMPLES_PER_AGENT,
         "interaction_rounds": config.INTERACTION_ROUNDS,
         "temperature": config.TEMPERATURE,
+        "quant_llm_balance": config.QUANT_LLM_BALANCE,
     }
 
 

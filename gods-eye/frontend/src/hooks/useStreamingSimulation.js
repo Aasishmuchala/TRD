@@ -33,9 +33,13 @@ export function useStreamingSimulation() {
       setError(null)
       setStreamStatus('connecting')
 
-      // Determine WS URL (same host as page, but ws:// protocol)
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/api/simulate/stream`
+      // Determine WS URL.
+      // In production: VITE_WS_BASE = "wss://your-railway-backend.railway.app"
+      // In local dev: falls back to same-host (Vite proxy handles /api/simulate/stream)
+      const wsBase = import.meta.env.VITE_WS_BASE
+      const wsUrl = wsBase
+        ? `${wsBase}/api/simulate/stream`
+        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/simulate/stream`
 
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
@@ -195,6 +199,7 @@ function buildResultFromEvents(events) {
     execution_time_ms: simEnd?.execution_time_ms || 0,
     model_used: simEnd?.model_used || '',
     feedback_active: simEnd?.feedback_active || false,
+    data_source: simEnd?.data_source || 'fallback',
     agents_output: agentsOutput,
     round_history: roundHistory,
     aggregator_result: agg ? {
