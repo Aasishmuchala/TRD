@@ -1,7 +1,100 @@
-# Requirements: God's Eye
+# Requirements: God's Eye v2.0 — Backtesting & Signal Engine
 
-**Defined:** 2026-03-30
-**Core Value:** Deliver accurate, explainable multi-agent market direction calls that a derivatives trader on Dalal Street would actually use before market open.
+**Defined:** 2026-03-31
+**Core Value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
+
+## v2.0 Requirements
+
+### Historical Data
+
+- [ ] **HIST-01**: System can fetch and store daily OHLCV data for Nifty 50 from Dhan API (minimum 1 year history)
+- [ ] **HIST-02**: System can fetch and store daily OHLCV data for Bank Nifty from Dhan API (minimum 1 year history)
+- [ ] **HIST-03**: System can fetch and store historical India VIX daily close values
+- [ ] **HIST-04**: Historical data is cached locally in SQLite and refreshed daily during market hours
+
+### Technical Signals
+
+- [ ] **TECH-01**: System computes RSI (14-period) for Nifty and Bank Nifty from historical data
+- [ ] **TECH-02**: System computes VWAP deviation for intraday context
+- [ ] **TECH-03**: System computes Supertrend indicator (ATR-based) for trend direction
+- [ ] **TECH-04**: System tracks OI change (call/put) from Dhan options chain for sentiment shift detection
+- [ ] **TECH-05**: System classifies VIX regime (low <14, normal 14-20, elevated 20-30, high >30)
+
+### Backtest Engine
+
+- [ ] **BT-01**: System can replay a date range through agents using historical data as input
+- [ ] **BT-02**: Each backtest day runs a full 3-round simulation with historical market conditions
+- [ ] **BT-03**: System compares agent prediction (direction + conviction) against actual next-day Nifty/Bank Nifty move
+- [ ] **BT-04**: System tracks per-agent accuracy, overall accuracy, and conviction calibration across backtest period
+- [ ] **BT-05**: System computes P&L assuming simple option strategy (buy ATM CE on BUY, ATM PE on SELL, skip HOLD)
+
+### Signal Scoring
+
+- [ ] **SIG-01**: System produces a combined score (0-100) merging agent sentiment with technical signal alignment
+- [ ] **SIG-02**: Score > 70 with technicals aligned = strong signal, 50-70 = moderate, < 50 = skip
+- [ ] **SIG-03**: Signal includes direction, strength, contributing factors, and suggested instrument (Nifty/BankNifty CE/PE)
+
+### Backtest Dashboard
+
+- [ ] **DASH-01**: User can select date range and run backtest from the UI
+- [ ] **DASH-02**: Dashboard shows overall accuracy (1-day direction), win rate, and total P&L
+- [ ] **DASH-03**: Dashboard shows per-agent accuracy breakdown over the backtest period
+- [ ] **DASH-04**: Dashboard shows equity curve (cumulative P&L over time)
+- [ ] **DASH-05**: Dashboard shows max drawdown, Sharpe ratio, and average win/loss size
+- [ ] **DASH-06**: User can drill into individual backtest days to see agent reasoning vs actual outcome
+
+## Future Requirements
+
+### Execution (v3.0)
+- **EXEC-01**: Place option orders via Dhan Trading API
+- **EXEC-02**: Position sizing based on conviction + account size
+- **EXEC-03**: Auto stop-loss and target exit
+- **EXEC-04**: Multi-leg strategies (straddles based on VIX)
+
+## Out of Scope (v2.0)
+
+| Feature | Reason |
+|---------|--------|
+| Live order execution | v3.0 — must prove edge first |
+| Real money trading | Backtesting must pass graduation criteria |
+| Intraday backtesting | Start with daily timeframe |
+| Non-index instruments | Nifty/Bank Nifty options only |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| HIST-01 | TBD | Pending |
+| HIST-02 | TBD | Pending |
+| HIST-03 | TBD | Pending |
+| HIST-04 | TBD | Pending |
+| TECH-01 | TBD | Pending |
+| TECH-02 | TBD | Pending |
+| TECH-03 | TBD | Pending |
+| TECH-04 | TBD | Pending |
+| TECH-05 | TBD | Pending |
+| BT-01 | TBD | Pending |
+| BT-02 | TBD | Pending |
+| BT-03 | TBD | Pending |
+| BT-04 | TBD | Pending |
+| BT-05 | TBD | Pending |
+| SIG-01 | TBD | Pending |
+| SIG-02 | TBD | Pending |
+| SIG-03 | TBD | Pending |
+| DASH-01 | TBD | Pending |
+| DASH-02 | TBD | Pending |
+| DASH-03 | TBD | Pending |
+| DASH-04 | TBD | Pending |
+| DASH-05 | TBD | Pending |
+| DASH-06 | TBD | Pending |
+
+**Coverage:**
+- v2.0 requirements: 23 total
+- Mapped to phases: 0
+- Unmapped: 23
+
+---
+*Requirements defined: 2026-03-31*
 
 ## v1 Requirements
 
