@@ -64,7 +64,13 @@ Plans:
   4. The dashboard header shows a live Nifty, Bank Nifty, and India VIX ticker that updates with real or fallback-labeled values
   5. Simulation history page offers a working Export button that downloads a CSV or JSON file containing agent calls, consensus, and outcome data
   6. A Learning/Skills page is accessible from navigation and shows extracted skills per agent with the count of patterns learned
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Per-round progress "Round X of 3" in SimulationStream; error/empty states for Settings, PaperTrading, AgentDetail (FE-01, FE-02, FE-03)
+- [ ] 03-02-PLAN.md — Add Bank Nifty to backend market snapshot and MarketTicker component (FE-04)
+- [ ] 03-03-PLAN.md — CSV export on History page; new Skills page at /skills with sidebar nav item (FE-05, FE-06)
+- [ ] 03-04-PLAN.md — Dark mode palette consistency audit across Welcome, PaperTrading, AccuracyPanel, FeedbackPanel, ScenarioPanel (FE-07)
 
 ### Phase 4: Production Deployment and Verification
 **Goal**: God's Eye is live and accessible at public Railway and Vercel URLs, with SQLite and SkillStore data persisting across redeploys, WebSocket streaming working over wss://, CORS configured for the production frontend domain, and all environment variables documented
@@ -87,5 +93,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
 | 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
-| 3. Frontend Polish and UX Completeness | 0/TBD | Not started | - |
+| 3. Frontend Polish and UX Completeness | 0/4 | Not started | - |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |
