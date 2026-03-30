@@ -82,7 +82,12 @@ Plans:
   3. Running a simulation from the Vercel frontend shows real-time per-agent streaming in the browser — browser devtools confirms a wss:// WebSocket connection to the Railway backend
   4. Running 5 simulations, triggering a Railway redeploy, and then reloading history still shows all 5 records — SQLite and SkillStore data survive the redeploy
   5. A .env.example file exists in the repository root documenting every required environment variable with a comment explaining its purpose
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Fix Dockerfile (1 worker, /app/skills dir), create railway.toml, fix docker-compose skills volume and LEARNING_SKILL_DIR default
+- [ ] 04-02-PLAN.md — Fix WebSocket URL to use VITE_WS_BASE env var; create frontend/vercel.json SPA rewrite
+- [ ] 04-03-PLAN.md — Create .env.example files (gods-eye root, backend, frontend) documenting all env vars and CORS configuration
 
 ## Progress
 
@@ -94,4 +99,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
 | 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | 4/4 | Complete   | 2026-03-30 |
-| 4. Production Deployment and Verification | 0/TBD | Not started | - |
+| 4. Production Deployment and Verification | 0/3 | Not started | - |
