@@ -151,7 +151,11 @@ Plans:
   3. Each day record shows the predicted direction and conviction alongside the actual Nifty/Bank Nifty next-day move and whether the prediction was correct
   4. After a backtest run, the system reports per-agent direction accuracy and overall win rate across the entire date range
   5. The system reports a simulated P&L figure assuming a fixed strategy: buy ATM CE on BUY, buy ATM PE on SELL, do nothing on HOLD — using notional option pricing
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — BacktestEngine class with SQLite schema, day-loop logic, direction accuracy, and P&L formula
+- [ ] 07-02-PLAN.md — POST /api/backtest/run and GET /api/backtest/results/{run_id} endpoints with Pydantic schemas
 
 ### Phase 8: Signal Scoring
 **Goal**: Every simulation (live or backtest) produces a combined 0-100 signal score that merges agent sentiment conviction with technical alignment, so a trader can see at a glance whether the setup is strong, moderate, or worth skipping
@@ -189,6 +193,6 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 7. Backtest Engine | v2.0 | 0/TBD | Not started | - |
+| 7. Backtest Engine | v2.0 | 0/2 | Not started | - |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
 | 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
