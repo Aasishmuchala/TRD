@@ -7,7 +7,7 @@ stopped_at: null
 last_updated: "2026-03-31T00:00:00.000Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,100 +18,47 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-30)
+See: .planning/PROJECT.md (updated 2026-03-31)
 
-**Core value:** Deliver accurate, explainable multi-agent market direction calls that a derivatives trader on Dalal Street would actually use before market open.
-**Current focus:** v2.0 — Backtesting & Signal Engine
+**Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
+**Current focus:** v2.0 Phase 5 — Historical Data Backfill
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-31 — Milestone v2.0 started
-Last activity: 2026-03-30
+Phase: 5 of 9 (Historical Data Backfill)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-03-31 — v2.0 roadmap created (phases 5-9)
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity:**
+**Velocity (v1.0 reference):**
+- Total plans completed: 14
+- Average duration: ~2 min/plan
+- Total execution time: ~0.5 hours
 
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
-
-**By Phase:**
+**By Phase (v2.0):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: -
-- Trend: -
+| 5 | TBD | - | - |
+| 6 | TBD | - | - |
+| 7 | TBD | - | - |
+| 8 | TBD | - | - |
+| 9 | TBD | - | - |
 
 *Updated after each plan completion*
-| Phase 01 P02 | 2 | 2 tasks | 2 files |
-| Phase 01-ui-alignment-and-auth-routing P01 | 2 | 1 tasks | 1 files |
-| Phase 01 P04 | 2 | 2 tasks | 3 files |
-| Phase 01 P03 | 140s | 3 tasks | 3 files |
-| Phase 02 P03 | 2min | 2 tasks | 2 files |
-| Phase 02 P01 | 2min | 2 tasks | 2 files |
-| Phase 02 P02 | 302s | 1 tasks | 2 files |
-| Phase 03 P02 | 141s | 2 tasks | 2 files |
-| Phase 03 P03 | 3min | 2 tasks | 4 files |
-| Phase 03 P01 | 158s | 2 tasks | 4 files |
-| Phase 03 P04 | 43s | 2 tasks | 0 files |
-| Phase 04 P02 | 99s | 2 tasks | 2 files |
-| Phase 04 P01 | 128s | 2 tasks | 4 files |
-| Phase 04 P03 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Init]: Plan spec is source of truth over Stitch HTML (32 divergences; plan has clearer reasoning)
-- [Init]: Use plan agent names everywhere (FII, DII, Retail F&O, Algo/Quant, Promoter, RBI)
-- [Init]: Remove sidebar scope creep (Portfolio, Execute Trade, Markets)
-- [Init]: Quant/LLM default 45/55 (Stitch shows 30/70 which over-weights LLM)
-- [Init]: Use plan's 6 graduation criteria with exact thresholds
-- [Phase 01]: Router as outermost component so useNavigate works inside AuthGate
-- [Phase 01]: AuthGate checks localStorage directly (no async API call) — simple, synchronous, no loading state
-- [Phase 01-ui-alignment-and-auth-routing]: Plan spec is source of truth for agent display names: use FII Flows Analyst, DII Strategy Desk, Retail F&O Desk, Algo Trading Engine, Promoter Desk, RBI Policy Desk
-- [Phase 01-ui-alignment-and-auth-routing]: AGENT_ORDER canonical order: FII, DII, RETAIL_FNO, ALGO, PROMOTER, RBI (plan spec — not SimulationStream.jsx order)
-- [Phase 01]: Graduation criteria computed with IIFEs inline — avoids useMemo, keeps each criterion self-contained
-- [Phase 01]: flowData from ScenarioModal passed as flow_data key in simulation payload via Dashboard.handleConfirm — backward-compatible
-- [Phase 01]: Sidebar nav labels aligned to plan spec: Dashboard/Agents/History/Paper Trading/Settings
-- [Phase 01]: Settings drives agent weight sliders from AGENT_ORDER via constants import; Quant/LLM default 45/55 stored as decimal in API payload
-- [Phase 01]: Welcome mini-nodes use agent.shortLabel and agent.color from AGENTS constant — no local hardcoded agent data
-- [Phase 02]: For source=live: call get_live_snapshot() separately to extract data_source — build_market_input strips non-underscore fields
-- [Phase 02]: live_data_source initialized to 'fallback' before all branches to prevent NameError across all code paths
-- [Phase 02]: Non-live simulations (scenario/manual) always set data_source=fallback — no NSE fetch occurs in those paths
-- [Phase 02]: LEARNING_SKILL_DIR uses os.getenv() with same pattern as DATABASE_PATH — no new config infrastructure needed
-- [Phase 02]: seed_all() idempotency is name-based — ALL agent key covers cross-agent skills via existing load_skills() merge logic
-- [Phase 02]: interaction_effects built from existing signals (vix_regime + rsi_14) in AlgoQuantAgent — no new data sources needed
-- [Phase 02]: AlgoQuantAgent base amplifies guarantees minimum count >= 2 via 'Cross-agent consensus signals' + 'Technical confirmation'
-- [Phase 03]: _fetch_bank_nifty uses equity-stockIndices?index=NIFTY%20BANK endpoint added to asyncio.gather() for parallel fetch with zero latency overhead
-- [Phase 03]: Bank Nifty fallback returns zeroed dict — no exception propagated; frontend shows '--' when spot is 0/falsy
-- [Phase 03]: Export button conditionally renders only when history.length > 0 — prevents empty CSV downloads
-- [Phase 03]: Skills page shows up to 5 skills per agent card with overflow indicator; learning toggle failure is silently ignored
-- [Phase 03]: fetchError state added alongside existing loading state in Settings/PaperTrading/AgentDetail — no refactor of loading pattern needed
-- [Phase 03]: AgentDetail fetchError resets to null before each fetch to avoid stale errors on agent selection change
-- [Phase 03]: Error display pattern: terminal-card + border-l-2 border-bear + text-xs font-mono text-bear for all fetch error messages
-- [Phase 03]: Palette audit confirmed all five files compliant — no changes needed; dynamic inline hex styles matching bull/bear/neutral values are acceptable pattern
-- [Phase 04]: VITE_WS_BASE is optional — when unset, same-host fallback preserves local dev behavior via Vite proxy
-- [Phase 04]: vercel.json uses source /(.*) catch-all rewrite to /index.html for React Router deep link support
-- [Phase 04]: gunicorn -w 1 is authoritative in both Dockerfile CMD and railway.toml startCommand to prevent drift
-- [Phase 04]: railway.toml startCommand uses $PORT instead of hardcoded 8000 — Railway injects dynamic port at runtime
-- [Phase 04]: LEARNING_SKILL_DIR default changed to /app/skills string literal — matches Railway volume mount, no expanduser needed in container
-- [Phase Phase 04]: GODS_EYE_CORS_ORIGINS must be exact Vercel URL — DO NOT use wildcard (*), credentials require exact origins
-- [Phase Phase 04]: Root .env.example is deployment checklist only — backend/.env.example and frontend/.env.example are authoritative
-- [Phase Phase 04]: VITE_WS_BASE format: wss://hostname no trailing slash no path — documented in frontend/.env.example
+- [v1.0]: Dhan as sole data source — NSE scraping unreliable; clean errors on failure, no silent fallback
+- [v1.0]: Nifty/Bank Nifty options focus — start narrow, prove edge, then expand
+- [v1.0]: SQLite at /app/data on Railway — persistent volume, survives redeploys
+- [v1.0]: Single worker gunicorn (-w 1) — mutable config singleton breaks multi-worker
 
 ### Pending Todos
 
@@ -119,12 +66,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 4]: OAuth device flow has never been tested from a fresh production environment with no existing token — must be explicitly verified during deployment phase
-- [Phase 2]: SkillStore starts empty on fresh deploy; consider seeding 3-5 hand-authored skills per agent before launch so skill injection has content to inject
-- [Phase 4]: gunicorn must run with --workers 1 — mutable config singleton is incompatible with multi-worker deployments
+- [v2.0 Phase 7]: Backtest replays full 3-round LLM simulation per day — date ranges over ~30 days may be slow or costly; may need batching or a lighter replay mode
+- [v2.0 Phase 5]: Dhan historical API rate limits unknown — backfill strategy should be conservative (daily granularity, one instrument at a time)
 
 ## Session Continuity
 
-Last session: 2026-03-30T13:37:26.590Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-03-31
+Stopped at: Roadmap created for v2.0 (phases 5-9)
 Resume file: None

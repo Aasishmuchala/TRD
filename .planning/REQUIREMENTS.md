@@ -64,37 +64,38 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HIST-01 | TBD | Pending |
-| HIST-02 | TBD | Pending |
-| HIST-03 | TBD | Pending |
-| HIST-04 | TBD | Pending |
-| TECH-01 | TBD | Pending |
-| TECH-02 | TBD | Pending |
-| TECH-03 | TBD | Pending |
-| TECH-04 | TBD | Pending |
-| TECH-05 | TBD | Pending |
-| BT-01 | TBD | Pending |
-| BT-02 | TBD | Pending |
-| BT-03 | TBD | Pending |
-| BT-04 | TBD | Pending |
-| BT-05 | TBD | Pending |
-| SIG-01 | TBD | Pending |
-| SIG-02 | TBD | Pending |
-| SIG-03 | TBD | Pending |
-| DASH-01 | TBD | Pending |
-| DASH-02 | TBD | Pending |
-| DASH-03 | TBD | Pending |
-| DASH-04 | TBD | Pending |
-| DASH-05 | TBD | Pending |
-| DASH-06 | TBD | Pending |
+| HIST-01 | Phase 5 — Historical Data Backfill | Pending |
+| HIST-02 | Phase 5 — Historical Data Backfill | Pending |
+| HIST-03 | Phase 5 — Historical Data Backfill | Pending |
+| HIST-04 | Phase 5 — Historical Data Backfill | Pending |
+| TECH-01 | Phase 6 — Technical Signal Engine | Pending |
+| TECH-02 | Phase 6 — Technical Signal Engine | Pending |
+| TECH-03 | Phase 6 — Technical Signal Engine | Pending |
+| TECH-04 | Phase 6 — Technical Signal Engine | Pending |
+| TECH-05 | Phase 6 — Technical Signal Engine | Pending |
+| BT-01 | Phase 7 — Backtest Engine | Pending |
+| BT-02 | Phase 7 — Backtest Engine | Pending |
+| BT-03 | Phase 7 — Backtest Engine | Pending |
+| BT-04 | Phase 7 — Backtest Engine | Pending |
+| BT-05 | Phase 7 — Backtest Engine | Pending |
+| SIG-01 | Phase 8 — Signal Scoring | Pending |
+| SIG-02 | Phase 8 — Signal Scoring | Pending |
+| SIG-03 | Phase 8 — Signal Scoring | Pending |
+| DASH-01 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-02 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-03 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-04 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-05 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-06 | Phase 9 — Backtest Dashboard | Pending |
 
 **Coverage:**
 - v2.0 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
+*Last updated: 2026-03-31 after v2.0 roadmap creation*
 
 ## v1 Requirements
 
@@ -222,4 +223,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-03-30*
-*Last updated: 2026-03-30 after roadmap creation*
+*Last updated: 2026-03-31 after v2.0 roadmap creation*
