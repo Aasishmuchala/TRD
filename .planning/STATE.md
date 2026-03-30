@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Backtesting & Signal Engine
 status: verifying
 stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-30T20:39:07.877Z"
+last_updated: "2026-03-30T20:42:36.492Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 5
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 ## Current Position
 
-Phase: 05 (historical-data-backfill) — EXECUTING
-Plan: 2 of 2
+Phase: 6
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-03-30
 
