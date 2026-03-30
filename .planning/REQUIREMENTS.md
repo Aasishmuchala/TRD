@@ -9,8 +9,8 @@ Requirements for production release. Each maps to roadmap phases.
 
 ### UI Alignment
 
-- [ ] **UI-01**: All screens use consistent agent names: FII, DII, Retail F&O, Algo/Quant, Promoter, RBI
-- [ ] **UI-02**: Agent weights match plan spec across all screens (0.30, 0.25, 0.15, 0.10, 0.10, 0.10)
+- [x] **UI-01**: All screens use consistent agent names: FII, DII, Retail F&O, Algo/Quant, Promoter, RBI
+- [x] **UI-02**: Agent weights match plan spec across all screens (0.30, 0.25, 0.15, 0.10, 0.10, 0.10)
 - [ ] **UI-03**: Graduation criteria match plan's 6 thresholds (1-day >=57%, 1-week >=60%, calibration <15%, quant-LLM agreement >=70%, no catastrophic miss, internal consistency >=75%)
 - [ ] **UI-04**: Sidebar navigation contains only in-scope items (Dashboard, Agents, History, Paper Trading, Settings)
 - [ ] **UI-05**: Remove out-of-scope elements (Portfolio, Execute Trade, Markets, Secure Node hash, Terminal branding, user profile/tier)
@@ -92,8 +92,8 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UI-01 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| UI-02 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-01 | Phase 1 — UI Alignment and Auth Routing | Complete |
+| UI-02 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | UI-03 | Phase 1 — UI Alignment and Auth Routing | Pending |
 | UI-04 | Phase 1 — UI Alignment and Auth Routing | Pending |
 | UI-05 | Phase 1 — UI Alignment and Auth Routing | Pending |
