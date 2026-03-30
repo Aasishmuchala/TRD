@@ -18,6 +18,10 @@ from app.data.cache import cache, MarketCache
 
 logger = logging.getLogger("gods_eye.dhan")
 
+
+class DhanFetchError(Exception):
+    """Raised when Dhan API returns an error or unexpected response for historical data."""
+
 DHAN_BASE = "https://api.dhan.co/v2"
 
 # Dhan security IDs for indices
@@ -235,6 +239,74 @@ class DhanClient:
             "total_call_oi": total_call_oi,
             "total_put_oi": total_put_oi,
         }
+
+    async def fetch_historical_candles(
+        self,
+        security_id: str,
+        from_date: str,
+        to_date: str,
+    ) -> list:
+        """Fetch daily OHLCV candles from Dhan /charts/historical.
+
+        Args:
+            security_id: Dhan security ID — "13" (Nifty), "25" (BankNifty), "26" (VIX)
+            from_date: "YYYY-MM-DD"
+            to_date: "YYYY-MM-DD"
+
+        Returns:
+            List of {"date": "YYYY-MM-DD", "open": float, "high": float,
+                     "low": float, "close": float, "volume": int}
+
+        Raises:
+            DhanFetchError: If Dhan returns non-200 or response is missing OHLCV arrays.
+        """
+        client = await self._ensure_client()
+        url = f"{DHAN_BASE}/charts/historical"
+        payload = {
+            "securityId": security_id,
+            "exchangeSegment": "IDX_I",
+            "instrument": "INDEX",
+            "interval": "D",
+            "fromDate": from_date,
+            "toDate": to_date,
+        }
+        try:
+            resp = await client.post(url, json=payload)
+        except Exception as exc:
+            raise DhanFetchError(f"HTTP request failed for securityId={security_id}: {exc}") from exc
+
+        if resp.status_code != 200:
+            raise DhanFetchError(
+                f"Dhan /charts/historical returned HTTP {resp.status_code} "
+                f"for securityId={security_id}: {resp.text[:200]}"
+            )
+
+        data = resp.json()
+        opens = data.get("open")
+        closes = data.get("close")
+        highs = data.get("high")
+        lows = data.get("low")
+        volumes = data.get("volume")
+        timestamps = data.get("timestamp") or data.get("start_Time")
+
+        if not closes or not timestamps:
+            raise DhanFetchError(
+                f"Dhan /charts/historical response missing OHLCV data "
+                f"for securityId={security_id}. Keys: {list(data.keys())}"
+            )
+
+        candles = []
+        for i, ts in enumerate(timestamps):
+            date_str = datetime.utcfromtimestamp(ts).strftime("%Y-%m-%d")
+            candles.append({
+                "date": date_str,
+                "open": float(opens[i]) if opens else 0.0,
+                "high": float(highs[i]) if highs else 0.0,
+                "low": float(lows[i]) if lows else 0.0,
+                "close": float(closes[i]),
+                "volume": int(volumes[i]) if volumes else 0,
+            })
+        return candles
 
     async def shutdown(self):
         if self._http:
