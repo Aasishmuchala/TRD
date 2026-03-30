@@ -85,8 +85,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Fix Dockerfile (1 worker, /app/skills dir), create railway.toml, fix docker-compose skills volume and LEARNING_SKILL_DIR default
-- [ ] 04-02-PLAN.md — Fix WebSocket URL to use VITE_WS_BASE env var; create frontend/vercel.json SPA rewrite
+- [x] 04-01-PLAN.md — Fix Dockerfile (1 worker, /app/skills dir), create railway.toml, fix docker-compose skills volume and LEARNING_SKILL_DIR default
+- [x] 04-02-PLAN.md — Fix WebSocket URL to use VITE_WS_BASE env var; create frontend/vercel.json SPA rewrite
 - [ ] 04-03-PLAN.md — Create .env.example files (gods-eye root, backend, frontend) documenting all env vars and CORS configuration
 
 ## Progress
@@ -99,4 +99,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. UI Alignment and Auth Routing | 4/4 | Complete   | 2026-03-30 |
 | 2. Backend Wiring and Data Integrity | 3/3 | Complete   | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | 4/4 | Complete   | 2026-03-30 |
-| 4. Production Deployment and Verification | 0/3 | Not started | - |
+| 4. Production Deployment and Verification | 2/3 | In Progress|  |

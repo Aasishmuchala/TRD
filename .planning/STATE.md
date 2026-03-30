@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-03-30T13:18:46.098Z"
+status: executing
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-30T13:31:18.401Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 14
+  completed_plans: 13
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Deliver accurate, explainable multi-agent market direction calls that a derivatives trader on Dalal Street would actually use before market open.
-**Current focus:** Phase 03 — frontend-polish-and-ux-completeness
+**Current focus:** Phase 04 — production-deployment-and-verification
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 04 (production-deployment-and-verification) — EXECUTING
+Plan: 3 of 3
+Status: Ready to execute
 Last activity: 2026-03-30
 
 Progress: [░░░░░░░░░░] 0%
@@ -63,6 +63,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P03 | 3min | 2 tasks | 4 files |
 | Phase 03 P01 | 158s | 2 tasks | 4 files |
 | Phase 03 P04 | 43s | 2 tasks | 0 files |
+| Phase 04 P02 | 99s | 2 tasks | 2 files |
+| Phase 04 P01 | 128s | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +102,11 @@ Recent decisions affecting current work:
 - [Phase 03]: AgentDetail fetchError resets to null before each fetch to avoid stale errors on agent selection change
 - [Phase 03]: Error display pattern: terminal-card + border-l-2 border-bear + text-xs font-mono text-bear for all fetch error messages
 - [Phase 03]: Palette audit confirmed all five files compliant — no changes needed; dynamic inline hex styles matching bull/bear/neutral values are acceptable pattern
+- [Phase 04]: VITE_WS_BASE is optional — when unset, same-host fallback preserves local dev behavior via Vite proxy
+- [Phase 04]: vercel.json uses source /(.*) catch-all rewrite to /index.html for React Router deep link support
+- [Phase 04]: gunicorn -w 1 is authoritative in both Dockerfile CMD and railway.toml startCommand to prevent drift
+- [Phase 04]: railway.toml startCommand uses $PORT instead of hardcoded 8000 — Railway injects dynamic port at runtime
+- [Phase 04]: LEARNING_SKILL_DIR default changed to /app/skills string literal — matches Railway volume mount, no expanduser needed in container
 
 ### Pending Todos
 
@@ -113,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T13:14:24.971Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-03-30T13:31:05.431Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
