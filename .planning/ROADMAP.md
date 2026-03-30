@@ -165,7 +165,11 @@ Plans:
   1. Every simulation result includes a combined signal score between 0 and 100, derived from agent consensus strength and the number of technical indicators aligned with that direction
   2. The score clearly maps to one of three tiers: strong signal (>70), moderate signal (50-70), or skip (<50) — displayed with the threshold label, not just the raw number
   3. The signal output specifies direction (BUY/SELL/HOLD), score, the contributing factors (which agents and which technicals drove the score), and the suggested instrument (Nifty CE/PE or Bank Nifty CE/PE)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — SignalScorer module with ScoreResult dataclass and 60/40 sentiment+technical formula (TDD)
+- [ ] 08-02-PLAN.md — Wire signal_score into BacktestDayResult and POST /api/simulate response
 
 ### Phase 9: Backtest Dashboard
 **Goal**: A user can select a date range, run a backtest from the browser, and immediately see accuracy, P&L, drawdown, and per-agent performance — plus drill into any individual day to read the full agent reasoning vs what actually happened
@@ -194,5 +198,5 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 7. Backtest Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
+| 8. Signal Scoring | v2.0 | 0/2 | Not started | - |
 | 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
