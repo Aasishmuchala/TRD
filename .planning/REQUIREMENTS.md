@@ -12,9 +12,9 @@ Requirements for production release. Each maps to roadmap phases.
 - [x] **UI-01**: All screens use consistent agent names: FII, DII, Retail F&O, Algo/Quant, Promoter, RBI
 - [x] **UI-02**: Agent weights match plan spec across all screens (0.30, 0.25, 0.15, 0.10, 0.10, 0.10)
 - [x] **UI-03**: Graduation criteria match plan's 6 thresholds (1-day >=57%, 1-week >=60%, calibration <15%, quant-LLM agreement >=70%, no catastrophic miss, internal consistency >=75%)
-- [ ] **UI-04**: Sidebar navigation contains only in-scope items (Dashboard, Agents, History, Paper Trading, Settings)
-- [ ] **UI-05**: Remove out-of-scope elements (Portfolio, Execute Trade, Markets, Secure Node hash, Terminal branding, user profile/tier)
-- [ ] **UI-06**: Quant/LLM balance slider defaults to 45/55 (not 30/70)
+- [x] **UI-04**: Sidebar navigation contains only in-scope items (Dashboard, Agents, History, Paper Trading, Settings)
+- [x] **UI-05**: Remove out-of-scope elements (Portfolio, Execute Trade, Markets, Secure Node hash, Terminal branding, user profile/tier)
+- [x] **UI-06**: Quant/LLM balance slider defaults to 45/55 (not 30/70)
 - [x] **UI-07**: Paper Trading sessions use date-based format ("Mar 29 - BEAR 65%") not session IDs
 - [x] **UI-08**: Scenario Modal includes all flow data fields (FII daily, FII 5-Day, FII Futures OI change, DII daily, DII 5-Day, SIP Inflow)
 
@@ -95,9 +95,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | UI-01 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | UI-02 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | UI-03 | Phase 1 — UI Alignment and Auth Routing | Complete |
-| UI-04 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| UI-05 | Phase 1 — UI Alignment and Auth Routing | Pending |
-| UI-06 | Phase 1 — UI Alignment and Auth Routing | Pending |
+| UI-04 | Phase 1 — UI Alignment and Auth Routing | Complete |
+| UI-05 | Phase 1 — UI Alignment and Auth Routing | Complete |
+| UI-06 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | UI-07 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | UI-08 | Phase 1 — UI Alignment and Auth Routing | Complete |
 | AUTH-01 | Phase 1 — UI Alignment and Auth Routing | Complete |
