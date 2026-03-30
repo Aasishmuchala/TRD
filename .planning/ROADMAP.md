@@ -135,7 +135,11 @@ Plans:
   3. Supertrend direction (bullish/bearish) is derivable for any date using ATR-based calculation from stored OHLCV data
   4. OI change data (call/put) from Dhan options chain is fetched and stored as a net sentiment indicator (put/call ratio or directional delta)
   5. Any date in the dataset returns a VIX regime classification: one of low (<14), normal (14-20), elevated (20-30), or high (>30)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md -- Create technical_signals.py with RSI-14, VWAP deviation, Supertrend, and VIX regime (pure numpy computation)
+- [ ] 06-02-PLAN.md -- Add oi_snapshots SQLite table, OI store/fetch methods, and GET /api/market/signals/{instrument}/{date} endpoint
 
 ### Phase 7: Backtest Engine
 **Goal**: The system can replay any date range through the 6 agents using historical market conditions as input, run a full 3-round simulation per day, compare direction predictions against actual next-day moves, and accumulate per-agent and overall accuracy metrics
@@ -184,7 +188,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 3. Frontend Polish and UX Completeness | v1.0 | 4/4 | Complete | 2026-03-30 |
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 6. Technical Signal Engine | v2.0 | 0/TBD | Not started | - |
+| 6. Technical Signal Engine | v2.0 | 0/2 | Not started | - |
 | 7. Backtest Engine | v2.0 | 0/TBD | Not started | - |
 | 8. Signal Scoring | v2.0 | 0/TBD | Not started | - |
 | 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
