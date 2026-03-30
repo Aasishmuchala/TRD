@@ -29,7 +29,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Paper Trading graduation criteria panel shows all 6 thresholds at plan-specified values (1-day >=57%, 1-week >=60%, calibration <15%, quant-LLM agreement >=70%, no catastrophic miss, internal consistency >=75%)
   4. Sidebar navigation contains exactly 5 items: Dashboard, Agents, History, Paper Trading, Settings — no Portfolio, Execute Trade, Markets, or Secure Node links
   5. Navigating to the app while unauthenticated lands on /welcome with a functional API key entry form; entering a valid key proceeds to the dashboard
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Create src/constants/agents.js (canonical agent definitions: names, labels, colors, weights)
+- [ ] 01-02-PLAN.md — Fix auth routing: restructure App.jsx + simplify AuthGate to redirect to /welcome
+- [ ] 01-03-PLAN.md — Fix sidebar labels, add Quant/LLM slider to Settings, align Welcome agent nodes
+- [ ] 01-04-PLAN.md — Replace PaperTrading graduation criteria (6 plan-spec thresholds), add ScenarioModal flow fields
 
 ### Phase 2: Backend Wiring and Data Integrity
 **Goal**: Learned skills actively reach agent prompts during simulation, SkillStore writes succeed under container non-root users, and users always know whether market data is live or fallback
@@ -74,7 +80,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. UI Alignment and Auth Routing | 0/TBD | Not started | - |
+| 1. UI Alignment and Auth Routing | 0/4 | Not started | - |
 | 2. Backend Wiring and Data Integrity | 0/TBD | Not started | - |
 | 3. Frontend Polish and UX Completeness | 0/TBD | Not started | - |
 | 4. Production Deployment and Verification | 0/TBD | Not started | - |
