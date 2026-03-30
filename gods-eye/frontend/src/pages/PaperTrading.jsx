@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 import { agents as agentColors } from '../utils/colors'
+import { dirColor } from '../utils/format'
 
 export default function PaperTrading() {
   const [history, setHistory] = useState([])
@@ -119,13 +120,6 @@ export default function PaperTrading() {
   ]
 
   const passedCount = criteria.filter(c => c.passed).length
-
-  const dirColor = (dir) => {
-    if (!dir) return '#FFC107'
-    if (dir.includes('BUY')) return '#00E676'
-    if (dir.includes('SELL')) return '#FF1744'
-    return '#FFC107'
-  }
 
   if (loading) {
     return (
@@ -268,9 +262,9 @@ export default function PaperTrading() {
           <div className="col-span-4 terminal-card p-4">
             <div className="section-header mb-3">Graduation Checklist</div>
             <div className="space-y-2">
-              {criteria.map((item, idx) => (
+              {criteria.map((item) => (
                 <div
-                  key={idx}
+                  key={item.metric}
                   className={`flex items-center gap-2.5 p-2.5 rounded-lg ${
                     item.passed ? 'bg-bull/5 border border-bull/10' : 'bg-surface-2'
                   }`}

@@ -1,11 +1,17 @@
 """FastAPI routes for God's Eye."""
 
+import os
+import sqlite3
+import time
 import uuid
 from datetime import datetime
 from typing import Optional
+import httpx
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from app.auth.middleware import require_auth
+from app.auth.device_auth import DeviceAuthManager, DeviceCodeResponse, AuthTokens, get_auth_manager
+from app.learning.skill_store import get_skill_store
 from app.limiter import limiter
 from app.api.schemas import (
     MarketInput,
@@ -167,7 +173,7 @@ async def simulate(req_data: SimulateRequest, request: Request):
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -185,7 +191,7 @@ async def get_presets():
             }
             for s in scenarios
         ]
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -200,7 +206,7 @@ async def get_preset(scenario_id: str):
         raise HTTPException(status_code=404, detail="Scenario not found")
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -215,7 +221,7 @@ async def get_history(limit: int = 20, offset: int = 0):
             "page_size": limit,
             "items": history,
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -236,7 +242,7 @@ async def record_outcome(simulation_id: str, actual_direction: str, notes: str =
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -249,7 +255,7 @@ async def get_metrics(lookback_days: int = 30):
             "period_days": lookback_days,
             "by_direction": metrics,
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -321,7 +327,7 @@ async def get_agent_accuracy(agent_id: str, days: int = 30):
             "weakest_context": stats.weakest_context,
             "direction_breakdown": stats.direction_breakdown,
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -338,7 +344,7 @@ async def get_feedback_weights(days: int = 90):
             "min_predictions_required": FeedbackEngine.MIN_PREDICTIONS_FOR_TUNING,
             "agents": changes,
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -362,7 +368,7 @@ async def get_failure_patterns(agent_id: str):
             ],
             "prompt_hints": prompt_hints,
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -425,7 +431,7 @@ async def get_live_market():
     try:
         snapshot = await market_data_service.get_live_snapshot()
         return snapshot
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -435,7 +441,7 @@ async def get_options_data(symbol: str = "NIFTY"):
     try:
         data = await market_data_service.get_options_chain(symbol)
         return data
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -445,7 +451,7 @@ async def get_sectors():
     try:
         sectors = await market_data_service.get_sector_indices()
         return {"sectors": sectors}
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -458,11 +464,6 @@ async def get_cache_stats():
 @router.get("/health")
 async def health_check():
     """Health check endpoint with database connectivity check."""
-    import os
-    import sqlite3
-    from datetime import datetime as dt
-    import time
-
     health_status = {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
@@ -527,7 +528,6 @@ async def start_login(request: Request, provider: str = "openai"):
         }
 
     try:
-        from app.auth.device_auth import DeviceAuthManager
         auth = DeviceAuthManager(provider=provider)
         device_info = await auth.request_device_code()
 
@@ -542,7 +542,7 @@ async def start_login(request: Request, provider: str = "openai"):
             "provider": provider,
             "message": f"Open {device_info.verification_uri} and enter code: {device_info.user_code}",
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "LOGIN_FAILED", "Login initiation failed. Please try again.")
 
 
@@ -554,11 +554,9 @@ async def poll_auth(request: Request, device_code: str, provider: str = "openai"
     Returns status: "waiting" | "authorized" | "expired" | "error"
     """
     try:
-        from app.auth.device_auth import DeviceAuthManager, DeviceCodeResponse
         auth = DeviceAuthManager(provider=provider)
 
         # Single poll attempt (non-blocking)
-        import httpx
         payload = {
             "grant_type": auth.provider["grant_type"],
             "device_code": device_code,
@@ -573,8 +571,6 @@ async def poll_auth(request: Request, device_code: str, provider: str = "openai"
             data = response.json()
 
         if response.status_code == 200 and "access_token" in data:
-            import time
-            from app.auth.device_auth import AuthTokens
             tokens = AuthTokens(
                 access_token=data["access_token"],
                 refresh_token=data.get("refresh_token", ""),
@@ -608,7 +604,7 @@ async def poll_auth(request: Request, device_code: str, provider: str = "openai"
         else:
             return {"status": "error", "message": data.get("error_description", error)}
 
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -616,7 +612,6 @@ async def poll_auth(request: Request, device_code: str, provider: str = "openai"
 async def get_auth_status():
     """Check current authentication status."""
     try:
-        from app.auth.device_auth import get_auth_manager
         auth = get_auth_manager()
         status = auth.get_auth_status()
         status["mock_mode"] = config.MOCK_MODE
@@ -634,12 +629,11 @@ async def get_auth_status():
 async def logout():
     """Clear stored auth tokens."""
     try:
-        from app.auth.device_auth import get_auth_manager
         auth = get_auth_manager()
         auth.logout()
         config.MOCK_MODE = True
         return {"status": "logged_out"}
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -649,7 +643,6 @@ async def logout():
 async def list_skills():
     """List all learned skills across agents."""
     try:
-        from app.learning.skill_store import get_skill_store
         store = get_skill_store()
         skills = store.list_skills_summary()
         return {
@@ -657,7 +650,7 @@ async def list_skills():
             "learning_enabled": config.LEARNING_ENABLED,
             "skills": skills,
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
@@ -665,7 +658,6 @@ async def list_skills():
 async def get_agent_skills(agent_id: str):
     """List learned skills for a specific agent."""
     try:
-        from app.learning.skill_store import get_skill_store
         store = get_skill_store()
         skills = store.load_skills(agent_id.upper())
         return {
@@ -683,7 +675,7 @@ async def get_agent_skills(agent_id: str):
                 for s in skills
             ],
         }
-    except Exception as e:
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
