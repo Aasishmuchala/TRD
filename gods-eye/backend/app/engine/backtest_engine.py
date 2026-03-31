@@ -232,15 +232,27 @@ class BacktestEngine:
                 # Build MarketInput from historical data (no future data leakage)
                 market_input = self._build_market_input(row, vix_map, all_ohlcv)
 
-                # Run 3-round simulation
+                # Run all 6 agents in PARALLEL (single round, no interaction)
+                # This is 6x faster than sequential orchestrator for backtesting
                 try:
-                    sim_result = await self.orchestrator.run_simulation(market_input)
+                    agent_tasks = {
+                        name: agent.analyze(market_input, round_num=1)
+                        for name, agent in self.orchestrator.agents.items()
+                    }
+                    results = await asyncio.gather(
+                        *agent_tasks.values(), return_exceptions=True
+                    )
+                    final_outputs = {}
+                    for name, result in zip(agent_tasks.keys(), results):
+                        if not isinstance(result, Exception):
+                            final_outputs[name] = result
+                        else:
+                            logger.warning("Agent %s failed for %s: %s", name, signal_date, result)
                 except Exception as exc:
                     logger.error("Simulation failed for %s: %s", signal_date, exc)
                     continue
 
-                final_outputs = sim_result.get("final_outputs", {})
-                round_history = sim_result.get("round_history", [])
+                round_history = []
 
                 # Compute consensus direction + conviction
                 predicted_direction, predicted_conviction = self._compute_consensus(final_outputs)
