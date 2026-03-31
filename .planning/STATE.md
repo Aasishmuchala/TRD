@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-03-31T19:47:50.092Z"
-last_activity: 2026-03-31
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-31T20:01:45.118Z"
+last_activity: 2026-03-31 -- Phase 12 execution started
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 7
+  completed_plans: 6
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Combine quantitative rules (fast, consistent) with qualitative AI analysis (contextual, explainable) for Nifty/Bank Nifty options.
-**Current focus:** Phase 11 — agent-signal-rewrite
+**Current focus:** Phase 12 — hybrid-scoring-and-llm-validator
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: Executing Phase 11
-Last activity: 2026-03-31
+Phase: 12 (hybrid-scoring-and-llm-validator) — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 12
+Last activity: 2026-03-31 -- Phase 12 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 11 P02 | 2 | 1 tasks | 2 files |
 | Phase 11 P01 | 900 | 2 tasks | 5 files |
 | Phase 11 P03 | 300 | 2 tasks | 3 files |
+| Phase 12 P01 | 127 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 11]: Single-round design: no direction-change check, no conditional round 2/3 — all 6 agents dispatched once
 - [Phase 11]: round2/round3 keys set to None (not removed) to preserve backward compatibility with existing consumers
 - [Phase 11]: asyncio.wait(FIRST_COMPLETED) used in streaming path for per-agent event streaming; asyncio.gather used in Orchestrator batch path
+- [Phase 12]: HybridScorer.fuse() is a pure static method — no instance state, no I/O; safe to call from any context including backtests
+- [Phase 12]: Direction-lock enforced unconditionally: quant_result.direction always becomes HybridResult.direction regardless of agent consensus or validator verdict
+- [Phase 12]: HybridResult.conviction post-validation is separate from hybrid_score — conviction=hybrid_score on confirm, reduced on adjust, 0 on skip
 
 ### Pending Todos
 
@@ -127,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T19:46:57.174Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-03-31T20:01:45.113Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None

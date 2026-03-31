@@ -24,10 +24,10 @@
 
 ### Hybrid Scoring
 
-- [ ] **HYB-01**: Final signal = quant score (60%) + agent consensus (40%)
+- [x] **HYB-01**: Final signal = quant score (60%) + agent consensus (40%)
 - [ ] **HYB-02**: LLM validator (1 call) confirms/adjusts/skips with explanation
-- [ ] **HYB-03**: Validator can reduce conviction or skip, cannot flip direction
-- [ ] **HYB-04**: Output: direction, score, quant breakdown, agent breakdown, reasoning, instrument
+- [x] **HYB-03**: Validator can reduce conviction or skip, cannot flip direction
+- [x] **HYB-04**: Output: direction, score, quant breakdown, agent breakdown, reasoning, instrument
 
 ### Risk Management
 
@@ -73,10 +73,10 @@
 | AGENT-04 | Phase 11 — Agent Signal Rewrite | Complete |
 | AGENT-05 | Phase 11 — Agent Signal Rewrite | Complete |
 | AGENT-06 | Phase 11 — Agent Signal Rewrite | Complete |
-| HYB-01 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
+| HYB-01 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
 | HYB-02 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
-| HYB-03 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
-| HYB-04 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
+| HYB-03 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
+| HYB-04 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
 | RISK-01 | Phase 13 — Risk Management Rules | Pending |
 | RISK-02 | Phase 13 — Risk Management Rules | Pending |
 | RISK-03 | Phase 13 — Risk Management Rules | Pending |
