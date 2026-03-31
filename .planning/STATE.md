@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-03-31T20:18:24.868Z"
-last_activity: 2026-03-31
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-03-31T20:37:17.798Z"
+last_activity: 2026-03-31 -- Phase 13 execution started
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Combine quantitative rules (fast, consistent) with qualitative AI analysis (contextual, explainable) for Nifty/Bank Nifty options.
-**Current focus:** Phase 12 — hybrid-scoring-and-llm-validator
+**Current focus:** Phase 13 — risk-management-rules
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: Executing Phase 12
-Last activity: 2026-03-31
+Phase: 13 (risk-management-rules) — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 13
+Last activity: 2026-03-31 -- Phase 13 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 11 P03 | 300 | 2 tasks | 3 files |
 | Phase 12 P01 | 127 | 2 tasks | 2 files |
 | Phase 12 P02 | 698 | 2 tasks | 3 files |
+| Phase 13 P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 12]: LLMValidator co-located with HybridScorer in hybrid_scorer.py as async classmethod — single module, single import
 - [Phase 12]: Placeholder verdict pattern: HybridScorer.fuse() called twice — with placeholder for LLM prompt construction, then with real verdict for final result
 - [Phase 12]: Validator failure fallback: any exception in LLMValidator.call_validator() returns confirm verdict, never HTTP 500
+- [Phase 13]: RiskManager.compute() takes direction so one call returns complete RiskParams including directional stop/target levels
+- [Phase 13]: HOLD direction produces computed distances but levels stay at entry_close (no directional offset)
+- [Phase 13]: risk_manager.py is pure module — only stdlib + dataclasses, zero app.* imports
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T20:17:46.911Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-03-31T20:37:17.793Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None

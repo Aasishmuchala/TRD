@@ -266,7 +266,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — TDD: RiskManager pure engine (position sizing, VIX-scaled stop, 1.5x target)
+- [x] 13-01-PLAN.md — TDD: RiskManager pure engine (position sizing, VIX-scaled stop, 1.5x target)
 - [ ] 13-02-PLAN.md — Config additions + DailyLossGuard + hybrid route wiring
 
 ### Phase 14: Fast Backtesting Both Modes
@@ -309,6 +309,6 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 11. Agent Signal Rewrite | v3.0 | 3/3 | Complete    | 2026-03-31 |
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 2/2 | Complete    | 2026-03-31 |
-| 13. Risk Management Rules | v3.0 | 0/2 | Not started | - |
+| 13. Risk Management Rules | v3.0 | 1/2 | In Progress|  |
 | 14. Fast Backtesting Both Modes | v3.0 | 0/TBD | Not started | - |
 | 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |

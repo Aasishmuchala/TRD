@@ -32,9 +32,9 @@
 ### Risk Management
 
 - [ ] **RISK-01**: Max loss per day configurable (default 5000 pts)
-- [ ] **RISK-02**: Position sizing: strong = 2 lots, moderate = 1 lot, weak = skip
-- [ ] **RISK-03**: Stop loss from VIX (higher VIX = wider stop)
-- [ ] **RISK-04**: Target exit at 1.5x risk
+- [x] **RISK-02**: Position sizing: strong = 2 lots, moderate = 1 lot, weak = skip
+- [x] **RISK-03**: Stop loss from VIX (higher VIX = wider stop)
+- [x] **RISK-04**: Target exit at 1.5x risk
 
 ### Fast Backtesting
 
@@ -78,9 +78,9 @@
 | HYB-03 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
 | HYB-04 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
 | RISK-01 | Phase 13 — Risk Management Rules | Pending |
-| RISK-02 | Phase 13 — Risk Management Rules | Pending |
-| RISK-03 | Phase 13 — Risk Management Rules | Pending |
-| RISK-04 | Phase 13 — Risk Management Rules | Pending |
+| RISK-02 | Phase 13 — Risk Management Rules | Complete |
+| RISK-03 | Phase 13 — Risk Management Rules | Complete |
+| RISK-04 | Phase 13 — Risk Management Rules | Complete |
 | FBT-01 | Phase 14 — Fast Backtesting Both Modes | Pending |
 | FBT-02 | Phase 14 — Fast Backtesting Both Modes | Pending |
 | FBT-03 | Phase 14 — Fast Backtesting Both Modes | Pending |
