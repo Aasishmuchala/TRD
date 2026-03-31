@@ -4,6 +4,9 @@ Zero LLM calls. Zero agent calls.
 Performance target: 250 trading days in under 10 seconds.
 """
 
+import itertools
+import math
+import statistics
 import time
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional
@@ -11,6 +14,7 @@ from typing import Dict, List, Optional
 from app.data.historical_store import historical_store
 from app.data.technical_signals import TechnicalSignals
 from app.engine.quant_signal_engine import QuantInputs, QuantSignalEngine
+from app.engine.risk_manager import RiskManager
 
 
 # ---------------------------------------------------------------------------
@@ -32,6 +36,7 @@ class QuantBacktestDayResult:
     actual_move_pct: Optional[float]
     is_correct: Optional[bool]
     pnl_points: float
+    lots: int = 0
 
 
 @dataclass
@@ -48,6 +53,9 @@ class QuantBacktestRunResult:
     win_rate_pct: Optional[float]
     total_pnl_points: float
     elapsed_seconds: float
+    sharpe_ratio: Optional[float] = None      # None if < 2 tradeable days
+    max_drawdown_pct: Optional[float] = None  # Peak-to-trough % drop in equity curve
+    win_loss_ratio: Optional[float] = None    # avg_win / abs(avg_loss); None if no losses
 
 
 # ---------------------------------------------------------------------------
@@ -145,15 +153,31 @@ class QuantBacktestEngine:
                 today_close = closes_up_to[-1]
                 actual_move_pct = (next_close / today_close - 1.0) * 100
 
-            # Correctness and P&L
+            # Correctness and risk-adjusted P&L
+            NIFTY_LOT = 25
             is_correct: Optional[bool] = None
             pnl_points = 0.0
+            lots = 0
             if sr.direction != "HOLD" and actual_move_pct is not None:
                 if sr.direction == "BUY":
                     is_correct = actual_move_pct > 0
                 else:
                     is_correct = actual_move_pct < 0
-                pnl_points = 50.0 if is_correct else -30.0
+
+                if sr.tier != "skip":
+                    vix_for_risk = vix if vix > 0 else 15.0
+                    rp = RiskManager.compute(
+                        tier=sr.tier,
+                        direction=sr.direction,
+                        entry_close=closes_up_to[-1],
+                        vix=vix_for_risk,
+                    )
+                    lots = rp.lots
+                    actual_move_pts = (actual_move_pct / 100.0) * closes_up_to[-1]
+                    if sr.direction == "BUY":
+                        pnl_points = actual_move_pts * lots * NIFTY_LOT
+                    elif sr.direction == "SELL":
+                        pnl_points = -actual_move_pts * lots * NIFTY_LOT
 
             results.append(
                 QuantBacktestDayResult(
@@ -167,6 +191,7 @@ class QuantBacktestEngine:
                     actual_move_pct=actual_move_pct,
                     is_correct=is_correct,
                     pnl_points=pnl_points,
+                    lots=lots,
                 )
             )
 
@@ -176,6 +201,44 @@ class QuantBacktestEngine:
             if r.direction != "HOLD" and r.actual_move_pct is not None
         ]
         correct = [r for r in tradeable if r.is_correct]
+
+        # --- Risk metrics ---
+        tradeable_pnl = [r.pnl_points for r in tradeable]
+
+        # Sharpe ratio: mean/stdev * sqrt(252) using sample stdev (n-1)
+        sharpe_ratio: Optional[float] = None
+        if len(tradeable_pnl) >= 2:
+            mean_pnl = statistics.mean(tradeable_pnl)
+            std_pnl = statistics.stdev(tradeable_pnl)
+            if std_pnl > 0:
+                sharpe_ratio = (mean_pnl / std_pnl) * math.sqrt(252)
+
+        # Max drawdown: peak-to-trough % drop in cumulative P&L equity curve
+        equity = list(itertools.accumulate(r.pnl_points for r in results))
+        max_drawdown_pct: Optional[float] = None
+        if equity:
+            peak = equity[0]
+            running_drawdown = 0.0
+            found_positive_peak = peak > 0
+            for val in equity[1:]:
+                if val > peak:
+                    peak = val
+                if peak > 0:
+                    found_positive_peak = True
+                    drawdown = (val - peak) / peak * 100
+                    if drawdown < running_drawdown:
+                        running_drawdown = drawdown
+            if found_positive_peak:
+                max_drawdown_pct = running_drawdown
+
+        # Win/loss ratio: avg_win / abs(avg_loss)
+        wins_pnl = [r.pnl_points for r in tradeable if r.pnl_points > 0]
+        losses_pnl = [r.pnl_points for r in tradeable if r.pnl_points < 0]
+        win_loss_ratio: Optional[float] = None
+        if losses_pnl:
+            avg_win = statistics.mean(wins_pnl) if wins_pnl else 0.0
+            avg_loss = statistics.mean(losses_pnl)
+            win_loss_ratio = avg_win / abs(avg_loss)
 
         return QuantBacktestRunResult(
             instrument=instrument,
@@ -188,6 +251,9 @@ class QuantBacktestEngine:
             win_rate_pct=(len(correct) / len(tradeable) * 100) if tradeable else None,
             total_pnl_points=sum(r.pnl_points for r in results),
             elapsed_seconds=time.time() - t0,
+            sharpe_ratio=sharpe_ratio,
+            max_drawdown_pct=max_drawdown_pct,
+            win_loss_ratio=win_loss_ratio,
         )
 
 
