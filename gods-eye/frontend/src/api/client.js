@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
-async function request(url, options = {}, retries = 3) {
+async function request(url, options = {}, retries = 3, timeoutMs = 30000) {
   // Attach auth header from localStorage if available
   const apiKey = localStorage.getItem('godsEyeApiKey')
   if (apiKey) {
@@ -12,7 +12,7 @@ async function request(url, options = {}, retries = 3) {
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000)
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const response = await fetch(url, { ...options, signal: controller.signal })
@@ -117,11 +117,11 @@ export const apiClient = {
   // Health
   getHealth: () => request(`${API_BASE}/health`),
 
-  // Backtest
+  // Backtest (10min timeout, no retries — LLM calls are slow)
   runBacktest: (data) => request(`${API_BASE}/backtest/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-  }),
+  }, 0, 600000),
   getBacktestResult: (runId) => request(`${API_BASE}/backtest/results/${runId}`),
 }
