@@ -217,3 +217,65 @@ class BacktestRunResponse(BaseModel):
     """Complete response for POST /api/backtest/run and GET /api/backtest/results/{id}."""
     summary: BacktestRunSummary
     days: List[BacktestDayResponse]
+
+
+# ── Phase 10: Quantitative Signal Engine ─────────────────────────────────────
+
+
+class QuantFactorSchema(BaseModel):
+    """Per-factor breakdown from QuantSignalEngine."""
+
+    points: int
+    threshold_hit: bool
+    side: Optional[str]
+
+
+class QuantSignalResponse(BaseModel):
+    """Response for GET /api/signal/quant/{instrument}/{date}."""
+
+    instrument: str
+    date: str
+    total_score: int
+    direction: str
+    tier: str
+    buy_points: int
+    sell_points: int
+    factors: Dict[str, QuantFactorSchema]
+    instrument_hint: str
+
+
+class QuantBacktestDaySchema(BaseModel):
+    """Single day result in a quant backtest run (factors omitted to keep payload small)."""
+
+    date: str
+    direction: str
+    total_score: int
+    tier: str
+    buy_points: int
+    sell_points: int
+    actual_move_pct: Optional[float]
+    is_correct: Optional[bool]
+    pnl_points: float
+
+
+class QuantBacktestRequest(BaseModel):
+    """Request body for POST /api/backtest/quant-run."""
+
+    instrument: str = Field(default="NIFTY", description="NIFTY or BANKNIFTY")
+    from_date: str = Field(..., description="Start date YYYY-MM-DD (inclusive)")
+    to_date: str = Field(..., description="End date YYYY-MM-DD (inclusive)")
+
+
+class QuantBacktestRunResponse(BaseModel):
+    """Response for POST /api/backtest/quant-run."""
+
+    instrument: str
+    from_date: str
+    to_date: str
+    total_days: int
+    tradeable_days: int
+    correct_days: int
+    win_rate_pct: Optional[float]
+    total_pnl_points: float
+    elapsed_seconds: float
+    days: List[QuantBacktestDaySchema]

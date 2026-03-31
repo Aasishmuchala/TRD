@@ -23,9 +23,15 @@ from app.api.schemas import (
     BacktestRunSummary,
     BacktestDayResponse,
     SignalScoreSchema,
+    QuantSignalResponse,
+    QuantBacktestRunResponse,
+    QuantBacktestDaySchema,
+    QuantBacktestRequest,
 )
 from app.engine.backtest_engine import BacktestEngine
 from app.engine.signal_scorer import SignalScorer
+from app.engine.quant_signal_engine import QuantInputs, QuantSignalEngine
+from app.engine.quant_backtest import quant_backtest_engine, QuantBacktestRunResult
 import dataclasses
 from app.api.errors import safe_error_response, log_error_safely
 from app.engine.orchestrator import Orchestrator
@@ -1032,3 +1038,114 @@ def _serialize_backtest_result(result) -> BacktestRunResponse:
     )
 
     return BacktestRunResponse(summary=summary, days=day_responses)
+
+
+# ─── Quant Signal Engine endpoints ────────────────────────────────────────────
+
+
+@protected_router.get("/signal/quant/{instrument}/{date}", response_model=QuantSignalResponse)
+async def get_quant_signal(instrument: str, date: str):
+    """Return quantitative signal score for a specific instrument and date.
+
+    Fetches OHLCV and VIX data up to and including the given date,
+    computes RSI-14, Supertrend, momentum proxies, and scores via QuantSignalEngine.
+
+    Returns per-factor breakdown (QUANT-01/QUANT-03).
+
+    Raises 400 if instrument is invalid.
+    Raises 404 if fewer than 15 OHLCV rows available (insufficient for RSI-14 lookback).
+    """
+    if instrument not in ("NIFTY", "BANKNIFTY"):
+        raise HTTPException(status_code=400, detail="instrument must be NIFTY or BANKNIFTY")
+
+    rows = await historical_store.get_ohlcv(instrument, to_date=date)
+    if len(rows) < 15:
+        raise HTTPException(
+            status_code=404,
+            detail="Insufficient historical data for this date (need at least 15 rows for RSI-14)"
+        )
+
+    vix_rows = await historical_store.get_vix_closes(to_date=date)
+    closes = [r["close"] for r in rows]
+
+    rsi = TechnicalSignals.compute_rsi(closes)
+    supertrend = TechnicalSignals.compute_supertrend(rows)
+
+    vix_val = vix_rows[-1]["close"] if vix_rows else 18.0
+    prev_vix = [v["close"] for v in vix_rows[:-1]]
+    vix_5d_avg = float(sum(prev_vix[-5:]) / len(prev_vix[-5:])) if prev_vix else vix_val
+
+    momentum_5d = (closes[-1] / closes[-6] - 1.0) * 100 if len(closes) >= 6 else 0.0
+
+    inputs = QuantInputs(
+        fii_net_cr=momentum_5d * 1500,
+        dii_net_cr=-momentum_5d * 800,
+        pcr=0.6 + (rsi / 100) * 0.8,
+        rsi=rsi,
+        vix=vix_val,
+        vix_5d_avg=vix_5d_avg,
+        supertrend=supertrend,
+    )
+    sr = QuantSignalEngine.compute_quant_score(inputs, instrument)
+
+    return QuantSignalResponse(
+        instrument=instrument,
+        date=date,
+        total_score=sr.total_score,
+        direction=sr.direction,
+        tier=sr.tier,
+        buy_points=sr.buy_points,
+        sell_points=sr.sell_points,
+        factors=sr.factors,
+        instrument_hint=sr.instrument_hint,
+    )
+
+
+@protected_router.post("/backtest/quant-run", response_model=QuantBacktestRunResponse)
+async def run_quant_backtest(body: QuantBacktestRequest):
+    """Run a rules-only quant backtest over a historical date range.
+
+    No LLM calls. No agent calls. Reads OHLCV + VIX from SQLite only.
+    Performance target: 1 year (250 trading days) in under 10 seconds (QUANT-05).
+
+    Returns per-day direction, score, correctness, and aggregate metrics.
+    """
+    if body.instrument not in ("NIFTY", "BANKNIFTY"):
+        raise HTTPException(status_code=400, detail="instrument must be NIFTY or BANKNIFTY")
+
+    try:
+        result = await quant_backtest_engine.run_quant_backtest(
+            body.instrument, body.from_date, body.to_date
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Quant backtest failed: {exc}")
+
+    day_schemas = [
+        QuantBacktestDaySchema(
+            date=d.date,
+            direction=d.direction,
+            total_score=d.total_score,
+            tier=d.tier,
+            buy_points=d.buy_points,
+            sell_points=d.sell_points,
+            actual_move_pct=d.actual_move_pct,
+            is_correct=d.is_correct,
+            pnl_points=d.pnl_points,
+        )
+        for d in result.days
+    ]
+
+    return QuantBacktestRunResponse(
+        instrument=result.instrument,
+        from_date=result.from_date,
+        to_date=result.to_date,
+        total_days=result.total_days,
+        tradeable_days=result.tradeable_days,
+        correct_days=result.correct_days,
+        win_rate_pct=result.win_rate_pct,
+        total_pnl_points=result.total_pnl_points,
+        elapsed_seconds=result.elapsed_seconds,
+        days=day_schemas,
+    )
