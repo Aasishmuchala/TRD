@@ -31,7 +31,7 @@
 
 ### Risk Management
 
-- [ ] **RISK-01**: Max loss per day configurable (default 5000 pts)
+- [x] **RISK-01**: Max loss per day configurable (default 5000 pts)
 - [x] **RISK-02**: Position sizing: strong = 2 lots, moderate = 1 lot, weak = skip
 - [x] **RISK-03**: Stop loss from VIX (higher VIX = wider stop)
 - [x] **RISK-04**: Target exit at 1.5x risk
@@ -77,7 +77,7 @@
 | HYB-02 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
 | HYB-03 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
 | HYB-04 | Phase 12 — Hybrid Scoring and LLM Validator | Complete |
-| RISK-01 | Phase 13 — Risk Management Rules | Pending |
+| RISK-01 | Phase 13 — Risk Management Rules | Complete |
 | RISK-02 | Phase 13 — Risk Management Rules | Complete |
 | RISK-03 | Phase 13 — Risk Management Rules | Complete |
 | RISK-04 | Phase 13 — Risk Management Rules | Complete |
