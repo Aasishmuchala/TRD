@@ -31,6 +31,11 @@ async def require_auth(
     if config.MOCK_MODE:
         return "mock_token"
 
+    # Accept any non-empty Bearer token when LLM_API_KEY is set
+    # (local mode — frontend sends the key entered on Welcome page)
+    if credentials and credentials.credentials and config.LLM_API_KEY:
+        return credentials.credentials
+
     # If no credentials provided, return 401
     if not credentials:
         raise HTTPException(

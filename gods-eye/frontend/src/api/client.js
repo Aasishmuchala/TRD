@@ -1,6 +1,15 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 async function request(url, options = {}, retries = 3) {
+  // Attach auth header from localStorage if available
+  const apiKey = localStorage.getItem('godsEyeApiKey')
+  if (apiKey) {
+    options.headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${apiKey}`,
+    }
+  }
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
