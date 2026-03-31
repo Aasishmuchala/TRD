@@ -278,7 +278,12 @@ Plans:
   2. Submitting a hybrid backtest for a 1-month date range completes and returns results in under 5 minutes including all agent calls and validator passes
   3. The backtest results page shows both modes in adjacent panels — rules-only accuracy, P&L, and drawdown next to hybrid accuracy, P&L, and drawdown — with a delta row showing the difference
   4. Both modes report Sharpe ratio, max drawdown, win/loss ratio, and total P&L with position sizing applied — weak signals are counted as skipped, not as HOLD P&L
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Upgrade quant backtest: risk-adjusted P&L + Sharpe/drawdown/win-loss metrics
+- [ ] 14-02-PLAN.md — New hybrid backtest engine + POST /api/backtest/hybrid-run route
+- [ ] 14-03-PLAN.md — Backtest page mode tabs (RULES ONLY / HYBRID) + ModeCompare side-by-side panel
 
 ### Phase 15: Dashboard Updates
 **Goal**: The signal page, trade history, and performance comparison views are updated to reflect the hybrid engine — a trader can see the quant score, each agent's directional call, the validator verdict, and how rules-only vs hybrid have performed historically, all from one screen
