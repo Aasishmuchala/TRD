@@ -107,4 +107,12 @@ export const apiClient = {
 
   // Health
   getHealth: () => request(`${API_BASE}/health`),
+
+  // Backtest
+  runBacktest: (data) => request(`${API_BASE}/backtest/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+  getBacktestResult: (runId) => request(`${API_BASE}/backtest/results/${runId}`),
 }
