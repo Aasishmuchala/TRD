@@ -199,7 +199,7 @@ Plans:
 - [x] **Phase 11: Agent Signal Rewrite** - Rewrite all 6 agent prompts for directional signal output and run them in parallel in a single round (~5 seconds total) (completed 2026-03-31)
 - [x] **Phase 12: Hybrid Scoring and LLM Validator** - Combine quant score (60%) and agent consensus (40%) into a final signal, with a single LLM validator call that can reduce conviction or skip but cannot flip direction (completed 2026-03-31)
 - [x] **Phase 13: Risk Management Rules** - Apply configurable position sizing, daily max-loss guard, VIX-scaled stop loss, and 1.5x risk target exit to every signal (completed 2026-03-31)
-- [ ] **Phase 14: Fast Backtesting Both Modes** - Rules-only backtest (1 year in <10 seconds) and hybrid backtest (1 month in <5 minutes) with risk-adjusted metrics side by side
+- [x] **Phase 14: Fast Backtesting Both Modes** - Rules-only backtest (1 year in <10 seconds) and hybrid backtest (1 month in <5 minutes) with risk-adjusted metrics side by side (completed 2026-03-31)
 - [ ] **Phase 15: Dashboard Updates** - Signal page showing quant score + agent reasoning + validator output; trade history distinguishing quant-driven vs agent-confirmed signals; performance comparison of both modes
 
 ## Phase Details
@@ -283,7 +283,7 @@ Plans:
 Plans:
 - [x] 14-01-PLAN.md — Upgrade quant backtest: risk-adjusted P&L + Sharpe/drawdown/win-loss metrics
 - [x] 14-02-PLAN.md — New hybrid backtest engine + POST /api/backtest/hybrid-run route
-- [ ] 14-03-PLAN.md — Backtest page mode tabs (RULES ONLY / HYBRID) + ModeCompare side-by-side panel
+- [x] 14-03-PLAN.md — Backtest page mode tabs (RULES ONLY / HYBRID) + ModeCompare side-by-side panel
 
 ### Phase 15: Dashboard Updates
 **Goal**: The signal page, trade history, and performance comparison views are updated to reflect the hybrid engine — a trader can see the quant score, each agent's directional call, the validator verdict, and how rules-only vs hybrid have performed historically, all from one screen
@@ -315,5 +315,5 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 11. Agent Signal Rewrite | v3.0 | 3/3 | Complete    | 2026-03-31 |
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 13. Risk Management Rules | v3.0 | 2/2 | Complete    | 2026-03-31 |
-| 14. Fast Backtesting Both Modes | v3.0 | 2/3 | In Progress|  |
+| 14. Fast Backtesting Both Modes | v3.0 | 3/3 | Complete   | 2026-03-31 |
 | 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |
