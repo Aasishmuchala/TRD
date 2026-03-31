@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-31T04:45:50.711Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-03-31T04:50:07.705Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 ## Current Position
 
 Phase: 09 (backtest-dashboard) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 08 P01 | 2 | 2 tasks | 2 files |
 | Phase 08 P02 | 6 | 2 tasks | 5 files |
 | Phase 09 P01 | 337s | 3 tasks | 4 files |
+| Phase 09 P02 | 131s | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 08]: Inline VIX classify + PCR-to-OI-sentiment helpers in routes.py simulate handler — no separate module needed for 3-line helpers used in one place
 - [Phase 09]: Backtest nav item placed between History and Skills per plan spec (Dashboard > Agents > History > Backtest > Skills > Paper Trading > Settings)
 - [Phase 09]: Backtest results area left as placeholder — Plans 02/03 will inject BacktestSummary, StatsPanel, AgentAccuracyTable, EquityCurve, DayDetailModal components
+- [Phase 09]: Inline AGENT_LABELS/AGENT_COLORS in AgentAccuracyTable to avoid dependency on constants file
+- [Phase 09]: Sample variance (n-1) for Sharpe stddev — handles small backtests; N/A when < 2 active data points
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T04:45:50.706Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-03-31T04:50:07.701Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
