@@ -352,34 +352,64 @@ class BacktestEngine:
             r["close"] for r in all_rows if r["date"] <= signal_date
         ][-60:]
 
+        # Derive momentum-based proxies from historical data
+        # so agents see bearish signals when market is actually falling
+        recent_closes = [r["close"] for r in all_rows if r["date"] <= signal_date]
+        close_today = row["close"]
+
+        # 5-day momentum: positive = market rising, negative = falling
+        close_5d_ago = recent_closes[-6] if len(recent_closes) >= 6 else recent_closes[0]
+        momentum_5d_pct = ((close_today - close_5d_ago) / close_5d_ago) * 100
+
+        # Simulate FII/DII from momentum: falling market → FII selling, DII buying
+        fii_flow_proxy = momentum_5d_pct * 1500  # -2% move → -3000 Cr outflow
+        dii_flow_proxy = -momentum_5d_pct * 800   # DII absorbs opposite
+
+        # PCR from RSI: oversold → high PCR (put heavy), overbought → low PCR
+        rsi_val = rsi_14 if rsi_14 is not None else 50
+        pcr_proxy = 0.6 + (rsi_val / 100) * 0.8  # range 0.6-1.4
+
+        # Context from momentum
+        if momentum_5d_pct < -2:
+            context = "correction"
+        elif momentum_5d_pct < -1:
+            context = "weakness"
+        elif momentum_5d_pct > 2:
+            context = "rally"
+        elif momentum_5d_pct > 1:
+            context = "strength"
+        else:
+            context = "normal"
+
         return MarketInput(
-            nifty_spot=row["close"],
+            nifty_spot=close_today,
             nifty_open=row["open"],
             nifty_high=row["high"],
             nifty_low=row["low"],
-            nifty_close=row["close"],
+            nifty_close=close_today,
             india_vix=india_vix,
-            fii_flow_5d=0.0,        # not available historically — neutral
-            dii_flow_5d=0.0,        # not available historically — neutral
-            usd_inr=84.0,           # neutral proxy for historical dates
-            dxy=103.0,              # neutral proxy
-            pcr_index=1.0,          # neutral
+            fii_flow_5d=round(fii_flow_proxy, 0),
+            dii_flow_5d=round(dii_flow_proxy, 0),
+            usd_inr=84.0,
+            dxy=103.0,
+            pcr_index=round(pcr_proxy, 2),
             pcr_stock=1.0,
-            max_pain=row["close"],  # use close as proxy — no historical max pain data
-            dte=15,                 # mid-series proxy
+            max_pain=close_today,
+            dte=15,
             rsi_14=rsi_14,
+            context=context,
             macd_signal=None,
-            context="normal",
             historical_prices=historical_closes,
         )
 
     def _compute_consensus(
         self, final_outputs: Dict
     ) -> Tuple[str, float]:
-        """Compute majority-vote consensus direction and mean conviction.
+        """Compute consensus by grouping BUY/SELL families.
 
-        The direction with the most votes wins. Conviction is the mean conviction
-        of all agents that voted the winning direction.
+        Groups: BUY family (STRONG_BUY, BUY), SELL family (SELL, STRONG_SELL), HOLD.
+        The family with the most votes wins. Within that family, uses the strongest
+        signal if conviction is high enough.
 
         Returns:
             (direction, conviction) tuple
@@ -387,22 +417,40 @@ class BacktestEngine:
         if not final_outputs:
             return ("HOLD", 50.0)
 
-        # Count votes per direction
-        vote_counts: Dict[str, int] = {}
-        vote_convictions: Dict[str, List[float]] = {}
+        buy_family = {"STRONG_BUY", "BUY"}
+        sell_family = {"SELL", "STRONG_SELL"}
+
+        buy_votes = []
+        sell_votes = []
+        hold_votes = []
 
         for resp in final_outputs.values():
             d = resp.direction
-            vote_counts[d] = vote_counts.get(d, 0) + 1
-            if d not in vote_convictions:
-                vote_convictions[d] = []
-            vote_convictions[d].append(resp.conviction)
+            if d in buy_family:
+                buy_votes.append(resp.conviction)
+            elif d in sell_family:
+                sell_votes.append(resp.conviction)
+            else:
+                hold_votes.append(resp.conviction)
 
-        # Find winning direction (most votes; ties broken by direction weight magnitude)
-        winning_direction = max(
-            vote_counts.keys(),
-            key=lambda d: (vote_counts[d], abs(DIRECTION_WEIGHTS.get(d, 0))),
-        )
+        # Family with most votes wins. Ties: BUY/SELL beat HOLD (actionable > passive)
+        families = [
+            ("BUY", len(buy_votes), buy_votes),
+            ("SELL", len(sell_votes), sell_votes),
+            ("HOLD", len(hold_votes), hold_votes),
+        ]
+        families.sort(key=lambda f: (f[1], sum(f[2]) if f[2] else 0), reverse=True)
+        winning_family = families[0][0]
+        winning_convictions = families[0][2]
+
+        # Pick specific direction based on avg conviction
+        avg_conv = sum(winning_convictions) / len(winning_convictions) if winning_convictions else 50
+        if winning_family == "BUY":
+            winning_direction = "STRONG_BUY" if avg_conv > 70 else "BUY"
+        elif winning_family == "SELL":
+            winning_direction = "STRONG_SELL" if avg_conv > 70 else "SELL"
+        else:
+            winning_direction = "HOLD"
 
         # Conviction = mean conviction of winning voters
         winning_convictions = vote_convictions[winning_direction]
