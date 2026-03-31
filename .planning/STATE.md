@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-03-31T21:24:52.843Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-03-31T21:26:00.212Z"
 last_activity: 2026-03-31 -- Phase 15 execution started
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 14 P02 | 582 | 2 tasks | 3 files |
 | Phase 14 P03 | 3 | 2 tasks | 3 files |
 | Phase 15 P03 | 154 | 2 tasks | 3 files |
+| Phase 15 P02 | 220 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 14]: runQuantBacktest uses 60s timeout; runHybridBacktest uses 600s timeout — matches engine speed characteristics
 - [Phase 14]: ModeCompare placed inside each mode result block so cross-tab compare fills naturally; delta column appears once both modes have been run
 - [Phase 15]: Promise.allSettled for concurrent quant+hybrid backtests — one failure does not discard the other result
+- [Phase 15]: deriveSignalType checks hybrid_score != null before quant_score — hybrid takes precedence when both fields present
+- [Phase 15]: CSV signal_type column inserted between direction and conviction_pct to match logical ordering of direction, source, confidence
 
 ### Pending Todos
 
@@ -155,6 +158,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T21:24:52.838Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-03-31T21:26:00.208Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None

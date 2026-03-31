@@ -46,8 +46,8 @@
 ### Dashboard Updates
 
 - [ ] **DASH-07**: Signal page: real-time quant score + agent consensus + validator reasoning
-- [ ] **DASH-08**: Trade history: quant-driven vs agent-confirmed signals
-- [ ] **DASH-09**: Performance comparison: rules-only vs hybrid accuracy/P&L
+- [x] **DASH-08**: Trade history: quant-driven vs agent-confirmed signals
+- [x] **DASH-09**: Performance comparison: rules-only vs hybrid accuracy/P&L
 
 ## Out of Scope (v3.0)
 
@@ -86,8 +86,8 @@
 | FBT-03 | Phase 14 — Fast Backtesting Both Modes | Complete |
 | FBT-04 | Phase 14 — Fast Backtesting Both Modes | Complete |
 | DASH-07 | Phase 15 — Dashboard Updates | Pending |
-| DASH-08 | Phase 15 — Dashboard Updates | Pending |
-| DASH-09 | Phase 15 — Dashboard Updates | Pending |
+| DASH-08 | Phase 15 — Dashboard Updates | Complete |
+| DASH-09 | Phase 15 — Dashboard Updates | Complete |
 
 **Coverage:** 26 requirements, 26 mapped
 
