@@ -138,4 +138,13 @@ export const apiClient = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }, 0, 600000),
+
+  // Signal endpoints (v3.0 hybrid engine)
+  getHybridSignal: (instrument, date) => request(`${API_BASE}/signal/hybrid/${instrument}/${date}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  }, 0, 30000),
+
+  getQuantSignal: (instrument, date) => request(`${API_BASE}/signal/quant/${instrument}/${date}`, {}, 0, 10000),
 }
