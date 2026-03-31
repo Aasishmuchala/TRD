@@ -9,6 +9,7 @@ This module provides:
 import asyncio
 import json
 import logging
+import os
 import sqlite3
 import uuid
 from dataclasses import dataclass, field, asdict
@@ -189,9 +190,13 @@ class BacktestEngine:
                 instrument, from_date, to_date,
             )
 
-        # Save and override mock mode flag (restored in finally)
+        # Save and override config for backtest (restored in finally)
         original_mock = config.MOCK_MODE
+        original_model = config.MODEL
         config.MOCK_MODE = mock_mode
+        # Use a fast model for backtesting (Kimi K2.5 is too slow — ~2min per agent call)
+        if not mock_mode:
+            config.MODEL = os.getenv("GODS_EYE_BACKTEST_MODEL", "google/gemini-2.0-flash-001")
 
         days: List[BacktestDayResult] = []
 
@@ -281,6 +286,7 @@ class BacktestEngine:
 
         finally:
             config.MOCK_MODE = original_mock
+            config.MODEL = original_model
 
         # Aggregate statistics
         eligible = [d for d in days if d.direction_correct is not None]
