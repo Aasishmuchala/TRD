@@ -19,7 +19,7 @@
 - [ ] **AGENT-02**: FII agent: flow data + USD/INR + DXY → predict FII behavior
 - [ ] **AGENT-03**: DII agent: SIP flows vs FII outflow absorption
 - [ ] **AGENT-04**: Retail F&O agent: PCR extremes, max pain, OI for contrarian signals
-- [ ] **AGENT-05**: Algo agent: pure quant (RSI, VWAP, Supertrend) — no LLM
+- [x] **AGENT-05**: Algo agent: pure quant (RSI, VWAP, Supertrend) — no LLM
 - [ ] **AGENT-06**: All agents run in parallel, single round, ~5 seconds total
 
 ### Hybrid Scoring
@@ -71,7 +71,7 @@
 | AGENT-02 | Phase 11 — Agent Signal Rewrite | Pending |
 | AGENT-03 | Phase 11 — Agent Signal Rewrite | Pending |
 | AGENT-04 | Phase 11 — Agent Signal Rewrite | Pending |
-| AGENT-05 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-05 | Phase 11 — Agent Signal Rewrite | Complete |
 | AGENT-06 | Phase 11 — Agent Signal Rewrite | Pending |
 | HYB-01 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
 | HYB-02 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
