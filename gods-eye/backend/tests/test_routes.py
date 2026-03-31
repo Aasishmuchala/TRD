@@ -187,3 +187,68 @@ async def test_simulate_with_invalid_scenario(test_client):
     response = await test_client.post("/api/simulate", json=payload)
 
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Phase 08-02: signal_score in simulate response
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_simulate_response_contains_signal_score(test_client):
+    """POST /api/simulate response includes a top-level signal_score object."""
+    market_data = {
+        "nifty_spot": 24000.0,
+        "india_vix": 16.5,
+        "fii_flow_5d": 100.0,
+        "dii_flow_5d": -50.0,
+        "usd_inr": 83.2,
+        "dxy": 104.5,
+        "pcr_index": 1.1,
+        "max_pain": 24000.0,
+        "dte": 5,
+        "context": "normal",
+    }
+    payload = {"market_input": market_data}
+
+    response = await test_client.post("/api/simulate", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    # signal_score must be present in the response
+    assert "signal_score" in data, "response missing 'signal_score' key"
+
+    ss = data["signal_score"]
+    # Required sub-keys
+    assert "score" in ss
+    assert "tier" in ss
+    assert "direction" in ss
+    assert "contributing_factors" in ss
+    assert "suggested_instrument" in ss
+
+
+@pytest.mark.asyncio
+async def test_simulate_signal_score_tier_is_valid(test_client):
+    """POST /api/simulate signal_score.tier is one of 'strong', 'moderate', 'skip'."""
+    market_data = {
+        "nifty_spot": 24000.0,
+        "india_vix": 16.5,
+        "fii_flow_5d": 100.0,
+        "dii_flow_5d": -50.0,
+        "usd_inr": 83.2,
+        "dxy": 104.5,
+        "pcr_index": 1.1,
+        "max_pain": 24000.0,
+        "dte": 5,
+        "context": "normal",
+    }
+    payload = {"market_input": market_data}
+
+    response = await test_client.post("/api/simulate", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "signal_score" in data
+    tier = data["signal_score"]["tier"]
+    assert tier in {"strong", "moderate", "skip"}, f"Unexpected tier: {tier!r}"

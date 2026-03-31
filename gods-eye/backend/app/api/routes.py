@@ -22,8 +22,10 @@ from app.api.schemas import (
     BacktestRunResponse,
     BacktestRunSummary,
     BacktestDayResponse,
+    SignalScoreSchema,
 )
 from app.engine.backtest_engine import BacktestEngine
+from app.engine.signal_scorer import SignalScorer
 import dataclasses
 from app.api.errors import safe_error_response, log_error_safely
 from app.engine.orchestrator import Orchestrator
@@ -178,6 +180,35 @@ async def simulate(req_data: SimulateRequest, request: Request):
         else:
             # Non-live simulation (scenario or manual input) — always fallback data
             response["data_source"] = "fallback"
+
+        # Compute signal_score using SignalScorer (sentiment + technicals)
+        vix = market_input.india_vix
+        if vix < 14:
+            vix_regime = "low"
+        elif vix < 20:
+            vix_regime = "normal"
+        elif vix < 30:
+            vix_regime = "elevated"
+        else:
+            vix_regime = "high"
+
+        pcr = market_input.pcr_index
+        oi_sentiment = "bullish" if pcr > 1.2 else ("bearish" if pcr < 0.8 else None)
+
+        live_signals = {
+            "rsi": market_input.rsi_14,       # may be None — scorer handles it gracefully
+            "supertrend": None,               # not available in live MarketInput
+            "vix_regime": vix_regime,
+            "oi_sentiment": oi_sentiment,
+        }
+
+        score_result = SignalScorer.score(
+            direction=aggregator_result.final_direction,
+            conviction=aggregator_result.final_conviction,
+            signals=live_signals,
+            instrument="NIFTY",   # live simulate is always Nifty context
+        )
+        response["signal_score"] = vars(score_result)
 
         return response
 
@@ -968,6 +999,8 @@ def _serialize_backtest_result(result) -> BacktestRunResponse:
     day_responses = []
     for day in result.days:
         cumulative += day.pnl_points
+        # Propagate signal_score (present in runs from Phase 8 onward; None for older runs)
+        ss_schema = SignalScoreSchema(**day.signal_score) if day.signal_score else None
         day_responses.append(BacktestDayResponse(
             date=day.date,
             next_date=day.next_date,
@@ -981,6 +1014,7 @@ def _serialize_backtest_result(result) -> BacktestRunResponse:
             cumulative_pnl_points=round(cumulative, 2),
             per_agent_directions=day.per_agent_directions,
             signals=day.signals,
+            signal_score=ss_schema,
         ))
 
     summary = BacktestRunSummary(

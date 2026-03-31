@@ -158,6 +158,17 @@ class SimulationHistory(BaseModel):
 
 # ── Phase 7: Backtest Engine ──────────────────────────────────────────────────
 
+# ── Phase 8: Signal Scoring ───────────────────────────────────────────────────
+
+class SignalScoreSchema(BaseModel):
+    """Pydantic representation of a SignalScorer.ScoreResult."""
+    score: float
+    tier: str               # "strong" | "moderate" | "skip"
+    direction: str
+    contributing_factors: List[str]
+    suggested_instrument: str
+
+
 class BacktestDayResponse(BaseModel):
     """Single day result in a backtest run."""
     date: str
@@ -172,6 +183,7 @@ class BacktestDayResponse(BaseModel):
     cumulative_pnl_points: float        # running total up to this day
     per_agent_directions: Dict[str, str]
     signals: Dict[str, Any]
+    signal_score: Optional[SignalScoreSchema] = None  # None for pre-Phase-8 persisted runs
     # round_history omitted from list response — heavy; available via detail endpoint
 
 
