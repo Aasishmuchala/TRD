@@ -452,9 +452,8 @@ class BacktestEngine:
         else:
             winning_direction = "HOLD"
 
-        # Conviction = mean conviction of winning voters
-        winning_convictions = vote_convictions[winning_direction]
-        conviction = sum(winning_convictions) / len(winning_convictions)
+        # Conviction = already computed from winning family
+        conviction = avg_conv
 
         return (winning_direction, conviction)
 
