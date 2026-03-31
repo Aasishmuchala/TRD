@@ -9,27 +9,27 @@ class MarketInput(BaseModel):
     """Market data input for simulation."""
 
     nifty_spot: float = Field(..., description="Nifty 50 current price")
-    nifty_open: float = Field(default=None, description="Nifty 50 open price")
-    nifty_high: float = Field(default=None, description="Nifty 50 high price")
-    nifty_low: float = Field(default=None, description="Nifty 50 low price")
-    nifty_close: float = Field(default=None, description="Nifty 50 close price")
+    nifty_open: Optional[float] = Field(default=None, description="Nifty 50 open price")
+    nifty_high: Optional[float] = Field(default=None, description="Nifty 50 high price")
+    nifty_low: Optional[float] = Field(default=None, description="Nifty 50 low price")
+    nifty_close: Optional[float] = Field(default=None, description="Nifty 50 close price")
 
-    india_vix: float = Field(..., description="India VIX level")
+    india_vix: float = Field(default=15.0, description="India VIX level")
 
-    fii_flow_5d: float = Field(..., description="5-day FII flow in USD millions")
-    dii_flow_5d: float = Field(..., description="5-day DII flow in USD millions")
+    fii_flow_5d: float = Field(default=0.0, description="5-day FII flow in USD millions")
+    dii_flow_5d: float = Field(default=0.0, description="5-day DII flow in USD millions")
 
-    usd_inr: float = Field(..., description="USD/INR exchange rate")
-    dxy: float = Field(..., description="US Dollar Index")
+    usd_inr: float = Field(default=83.5, description="USD/INR exchange rate")
+    dxy: float = Field(default=104.0, description="US Dollar Index")
 
-    pcr_index: float = Field(..., description="Put-Call Ratio for index options")
+    pcr_index: float = Field(default=1.0, description="Put-Call Ratio for index options")
     pcr_stock: float = Field(default=1.0, description="Put-Call Ratio for stocks")
 
-    max_pain: float = Field(..., description="Max pain level for current expiry")
-    dte: int = Field(..., description="Days to expiration for current contract")
+    max_pain: Optional[float] = Field(default=None, description="Max pain level for current expiry")
+    dte: int = Field(default=5, description="Days to expiration for current contract")
 
-    rsi_14: float = Field(default=None, description="RSI(14) value")
-    macd_signal: float = Field(default=None, description="MACD signal line")
+    rsi_14: Optional[float] = Field(default=None, description="RSI(14) value")
+    macd_signal: Optional[float] = Field(default=None, description="MACD signal line")
 
     context: str = Field(
         default="normal",
