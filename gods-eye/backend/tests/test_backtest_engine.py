@@ -211,3 +211,113 @@ def test_compute_consensus_hold_when_all_hold():
     }
     direction, conviction = engine._compute_consensus(final_outputs)
     assert direction == "HOLD"
+
+
+# ---------------------------------------------------------------------------
+# Task (Phase 08-02): signal_score field on BacktestDayResult
+# ---------------------------------------------------------------------------
+
+def test_backtest_day_result_has_signal_score_field():
+    """BacktestDayResult.signal_score defaults to None (optional field)."""
+    result = BacktestDayResult(
+        date="2025-01-10",
+        next_date="2025-01-11",
+        nifty_close=22000.0,
+        nifty_next_close=22220.0,
+        actual_move_pct=1.0,
+        predicted_direction="BUY",
+        predicted_conviction=72.5,
+        direction_correct=True,
+        pnl_points=660.0,
+        per_agent_directions={"FII": "BUY"},
+        round_history=[],
+        signals={"rsi": 55.0},
+    )
+    # signal_score field exists — None when not explicitly provided
+    assert hasattr(result, "signal_score")
+    assert result.signal_score is None
+
+
+def test_backtest_day_result_signal_score_dict_assignment():
+    """BacktestDayResult accepts a signal_score dict with the expected keys."""
+    score_dict = {
+        "score": 73.5,
+        "tier": "strong",
+        "direction": "BUY",
+        "contributing_factors": ["Agent conviction: 72.5 (BUY)"],
+        "suggested_instrument": "NIFTY_CE",
+    }
+    result = BacktestDayResult(
+        date="2025-01-10",
+        next_date="2025-01-11",
+        nifty_close=22000.0,
+        nifty_next_close=22220.0,
+        actual_move_pct=1.0,
+        predicted_direction="BUY",
+        predicted_conviction=72.5,
+        direction_correct=True,
+        pnl_points=660.0,
+        per_agent_directions={"FII": "BUY"},
+        round_history=[],
+        signals={"rsi": 55.0},
+        signal_score=score_dict,
+    )
+    assert result.signal_score["tier"] == "strong"
+    assert result.signal_score["score"] == 73.5
+    assert result.signal_score["suggested_instrument"] == "NIFTY_CE"
+
+
+def test_signal_score_tier_valid_values():
+    """signal_score tier must be one of the three valid tier strings."""
+    valid_tiers = {"strong", "moderate", "skip"}
+    from app.engine.signal_scorer import SignalScorer
+    # BUY + high conviction + aligned technicals -> strong
+    sc = SignalScorer.score(
+        direction="BUY",
+        conviction=90.0,
+        signals={"rsi": 25.0, "supertrend": "bullish", "vix_regime": "low", "oi_sentiment": "bullish"},
+        instrument="NIFTY",
+    )
+    assert sc.tier in valid_tiers
+    assert isinstance(sc.score, float)
+    assert 0.0 <= sc.score <= 100.0
+
+
+def test_backtest_day_result_signal_score_populated_after_engine_integration():
+    """
+    After integrating SignalScorer into BacktestEngine.run_backtest(), the
+    signal_score dict on each day result should have tier in the valid set.
+
+    This is a structural test — it verifies the dataclass accepts the dict
+    and the dict has the required shape from the scorer.
+    """
+    from app.engine.signal_scorer import SignalScorer
+    signals = {"rsi": 45.0, "supertrend": "bullish", "vix_regime": "normal", "oi_sentiment": None}
+    score_result = SignalScorer.score(
+        direction="BUY",
+        conviction=65.0,
+        signals=signals,
+        instrument="NIFTY",
+    )
+    score_dict = vars(score_result)
+    assert score_dict["tier"] in {"strong", "moderate", "skip"}
+    assert isinstance(score_dict["score"], float)
+    assert 0.0 <= score_dict["score"] <= 100.0
+
+    # Confirm it can be assigned as signal_score on BacktestDayResult
+    result = BacktestDayResult(
+        date="2025-01-10",
+        next_date="2025-01-11",
+        nifty_close=22000.0,
+        nifty_next_close=22220.0,
+        actual_move_pct=1.0,
+        predicted_direction="BUY",
+        predicted_conviction=65.0,
+        direction_correct=True,
+        pnl_points=396.0,
+        per_agent_directions={"FII": "BUY"},
+        round_history=[],
+        signals=signals,
+        signal_score=score_dict,
+    )
+    assert result.signal_score["tier"] in {"strong", "moderate", "skip"}

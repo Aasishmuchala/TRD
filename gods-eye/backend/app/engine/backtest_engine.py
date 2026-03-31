@@ -20,6 +20,7 @@ from app.config import config
 from app.data.historical_store import historical_store
 from app.data.technical_signals import TechnicalSignals
 from app.engine.orchestrator import Orchestrator
+from app.engine.signal_scorer import SignalScorer
 
 logger = logging.getLogger("gods_eye.backtest")
 
@@ -63,6 +64,7 @@ class BacktestDayResult:
     per_agent_directions: Dict[str, str]  # {"FII": "BUY", "DII": "HOLD", ...}
     round_history: List[Dict]             # raw from orchestrator (rounds 1-3)
     signals: Dict                         # {"rsi": float, "supertrend": str, ...}
+    signal_score: Optional[Dict] = field(default=None)  # ScoreResult as plain dict
 
 
 @dataclass
@@ -247,6 +249,14 @@ class BacktestEngine:
                 # Technical signals (sliced to signal date — no leakage)
                 signals = TechnicalSignals.compute_signals_for_date(all_ohlcv, signal_date)
 
+                # Combined signal score via SignalScorer (sentiment + technicals)
+                score_result = SignalScorer.score(
+                    direction=predicted_direction,
+                    conviction=predicted_conviction,
+                    signals=signals,
+                    instrument=instrument,
+                )
+
                 day_result = BacktestDayResult(
                     date=signal_date,
                     next_date=next_date,
@@ -260,6 +270,7 @@ class BacktestEngine:
                     per_agent_directions=per_agent_directions,
                     round_history=round_history,
                     signals=signals,
+                    signal_score=vars(score_result),
                 )
                 days.append(day_result)
                 logger.debug(
