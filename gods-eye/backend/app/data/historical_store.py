@@ -267,7 +267,10 @@ class HistoricalStore:
             DhanFetchError: if Dhan API fails and cache is empty
         """
         if not self._is_cache_fresh("VIX"):
-            await self._fetch_and_store("VIX")
+            try:
+                await self._fetch_and_store("VIX")
+            except DhanFetchError:
+                logger.warning("VIX historical not available on Dhan — returning cached/empty data")
 
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -290,19 +293,29 @@ class HistoricalStore:
         return rows
 
     async def backfill_all(self) -> Dict[str, int]:
-        """Trigger a full backfill for all three instruments sequentially.
+        """Trigger a full backfill for all instruments sequentially.
 
-        Rate-limits to 1 request/second between instruments to avoid Dhan throttling.
+        Rate-limits to 1 request/second between instruments.
+        VIX is non-fatal — Dhan doesn't support historical VIX charts.
         Returns dict of {instrument: row_count_stored}.
 
         Raises:
-            DhanFetchError: if any instrument fails — does not swallow errors.
+            DhanFetchError: if NIFTY or BANKNIFTY fails.
         """
         results = {}
-        for instrument in ["NIFTY", "BANKNIFTY", "VIX"]:
+        for instrument in ["NIFTY", "BANKNIFTY"]:
             await self._fetch_and_store(instrument)
             results[instrument] = self._count_rows(instrument)
-            await asyncio.sleep(1.0)   # conservative rate-limit between requests
+            await asyncio.sleep(1.0)
+
+        # VIX historical not available on Dhan — skip gracefully
+        try:
+            await self._fetch_and_store("VIX")
+            results["VIX"] = self._count_rows("VIX")
+        except DhanFetchError:
+            logger.warning("VIX historical data not available on Dhan — skipping (backtest will use default VIX regime)")
+            results["VIX"] = self._count_rows("VIX")
+
         return results
 
     def store_oi_snapshot(
