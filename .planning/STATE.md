@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-03-31T21:13:40.379Z"
-last_activity: 2026-03-31
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-03-31T21:24:52.843Z"
+last_activity: 2026-03-31 -- Phase 15 execution started
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 15
+  completed_plans: 13
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Combine quantitative rules (fast, consistent) with qualitative AI analysis (contextual, explainable) for Nifty/Bank Nifty options.
-**Current focus:** Phase 14 — fast-backtesting-both-modes
+**Current focus:** Phase 15 — dashboard-updates
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Executing Phase 14
-Last activity: 2026-03-31
+Phase: 15 (dashboard-updates) — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 15
+Last activity: 2026-03-31 -- Phase 15 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 14 P01 | 218 | 2 tasks | 4 files |
 | Phase 14 P02 | 582 | 2 tasks | 3 files |
 | Phase 14 P03 | 3 | 2 tasks | 3 files |
+| Phase 15 P03 | 154 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 14]: try/except around both orchestrator.run_simulation and LLMValidator.call_validator: backtest completes even under partial LLM failures
 - [Phase 14]: runQuantBacktest uses 60s timeout; runHybridBacktest uses 600s timeout — matches engine speed characteristics
 - [Phase 14]: ModeCompare placed inside each mode result block so cross-tab compare fills naturally; delta column appears once both modes have been run
+- [Phase 15]: Promise.allSettled for concurrent quant+hybrid backtests — one failure does not discard the other result
 
 ### Pending Todos
 
@@ -153,6 +155,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T21:12:59.787Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-03-31T21:24:52.838Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None

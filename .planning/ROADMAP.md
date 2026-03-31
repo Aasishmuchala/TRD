@@ -298,7 +298,7 @@ Plans:
 Plans:
 - [ ] 15-01-PLAN.md — Signal page (/signal): quant breakdown + agent consensus + validator verdict + risk params (DASH-07)
 - [ ] 15-02-PLAN.md — SimulationHistory signal_type tag column: QUANT/HYBRID/AGENT badge + CSV export (DASH-08)
-- [ ] 15-03-PLAN.md — Performance page (/performance): rules-only vs hybrid comparison with shared date range (DASH-09)
+- [x] 15-03-PLAN.md — Performance page (/performance): rules-only vs hybrid comparison with shared date range (DASH-09)
 
 ## Progress
 
@@ -321,4 +321,4 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 13. Risk Management Rules | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 14. Fast Backtesting Both Modes | v3.0 | 3/3 | Complete    | 2026-03-31 |
-| 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |
+| 15. Dashboard Updates | v3.0 | 1/3 | In Progress|  |
