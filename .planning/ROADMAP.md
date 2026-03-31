@@ -182,7 +182,12 @@ Plans:
   4. An equity curve chart plots cumulative simulated P&L over time for the backtest period using Recharts
   5. A stats panel shows max drawdown, Sharpe ratio, and average win/loss size computed from the backtest results
   6. Clicking any individual backtest day opens a detail view showing the full agent reasoning, the predicted direction and conviction, and the actual market outcome
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Extend API client + add /backtest route + Sidebar nav + Backtest.jsx page with form, run action, and progress state
+- [ ] 09-02-PLAN.md — BacktestSummary, StatsPanel, and AgentAccuracyTable components wired into Backtest.jsx
+- [ ] 09-03-PLAN.md — EquityCurve Recharts chart and DayDetailModal drill-down wired into Backtest.jsx
 
 ## Progress
 
@@ -199,4 +204,4 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 7. Backtest Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
 | 8. Signal Scoring | v2.0 | 2/2 | Complete   | 2026-03-31 |
-| 9. Backtest Dashboard | v2.0 | 0/TBD | Not started | - |
+| 9. Backtest Dashboard | v2.0 | 0/3 | Not started | - |
