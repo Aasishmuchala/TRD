@@ -27,7 +27,10 @@ from app.api.schemas import (
     QuantBacktestRunResponse,
     QuantBacktestDaySchema,
     QuantBacktestRequest,
+    HybridSignalResponse,
+    AgentBreakdownEntrySchema,
 )
+from app.engine.hybrid_scorer import HybridScorer, LLMValidator, ValidatorVerdict
 from app.engine.backtest_engine import BacktestEngine
 from app.engine.signal_scorer import SignalScorer
 from app.engine.quant_signal_engine import QuantInputs, QuantSignalEngine
@@ -1148,4 +1151,130 @@ async def run_quant_backtest(body: QuantBacktestRequest):
         total_pnl_points=result.total_pnl_points,
         elapsed_seconds=result.elapsed_seconds,
         days=day_schemas,
+    )
+
+
+# ─── Hybrid Signal Engine endpoint ────────────────────────────────────────────
+
+
+@protected_router.post("/signal/hybrid/{instrument}/{date}", response_model=HybridSignalResponse)
+async def get_hybrid_signal(instrument: str, date: str):
+    """Return the fully fused hybrid signal for a specific instrument and date.
+
+    Combines quantitative rules (60%) with multi-agent LLM consensus (40%),
+    then validates with a single LLM validator call that can confirm, adjust,
+    or skip the signal (but CANNOT change direction).
+
+    Path params:
+        instrument: "NIFTY" or "BANKNIFTY" (case-sensitive)
+        date: "YYYY-MM-DD"
+
+    Returns HybridSignalResponse with direction, hybrid_score, conviction,
+    tradeable, tier, instrument_hint, quant_breakdown, agent_breakdown,
+    agent_consensus_score, validator_verdict, validator_reasoning.
+
+    Raises 400 if instrument is invalid.
+    Raises 404 if no historical data exists for the requested date.
+    Validator failures return confirm-fallback (never 500 from LLM timeout).
+    """
+    if instrument not in ("NIFTY", "BANKNIFTY"):
+        raise HTTPException(status_code=400, detail="instrument must be NIFTY or BANKNIFTY")
+
+    # ── Step 1: Load OHLCV + VIX data ──────────────────────────────────────
+    rows = await historical_store.get_ohlcv(instrument, to_date=date)
+    if len(rows) < 15:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No historical data for {date} (need at least 15 OHLCV rows for RSI-14)"
+        )
+
+    # Confirm the target date exists in the dataset
+    available_dates = {r["date"] for r in rows}
+    if date not in available_dates:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No historical data for {date}"
+        )
+
+    vix_rows = await historical_store.get_vix_closes(to_date=date)
+    closes = [r["close"] for r in rows]
+
+    # ── Step 2: Build QuantInputs (same pattern as GET /api/signal/quant) ──
+    rsi = TechnicalSignals.compute_rsi(closes)
+    supertrend = TechnicalSignals.compute_supertrend(rows)
+
+    vix_val = vix_rows[-1]["close"] if vix_rows else 18.0
+    prev_vix = [v["close"] for v in vix_rows[:-1]]
+    vix_5d_avg = float(sum(prev_vix[-5:]) / len(prev_vix[-5:])) if prev_vix else vix_val
+
+    momentum_5d = (closes[-1] / closes[-6] - 1.0) * 100 if len(closes) >= 6 else 0.0
+
+    inputs = QuantInputs(
+        fii_net_cr=momentum_5d * 1500,
+        dii_net_cr=-momentum_5d * 800,
+        pcr=0.6 + (rsi / 100) * 0.8,
+        rsi=rsi,
+        vix=vix_val,
+        vix_5d_avg=vix_5d_avg,
+        supertrend=supertrend,
+    )
+
+    # ── Step 3: Compute quant score ─────────────────────────────────────────
+    quant_result = QuantSignalEngine.compute_quant_score(inputs, instrument)
+
+    # ── Step 4: Build MarketInput and run agent simulation ──────────────────
+    nifty_close = closes[-1]
+    market_input = MarketInput(
+        nifty_spot=nifty_close,
+        india_vix=vix_val,
+        fii_flow_5d=inputs.fii_net_cr / 1500 if inputs.fii_net_cr else 0.0,
+        dii_flow_5d=inputs.dii_net_cr / 800 * -1 if inputs.dii_net_cr else 0.0,
+        pcr_index=inputs.pcr,
+        rsi_14=rsi,
+    )
+
+    orchestrator = Orchestrator()
+    sim_result = await orchestrator.run_simulation(market_input)
+    final_outputs = sim_result["final_outputs"]
+
+    # ── Step 5: Build preliminary HybridResult with placeholder verdict ─────
+    placeholder_verdict = ValidatorVerdict(verdict="confirm", reasoning="", adjustment_amount=0.0)
+    pre_hybrid = HybridScorer.fuse(quant_result, final_outputs, placeholder_verdict)
+
+    # ── Step 6: Call LLM validator (single call, confirm-fallback on failure) ─
+    try:
+        verdict = await LLMValidator.call_validator(pre_hybrid, instrument, date)
+    except Exception:
+        verdict = ValidatorVerdict(
+            verdict="confirm",
+            reasoning="Validator unavailable — defaulting to confirm.",
+            adjustment_amount=0.0,
+        )
+
+    # ── Step 7: Final fuse with real verdict ────────────────────────────────
+    hybrid = HybridScorer.fuse(quant_result, final_outputs, verdict)
+
+    # ── Step 8: Serialize and return ────────────────────────────────────────
+    agent_breakdown_serialized = {
+        k: AgentBreakdownEntrySchema(
+            direction=v.direction,
+            conviction=v.conviction,
+        )
+        for k, v in hybrid.agent_breakdown.items()
+    }
+
+    return HybridSignalResponse(
+        instrument=instrument,
+        date=date,
+        direction=hybrid.direction,
+        hybrid_score=hybrid.hybrid_score,
+        conviction=hybrid.conviction,
+        tradeable=hybrid.tradeable,
+        tier=hybrid.tier,
+        instrument_hint=hybrid.instrument_hint,
+        quant_breakdown=hybrid.quant_breakdown,
+        agent_breakdown=agent_breakdown_serialized,
+        agent_consensus_score=hybrid.agent_consensus_score,
+        validator_verdict=hybrid.validator_verdict,
+        validator_reasoning=hybrid.validator_reasoning,
     )
