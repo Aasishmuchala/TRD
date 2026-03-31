@@ -33,14 +33,17 @@ Deliver accurate, explainable multi-agent market direction calls that a derivati
 - ✓ WebSocket VITE_WS_BASE env var for production — v1.0
 - ✓ .env.example files documenting all vars — v1.0
 
-### Active (v2.0 — Backtesting & Signal Engine)
+### Active (v3.0 — Hybrid Trading Engine)
 
-- [ ] Historical OHLCV data backfill from Dhan (Nifty, Bank Nifty)
-- [ ] Backtest engine: replay past scenarios through agents vs actual market moves
-- [ ] Technical signal engine (RSI, VWAP, Supertrend, OI change, VIX regime)
-- [ ] Combined signal scoring (agent sentiment + technicals → actionable score)
-- [ ] Backtest results dashboard with accuracy, P&L, drawdown metrics
-- [ ] Dhan-only data source (error on failure, no silent fallbacks)
+- [ ] Rules-based quantitative signal engine (FII/DII flows, PCR, RSI, VIX, Supertrend)
+- [ ] Rewrite 6 agent prompts for signal-oriented analysis (not just qualitative commentary)
+- [ ] Parallel fast agent calls (all 6 simultaneously, 1 round)
+- [ ] Hybrid scoring: quantitative score (60%) + agent consensus (40%) → final signal
+- [ ] LLM validator layer: 1 call to confirm/adjust/skip with explanation
+- [ ] Fast backtesting on rules engine only (2 years in <10 seconds)
+- [ ] Hybrid backtesting (rules + agents, 1 month in <5 minutes)
+- [ ] Risk rules: position sizing, max loss per day, stop loss levels
+- [ ] Updated dashboard showing both quant score + agent reasoning per signal
 
 ### Out of Scope
 

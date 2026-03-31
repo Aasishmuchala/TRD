@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Backtesting & Signal Engine
-status: verifying
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-03-31T04:54:16.291Z"
+milestone: v3.0
+milestone_name: Hybrid Trading Engine
+status: planning
+stopped_at: Roadmap created — Phase 10 not started
+last_updated: "2026-03-31T00:00:00.000Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 0
 ---
 
@@ -20,48 +20,38 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-03-31)
 
-**Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
-**Current focus:** Phase 09 — backtest-dashboard
+**Core value:** Combine quantitative rules (fast, consistent) with qualitative AI analysis (contextual, explainable) for Nifty/Bank Nifty options.
+**Current focus:** Phase 10 — Quantitative Signal Engine (not started)
 
 ## Current Position
 
-Phase: 09
+Phase: 10
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to plan Phase 10
 Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
-**Velocity (v1.0 reference):**
+**Velocity (v2.0 reference):**
 
-- Total plans completed: 14
-- Average duration: ~2 min/plan
-- Total execution time: ~0.5 hours
+- Total plans completed: 11
+- Average duration: ~100 sec/plan
+- Total execution time: ~18 minutes
 
-**By Phase (v2.0):**
+**By Phase (v3.0):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 5 | TBD | - | - |
-| 6 | TBD | - | - |
-| 7 | TBD | - | - |
-| 8 | TBD | - | - |
-| 9 | TBD | - | - |
+| 10 | TBD | - | - |
+| 11 | TBD | - | - |
+| 12 | TBD | - | - |
+| 13 | TBD | - | - |
+| 14 | TBD | - | - |
+| 15 | TBD | - | - |
 
 *Updated after each plan completion*
-| Phase 05 P01 | 3 | 2 tasks | 2 files |
-| Phase 05 P02 | 2 | 3 tasks | 2 files |
-| Phase 06 P01 | 2 | 1 tasks | 3 files |
-| Phase 06 P02 | 5 | 2 tasks | 2 files |
-| Phase 07 P01 | 3 | 2 tasks | 2 files |
-| Phase 07 P02 | 40 | 2 tasks | 2 files |
-| Phase 08 P01 | 2 | 2 tasks | 2 files |
-| Phase 08 P02 | 6 | 2 tasks | 5 files |
-| Phase 09 P01 | 337s | 3 tasks | 4 files |
-| Phase 09 P02 | 131s | 2 tasks | 4 files |
-| Phase 09 P03 | 192s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -100,6 +90,11 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 09]: Sample variance (n-1) for Sharpe stddev — handles small backtests; N/A when < 2 active data points
 - [Phase 09]: onDayClick wired at LineChart level — chart onClick provides activePayload reliably across all chart areas
 - [Phase 09]: DayDetailModal placed before closing Layout tag — z-50 fixed overlay sits above sidebar and scrollable content
+- [v3.0 Roadmap]: Quant engine (Phase 10) is standalone — no agent system, no LLM client; designed so FBT rules-only path never touches LLM stack
+- [v3.0 Roadmap]: Algo agent (AGENT-05) is pure quant computation inside agent framework — no LLM call, but participates in consensus as a data point
+- [v3.0 Roadmap]: LLM validator (Phase 12) is a single post-scoring call; validator cannot flip direction, only reduce conviction or skip
+- [v3.0 Roadmap]: Risk rules (Phase 13) are deterministic — VIX-scaled stops and 1.5x target are computed values, not LLM suggestions
+- [v3.0 Roadmap]: FBT rules-only backtest target is <10 seconds for 1 year; hybrid target is <5 minutes for 1 month — these are observable success criteria, not aspirational
 
 ### Pending Todos
 
@@ -107,11 +102,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [v2.0 Phase 7]: Backtest replays full 3-round LLM simulation per day — date ranges over ~30 days may be slow or costly; may need batching or a lighter replay mode
-- [v2.0 Phase 5]: Dhan historical API rate limits unknown — backfill strategy should be conservative (daily granularity, one instrument at a time)
+- [v3.0 Phase 11]: Parallel agent execution requires asyncio.gather or concurrent.futures — existing agent runner may be sequential; plan must audit and rewrite dispatch
+- [v3.0 Phase 14]: Hybrid backtest (1 month, ~22 trading days) makes up to 22 validator LLM calls — token cost and latency need benchmarking before declaring <5 min target achievable
+- [v3.0 Phase 13]: Max-loss-per-day guard needs a session concept — clarify whether "day" = calendar day, trading session, or user-defined window before implementing
 
 ## Session Continuity
 
-Last session: 2026-03-31T04:51:10.407Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-03-31 (v3.0 roadmap creation)
+Stopped at: Roadmap written — ready to start Phase 10 planning
 Resume file: None

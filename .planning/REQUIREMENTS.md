@@ -1,6 +1,101 @@
-# Requirements: God's Eye v2.0 — Backtesting & Signal Engine
+# Requirements: God's Eye v3.0 — Hybrid Trading Engine
 
 **Defined:** 2026-03-31
+**Core Value:** Combine quantitative rules (fast, consistent) with qualitative AI analysis (contextual, explainable) for Nifty/Bank Nifty options.
+
+## v3.0 Requirements
+
+### Quantitative Signal Engine
+
+- [ ] **QUANT-01**: Rules engine computes score (0-100) from FII/DII flows, PCR, RSI-14, VIX, Supertrend
+- [ ] **QUANT-02**: Each signal has defined thresholds and point values
+- [ ] **QUANT-03**: Score > 50 = tradeable, direction = higher-scoring side
+- [ ] **QUANT-04**: Zero LLM calls, pure computation on Dhan data
+- [ ] **QUANT-05**: Backtest 1 year in under 10 seconds
+
+### Agent Signal Rewrite
+
+- [ ] **AGENT-01**: All 6 agent prompts rewritten for directional trading signals
+- [ ] **AGENT-02**: FII agent: flow data + USD/INR + DXY → predict FII behavior
+- [ ] **AGENT-03**: DII agent: SIP flows vs FII outflow absorption
+- [ ] **AGENT-04**: Retail F&O agent: PCR extremes, max pain, OI for contrarian signals
+- [ ] **AGENT-05**: Algo agent: pure quant (RSI, VWAP, Supertrend) — no LLM
+- [ ] **AGENT-06**: All agents run in parallel, single round, ~5 seconds total
+
+### Hybrid Scoring
+
+- [ ] **HYB-01**: Final signal = quant score (60%) + agent consensus (40%)
+- [ ] **HYB-02**: LLM validator (1 call) confirms/adjusts/skips with explanation
+- [ ] **HYB-03**: Validator can reduce conviction or skip, cannot flip direction
+- [ ] **HYB-04**: Output: direction, score, quant breakdown, agent breakdown, reasoning, instrument
+
+### Risk Management
+
+- [ ] **RISK-01**: Max loss per day configurable (default 5000 pts)
+- [ ] **RISK-02**: Position sizing: strong = 2 lots, moderate = 1 lot, weak = skip
+- [ ] **RISK-03**: Stop loss from VIX (higher VIX = wider stop)
+- [ ] **RISK-04**: Target exit at 1.5x risk
+
+### Fast Backtesting
+
+- [ ] **FBT-01**: Rules-only backtest: 1 year in <10 seconds
+- [ ] **FBT-02**: Hybrid backtest (rules + agents): 1 month in <5 minutes
+- [ ] **FBT-03**: Dashboard shows both modes side by side
+- [ ] **FBT-04**: Risk-adjusted metrics: Sharpe, drawdown, win/loss with position sizing
+
+### Dashboard Updates
+
+- [ ] **DASH-07**: Signal page: real-time quant score + agent consensus + validator reasoning
+- [ ] **DASH-08**: Trade history: quant-driven vs agent-confirmed signals
+- [ ] **DASH-09**: Performance comparison: rules-only vs hybrid accuracy/P&L
+
+## Out of Scope (v3.0)
+
+| Feature | Reason |
+|---------|--------|
+| Live order execution | v4.0 — prove hybrid edge first |
+| Intraday signals | Daily EOD signals first |
+| Stock options | Nifty/Bank Nifty only |
+| Global news | FII/DII flows already capture it |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| QUANT-01 | Phase 10 — Quantitative Signal Engine | Pending |
+| QUANT-02 | Phase 10 — Quantitative Signal Engine | Pending |
+| QUANT-03 | Phase 10 — Quantitative Signal Engine | Pending |
+| QUANT-04 | Phase 10 — Quantitative Signal Engine | Pending |
+| QUANT-05 | Phase 10 — Quantitative Signal Engine | Pending |
+| AGENT-01 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-02 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-03 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-04 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-05 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-06 | Phase 11 — Agent Signal Rewrite | Pending |
+| HYB-01 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
+| HYB-02 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
+| HYB-03 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
+| HYB-04 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |
+| RISK-01 | Phase 13 — Risk Management Rules | Pending |
+| RISK-02 | Phase 13 — Risk Management Rules | Pending |
+| RISK-03 | Phase 13 — Risk Management Rules | Pending |
+| RISK-04 | Phase 13 — Risk Management Rules | Pending |
+| FBT-01 | Phase 14 — Fast Backtesting Both Modes | Pending |
+| FBT-02 | Phase 14 — Fast Backtesting Both Modes | Pending |
+| FBT-03 | Phase 14 — Fast Backtesting Both Modes | Pending |
+| FBT-04 | Phase 14 — Fast Backtesting Both Modes | Pending |
+| DASH-07 | Phase 15 — Dashboard Updates | Pending |
+| DASH-08 | Phase 15 — Dashboard Updates | Pending |
+| DASH-09 | Phase 15 — Dashboard Updates | Pending |
+
+**Coverage:** 26 requirements, 26 mapped
+
+---
+*Requirements defined: 2026-03-31*
+*Last updated: 2026-03-31 after v3.0 roadmap creation*
+
+# Previous milestones below
 **Core Value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
 
 ## v2.0 Requirements

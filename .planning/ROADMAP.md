@@ -3,7 +3,8 @@
 ## Milestones
 
 - ✅ **v1.0 Production** - Phases 1-4 (shipped 2026-03-30)
-- 🚧 **v2.0 Backtesting & Signal Engine** - Phases 5-9 (in progress)
+- ✅ **v2.0 Backtesting & Signal Engine** - Phases 5-9 (shipped 2026-03-31)
+- 🚧 **v3.0 Hybrid Trading Engine** - Phases 10-15 (in progress)
 
 ## Phases
 
@@ -97,17 +98,14 @@ Plans:
 
 ---
 
-### v2.0 Backtesting & Signal Engine (In Progress)
-
-**Milestone Goal:** Prove God's Eye has a tradeable edge by backtesting against historical Nifty/Bank Nifty data and building a technical signal engine that combines agent sentiment with indicators.
+<details>
+<summary>✅ v2.0 Backtesting & Signal Engine (Phases 5-9) — SHIPPED 2026-03-31</summary>
 
 - [x] **Phase 5: Historical Data Backfill** - Fetch and cache 1+ year of OHLCV data for Nifty, Bank Nifty, and India VIX from Dhan API into SQLite (completed 2026-03-30)
 - [x] **Phase 6: Technical Signal Engine** - Compute RSI, VWAP deviation, Supertrend, OI change, and VIX regime classification from stored historical data (completed 2026-03-30)
 - [x] **Phase 7: Backtest Engine** - Replay a date range through agents using historical conditions as input and compare predictions against actual next-day moves (completed 2026-03-30)
 - [x] **Phase 8: Signal Scoring** - Produce a combined 0-100 score merging agent sentiment conviction with technical signal alignment into actionable trade signals (completed 2026-03-31)
 - [x] **Phase 9: Backtest Dashboard** - Interactive UI for running backtests, viewing accuracy/P&L/drawdown metrics, and drilling into individual backtest days (completed 2026-03-31)
-
-## Phase Details
 
 ### Phase 5: Historical Data Backfill
 **Goal**: The system has at least one year of daily OHLCV data for Nifty 50, Bank Nifty, and India VIX stored in SQLite and refreshed automatically — every downstream phase (indicators, backtesting) has clean data to work from
@@ -189,10 +187,96 @@ Plans:
 - [x] 09-02-PLAN.md — BacktestSummary, StatsPanel, and AgentAccuracyTable components wired into Backtest.jsx
 - [x] 09-03-PLAN.md — EquityCurve Recharts chart and DayDetailModal drill-down wired into Backtest.jsx
 
+</details>
+
+---
+
+### v3.0 Hybrid Trading Engine (In Progress)
+
+**Milestone Goal:** Replace the 3-round qualitative debate with a quantitative rules engine (60%) combined with single-round parallel agent calls (40%), validated by one LLM pass — delivering faster, more consistent signals with full risk rules and dual-mode backtesting.
+
+- [ ] **Phase 10: Quantitative Signal Engine** - Pure rules-based score (0-100) from FII/DII flows, PCR, RSI-14, VIX, and Supertrend — zero LLM calls, complete in under 10 seconds for 1-year backtest
+- [ ] **Phase 11: Agent Signal Rewrite** - Rewrite all 6 agent prompts for directional signal output and run them in parallel in a single round (~5 seconds total)
+- [ ] **Phase 12: Hybrid Scoring and LLM Validator** - Combine quant score (60%) and agent consensus (40%) into a final signal, with a single LLM validator call that can reduce conviction or skip but cannot flip direction
+- [ ] **Phase 13: Risk Management Rules** - Apply configurable position sizing, daily max-loss guard, VIX-scaled stop loss, and 1.5x risk target exit to every signal
+- [ ] **Phase 14: Fast Backtesting Both Modes** - Rules-only backtest (1 year in <10 seconds) and hybrid backtest (1 month in <5 minutes) with risk-adjusted metrics side by side
+- [ ] **Phase 15: Dashboard Updates** - Signal page showing quant score + agent reasoning + validator output; trade history distinguishing quant-driven vs agent-confirmed signals; performance comparison of both modes
+
+## Phase Details
+
+### Phase 10: Quantitative Signal Engine
+**Goal**: The system can compute a deterministic 0-100 score from live Dhan data inputs (FII/DII flows, PCR, RSI-14, VIX, Supertrend) with no LLM calls — the quant engine works standalone and is fast enough to backtest 1 year in under 10 seconds
+**Depends on**: Phase 9 (historical data and technical signals already in SQLite)
+**Requirements**: QUANT-01, QUANT-02, QUANT-03, QUANT-04, QUANT-05
+**Success Criteria** (what must be TRUE):
+  1. Calling the quant signal endpoint for today's date returns a score between 0 and 100 with a per-factor breakdown showing FII/DII flows, PCR, RSI-14, VIX regime, and Supertrend contributions
+  2. Each factor has a documented threshold (e.g. RSI < 30 = bullish +15 pts) and the API response shows which threshold each factor hit
+  3. A score above 50 returns direction BUY or SELL; a score at or below 50 returns HOLD — the direction is always deterministic from the score alone
+  4. Running the quant engine against one year of stored historical data (approximately 250 trading days) completes in under 10 seconds with zero LLM calls
+  5. The quant engine can be invoked standalone (no agent system, no LLM client) and returns a valid ScoreResult for any date with sufficient historical data
+**Plans**: TBD
+
+### Phase 11: Agent Signal Rewrite
+**Goal**: All 6 agents produce directional trading signals (BUY/SELL/HOLD with conviction) in a single parallel round — the FII, DII, Retail F&O, and RBI agents use rewritten signal-oriented prompts; the Algo agent runs as pure quant with no LLM call; all finish together in approximately 5 seconds
+**Depends on**: Phase 10
+**Requirements**: AGENT-01, AGENT-02, AGENT-03, AGENT-04, AGENT-05, AGENT-06
+**Success Criteria** (what must be TRUE):
+  1. Each of the 6 agents returns a structured response containing direction (BUY/SELL/HOLD), conviction (0-100), and a one-paragraph signal rationale — no open-ended commentary without a directional conclusion
+  2. The FII agent prompt explicitly processes USD/INR and DXY data alongside flow figures and outputs a prediction of FII buying or selling pressure
+  3. The DII agent prompt explicitly weighs SIP inflow absorption against FII outflow and outputs whether DII support is likely to hold or be overwhelmed
+  4. The Retail F&O agent prompt identifies PCR extremes, max pain proximity, and OI positioning as contrarian signals against the retail consensus direction
+  5. The Algo agent produces its signal from RSI, VWAP, and Supertrend computation only — no LLM call is made for this agent
+  6. All 6 agents are dispatched concurrently and the last response arrives within 8 seconds of the first dispatch (wall-clock time, not cumulative)
+**Plans**: TBD
+
+### Phase 12: Hybrid Scoring and LLM Validator
+**Goal**: Every signal request produces a final output that combines the quant score (60%) with agent consensus (40%) into a single hybrid score, then passes through one LLM validator call that may reduce conviction or skip the signal but cannot reverse the direction
+**Depends on**: Phase 10, Phase 11
+**Requirements**: HYB-01, HYB-02, HYB-03, HYB-04
+**Success Criteria** (what must be TRUE):
+  1. The final signal score is computed as quant_score * 0.60 + agent_consensus_score * 0.40 and the response shows both components with their weights
+  2. A single LLM validator call runs after scoring and returns one of three verdicts: confirm (no change), adjust (reduces conviction by a specified amount), or skip (marks signal as not tradeable)
+  3. The validator response includes a plain-language explanation of why it confirmed, adjusted, or skipped — visible to the user alongside the signal
+  4. The validator cannot flip direction: a BUY signal remains BUY after validation even if conviction is reduced; only conviction and tradeable status change
+  5. The complete signal output includes direction, hybrid score, quant breakdown, agent breakdown, validator verdict, validator reasoning, and recommended instrument (Nifty/Bank Nifty CE/PE)
+**Plans**: TBD
+
+### Phase 13: Risk Management Rules
+**Goal**: Every tradeable signal (score > 50, not skipped by validator) is accompanied by position size, stop loss level, and target exit — computed deterministically from signal conviction and current VIX — and the daily max-loss guard prevents any new signals once the day limit is hit
+**Depends on**: Phase 12
+**Requirements**: RISK-01, RISK-02, RISK-03, RISK-04
+**Success Criteria** (what must be TRUE):
+  1. A configurable max-loss-per-day setting (default 5000 pts) is applied per session; once cumulative paper losses reach the limit, the system marks subsequent signals as blocked and explains why
+  2. Each tradeable signal specifies position size: strong conviction (score >70) = 2 lots, moderate conviction (50-70) = 1 lot, weak or skipped (<50) = do not trade
+  3. Stop loss level is derived from VIX: a higher VIX produces a wider stop — the response shows the VIX value used and the resulting stop distance in points
+  4. Each tradeable signal includes a target exit at exactly 1.5x the risk (stop distance), shown as an absolute Nifty/Bank Nifty level
+**Plans**: TBD
+
+### Phase 14: Fast Backtesting Both Modes
+**Goal**: A user can run a rules-only backtest covering 1 year of history in under 10 seconds and a hybrid backtest covering 1 month in under 5 minutes, with both modes reporting risk-adjusted metrics side by side so the hybrid premium over rules-only is visible
+**Depends on**: Phase 10, Phase 11, Phase 12, Phase 13
+**Requirements**: FBT-01, FBT-02, FBT-03, FBT-04
+**Success Criteria** (what must be TRUE):
+  1. Submitting a rules-only backtest for a 1-year date range completes and returns results in under 10 seconds (wall-clock time from API call to response)
+  2. Submitting a hybrid backtest for a 1-month date range completes and returns results in under 5 minutes including all agent calls and validator passes
+  3. The backtest results page shows both modes in adjacent panels — rules-only accuracy, P&L, and drawdown next to hybrid accuracy, P&L, and drawdown — with a delta row showing the difference
+  4. Both modes report Sharpe ratio, max drawdown, win/loss ratio, and total P&L with position sizing applied — weak signals are counted as skipped, not as HOLD P&L
+**Plans**: TBD
+
+### Phase 15: Dashboard Updates
+**Goal**: The signal page, trade history, and performance comparison views are updated to reflect the hybrid engine — a trader can see the quant score, each agent's directional call, the validator verdict, and how rules-only vs hybrid have performed historically, all from one screen
+**Depends on**: Phase 12, Phase 13, Phase 14
+**Requirements**: DASH-07, DASH-08, DASH-09
+**Success Criteria** (what must be TRUE):
+  1. The signal page shows a live signal card with four distinct sections: quant score breakdown (factors and points), agent consensus (each agent's direction and conviction), validator verdict (confirm/adjust/skip with explanation), and the final recommended trade with risk parameters
+  2. The trade history page has a column or tag distinguishing quant-driven signals (validator confirmed with no agent override) from agent-confirmed signals (agent consensus moved the hybrid score above threshold)
+  3. The performance comparison page shows rules-only vs hybrid backtests side by side with accuracy, P&L, Sharpe ratio, and drawdown — selectable date range applies to both modes simultaneously
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
+Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -200,8 +284,14 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9
 | 2. Backend Wiring and Data Integrity | v1.0 | 3/3 | Complete | 2026-03-30 |
 | 3. Frontend Polish and UX Completeness | v1.0 | 4/4 | Complete | 2026-03-30 |
 | 4. Production Deployment and Verification | v1.0 | 3/3 | Complete | 2026-03-30 |
-| 5. Historical Data Backfill | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 6. Technical Signal Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 7. Backtest Engine | v2.0 | 2/2 | Complete   | 2026-03-30 |
-| 8. Signal Scoring | v2.0 | 2/2 | Complete   | 2026-03-31 |
-| 9. Backtest Dashboard | v2.0 | 3/3 | Complete   | 2026-03-31 |
+| 5. Historical Data Backfill | v2.0 | 2/2 | Complete | 2026-03-30 |
+| 6. Technical Signal Engine | v2.0 | 2/2 | Complete | 2026-03-30 |
+| 7. Backtest Engine | v2.0 | 2/2 | Complete | 2026-03-30 |
+| 8. Signal Scoring | v2.0 | 2/2 | Complete | 2026-03-31 |
+| 9. Backtest Dashboard | v2.0 | 3/3 | Complete | 2026-03-31 |
+| 10. Quantitative Signal Engine | v3.0 | 0/TBD | Not started | - |
+| 11. Agent Signal Rewrite | v3.0 | 0/TBD | Not started | - |
+| 12. Hybrid Scoring and LLM Validator | v3.0 | 0/TBD | Not started | - |
+| 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |
+| 14. Fast Backtesting Both Modes | v3.0 | 0/TBD | Not started | - |
+| 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |
