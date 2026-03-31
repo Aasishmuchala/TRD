@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-03-31T21:02:16.034Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-03-31T21:07:34.697Z"
 last_activity: 2026-03-31 -- Phase 14 execution started
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 13 P01 | 2 | 2 tasks | 2 files |
 | Phase 13 P02 | 324 | 2 tasks | 4 files |
 | Phase 14 P01 | 218 | 2 tasks | 4 files |
+| Phase 14 P02 | 582 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 14]: RiskManager.compute called per-day inside backtest loop only when tier != skip — O(1) pure math, zero I/O, no performance impact
 - [Phase 14]: Risk metrics (sharpe, drawdown, win_loss) computed in engine not API layer — engine owns full P&L accounting post Phase 14-01
 - [Phase 14]: NIFTY_LOT=25 hardcoded constant in quant_backtest.py loop — standard Nifty F&O lot size
+- [Phase 14]: Orchestrator singleton in HybridBacktestEngine.__init__: reuse connection pools across all backtest days
+- [Phase 14]: try/except around both orchestrator.run_simulation and LLMValidator.call_validator: backtest completes even under partial LLM failures
 
 ### Pending Todos
 
@@ -147,6 +150,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T21:02:16.026Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-03-31T21:07:34.692Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None

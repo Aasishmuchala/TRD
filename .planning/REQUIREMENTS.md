@@ -39,7 +39,7 @@
 ### Fast Backtesting
 
 - [x] **FBT-01**: Rules-only backtest: 1 year in <10 seconds
-- [ ] **FBT-02**: Hybrid backtest (rules + agents): 1 month in <5 minutes
+- [x] **FBT-02**: Hybrid backtest (rules + agents): 1 month in <5 minutes
 - [ ] **FBT-03**: Dashboard shows both modes side by side
 - [x] **FBT-04**: Risk-adjusted metrics: Sharpe, drawdown, win/loss with position sizing
 
@@ -82,7 +82,7 @@
 | RISK-03 | Phase 13 — Risk Management Rules | Complete |
 | RISK-04 | Phase 13 — Risk Management Rules | Complete |
 | FBT-01 | Phase 14 — Fast Backtesting Both Modes | Complete |
-| FBT-02 | Phase 14 — Fast Backtesting Both Modes | Pending |
+| FBT-02 | Phase 14 — Fast Backtesting Both Modes | Complete |
 | FBT-03 | Phase 14 — Fast Backtesting Both Modes | Pending |
 | FBT-04 | Phase 14 — Fast Backtesting Both Modes | Complete |
 | DASH-07 | Phase 15 — Dashboard Updates | Pending |
