@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
+import BacktestSummary from '../components/BacktestSummary'
+import StatsPanel from '../components/StatsPanel'
+import AgentAccuracyTable from '../components/AgentAccuracyTable'
 
 export default function Backtest() {
   // Form state
@@ -131,15 +134,17 @@ export default function Backtest() {
           </div>
         )}
 
-        {/* Results area — child panels injected by Plans 02 and 03 */}
+        {/* Results area */}
         {result && (
           <div className="space-y-5">
-            {/* Plans 02 and 03 will add BacktestSummary, StatsPanel, AgentAccuracyTable, EquityCurve, DayDetailModal here */}
-            <div className="terminal-card p-4">
-              <p className="text-[10px] font-mono text-onSurfaceDim">
-                Run complete — {result.summary.day_count} days processed
-              </p>
+            <BacktestSummary summary={result.summary} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <StatsPanel days={result.days} />
+              <AgentAccuracyTable perAgentAccuracy={result.summary.per_agent_accuracy} />
             </div>
+
+            {/* EquityCurve and DayDetailModal added by Plan 03 */}
           </div>
         )}
       </div>
