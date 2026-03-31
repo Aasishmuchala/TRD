@@ -206,13 +206,10 @@ class ProfileGenerator:
         # Max pain analysis
         max_pain = md.max_pain
         spot = md.nifty_spot
-        if max_pain is not None:
-            distance = spot - max_pain
-            distance_pct = (distance / max_pain) * 100
-            pain_context = "above max pain" if distance > 0 else "below max pain"
-            lines.append(f"  Max Pain: {max_pain:.0f} | Spot: {spot:.0f} | {pain_context} by {abs(distance):.0f} pts ({abs(distance_pct):.1f}%)")
-        else:
-            lines.append(f"  Max Pain: N/A | Spot: {spot:.0f}")
+        distance = spot - max_pain
+        distance_pct = (distance / max_pain) * 100 if max_pain else 0
+        pain_context = "above max pain" if distance > 0 else "below max pain"
+        lines.append(f"  Max Pain: {max_pain:.0f} | Spot: {spot:.0f} | {pain_context} by {abs(distance):.0f} pts ({abs(distance_pct):.1f}%)")
 
         # DTE context
         dte = md.dte

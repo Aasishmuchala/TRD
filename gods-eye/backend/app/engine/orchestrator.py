@@ -1,4 +1,4 @@
-"""Orchestrator for single-round parallel agent simulation with MiroFish accuracy layer."""
+"""Orchestrator for 3-round agent simulation with MiroFish accuracy layer."""
 
 import asyncio
 import time
@@ -19,13 +19,9 @@ from app.config import config
 
 
 class Orchestrator:
-    """Orchestrates single-round parallel simulation with interaction effects.
+    """Orchestrates 3-round agent simulation with interaction effects.
 
-    All 6 agents are dispatched once:
-    - QUANT agent (AlgoQuantAgent): awaited inline — instant, no network I/O
-    - 5 LLM agents: dispatched simultaneously via asyncio.gather
-
-    Integrates MiroFish patterns:
+    Now integrates MiroFish patterns:
     - ProfileGenerator builds agent-specific signal + knowledge context
     - AgentMemory tracks per-agent predictions for accuracy
     - FeedbackEngine auto-tunes weights from accuracy data
@@ -55,9 +51,8 @@ class Orchestrator:
         self.start_time = None
 
     async def run_simulation(self, market_data: MarketInput) -> Dict:
-        """Run single-round parallel simulation — all 6 agents dispatched once."""
+        """Run 3-round simulation with agent interaction and accuracy layer."""
         self.start_time = time.time()
-        self.round_history = []
 
         # Build enriched context for each agent (signals + knowledge + memory)
         agent_contexts = {}
@@ -66,10 +61,32 @@ class Orchestrator:
                 agent_key, market_data, round_num=1
             )
 
+        # Get accuracy-tuned weights (falls back to defaults if insufficient data)
         tuned_weights = self.feedback_engine.get_tuned_weights()
 
-        # Single round — all agents in parallel
-        final_outputs = await self._run_single_round(market_data, agent_contexts)
+        # Round 1: All agents analyze independently (with enriched context)
+        round1_outputs = await self._run_round(
+            market_data, round_num=1, agent_contexts=agent_contexts
+        )
+
+        # Round 2: Agents receive Round 1 outputs, adjust
+        round2_outputs = await self._run_round(
+            market_data, round_num=2, other_agents=round1_outputs,
+            agent_contexts=agent_contexts,
+        )
+
+        # Determine if Round 3 needed (if any direction changed)
+        direction_changed = self._check_direction_changes(round1_outputs, round2_outputs)
+
+        if direction_changed:
+            # Round 3: Confirmation round
+            round3_outputs = await self._run_round(
+                market_data, round_num=3, other_agents=round2_outputs,
+                agent_contexts=agent_contexts,
+            )
+            final_outputs = round3_outputs
+        else:
+            final_outputs = round2_outputs
 
         execution_time_ms = (time.time() - self.start_time) * 1000
 
@@ -84,7 +101,7 @@ class Orchestrator:
                 reasoning=response.reasoning,
                 key_triggers=response.key_triggers,
                 context=market_data.context,
-                round_num=1,
+                round_num=3 if direction_changed else 2,
             )
 
         # Fire-and-forget: background review for auto-learning
@@ -92,17 +109,17 @@ class Orchestrator:
             self.review_engine.review_simulation(
                 simulation_id=simulation_id,
                 market_data=market_data,
-                round1_outputs=final_outputs,
-                round2_outputs=final_outputs,
-                round3_outputs=None,
-                aggregator_result={},
+                round1_outputs=round1_outputs,
+                round2_outputs=round2_outputs,
+                round3_outputs=final_outputs if direction_changed else None,
+                aggregator_result={},  # Will be populated by aggregator
             )
         )
 
         return {
-            "round1": final_outputs,
-            "round2": None,
-            "round3": None,
+            "round1": round1_outputs,
+            "round2": round2_outputs,
+            "round3": final_outputs if direction_changed else None,
             "final_outputs": final_outputs,
             "round_history": self.round_history,
             "execution_time_ms": execution_time_ms,
@@ -111,21 +128,23 @@ class Orchestrator:
             "learning_enabled": config.LEARNING_ENABLED,
         }
 
-    async def _run_single_round(
+    async def _run_round(
         self,
         market_data: MarketInput,
-        agent_contexts: Dict[str, str],
+        round_num: int,
+        other_agents: Dict[str, AgentResponse] = None,
+        agent_contexts: Dict[str, str] = None,
     ) -> Dict[str, AgentResponse]:
-        """Dispatch QUANT agent first (instant), then all LLM agents in parallel."""
+        """Run a single round of agent analysis with enriched context."""
         outputs = {}
-        round_data = {"round": 1, "agents": {}}
+        round_data = {"round": round_num, "agents": {}}
 
-        # QUANT agent — instant, no network I/O
+        # Run quant agents first (instant)
         for agent_name, agent in self.agents.items():
             if agent.agent_type == "QUANT":
                 response = await agent.analyze(
-                    market_data, 1, None,
-                    enriched_context=agent_contexts.get(agent_name, ""),
+                    market_data, round_num, other_agents,
+                    enriched_context=agent_contexts.get(agent_name, "") if agent_contexts else None,
                 )
                 outputs[agent_name] = response
                 round_data["agents"][agent_name] = {
@@ -134,18 +153,17 @@ class Orchestrator:
                     "type": "QUANT",
                 }
 
-        # LLM agents — all dispatched simultaneously
-        llm_agent_names = [
-            name for name, agent in self.agents.items()
-            if agent.agent_type == "LLM"
-        ]
-        llm_tasks = [
-            self.agents[name].analyze(
-                market_data, 1, None,
-                enriched_context=agent_contexts.get(name, ""),
-            )
-            for name in llm_agent_names
-        ]
+        # Run LLM agents in parallel
+        llm_tasks = []
+        llm_agent_names = []
+        for agent_name, agent in self.agents.items():
+            if agent.agent_type == "LLM":
+                llm_agent_names.append(agent_name)
+                task = agent.analyze(
+                    market_data, round_num, other_agents,
+                    enriched_context=agent_contexts.get(agent_name, "") if agent_contexts else None,
+                )
+                llm_tasks.append(task)
 
         if llm_tasks:
             llm_responses = await asyncio.gather(*llm_tasks, return_exceptions=True)
@@ -157,19 +175,19 @@ class Orchestrator:
                         "conviction": response.conviction,
                         "type": "LLM",
                     }
+                else:
+                    # Handle error in LLM response
+                    pass
 
         self.round_history.append(round_data)
         return outputs
 
-    @staticmethod
     def _check_direction_changes(
+        self,
         round1: Dict[str, AgentResponse],
         round2: Dict[str, AgentResponse],
     ) -> bool:
-        """Check if any agent changed direction between rounds.
-
-        Kept for backward compatibility — no longer called in single-round design.
-        """
+        """Check if any agent changed direction between rounds."""
         for agent_name in round1:
             if agent_name in round2:
                 if round1[agent_name].direction != round2[agent_name].direction:

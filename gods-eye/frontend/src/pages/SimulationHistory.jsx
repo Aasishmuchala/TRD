@@ -2,19 +2,6 @@ import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 
-const deriveSignalType = (item) => {
-  const agg = item.aggregator_result || {}
-  if (agg.hybrid_score != null) return 'HYBRID'
-  if (agg.quant_score != null) return 'QUANT'
-  return 'AGENT'
-}
-
-const signalTypeStyle = (type) => {
-  if (type === 'QUANT') return { color: 'var(--color-primary, #6366f1)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)' }
-  if (type === 'HYBRID') return { color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)' }
-  return { color: 'var(--color-onSurfaceDim)', background: 'var(--color-surface-2)', border: '1px solid rgba(255,255,255,0.08)' }
-}
-
 const dirColor = (dir) => {
   if (!dir) return '#FFC107'
   if (dir.includes('BUY')) return '#00E676'
@@ -81,7 +68,7 @@ export default function SimulationHistory() {
     const dateStr = new Date().toISOString().slice(0, 10)
     const filename = `gods-eye-history-${dateStr}.csv`
 
-    const headers = ['simulation_id', 'timestamp', 'scenario', 'nifty_spot', 'direction', 'signal_type', 'conviction_pct', 'execution_time_ms']
+    const headers = ['simulation_id', 'timestamp', 'scenario', 'nifty_spot', 'direction', 'conviction_pct', 'execution_time_ms']
 
     const rows = history.map((item) => {
       const agg = item.aggregator_result || {}
@@ -94,7 +81,6 @@ export default function SimulationHistory() {
         item.market_input?.context || 'custom',
         item.market_input?.nifty_spot?.toString() || '',
         dir,
-        deriveSignalType(item),
         typeof conv === 'number' ? conv.toFixed(1) : '',
         item.execution_time_ms?.toFixed(0) || '',
       ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')
@@ -181,7 +167,6 @@ export default function SimulationHistory() {
                     <th className="text-left px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Scenario</th>
                     <th className="text-left px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Nifty</th>
                     <th className="text-center px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Signal</th>
-                    <th className="text-center px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Type</th>
                     <th className="text-center px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Conv.</th>
                     <th className="text-center px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Time</th>
                     <th className="text-center px-3 py-3 text-[10px] font-mono text-onSurfaceDim uppercase">Record Outcome</th>
@@ -195,7 +180,6 @@ export default function SimulationHistory() {
                     const ts = item.timestamp ? new Date(item.timestamp) : null
                     const simId = item.simulation_id
                     const isRecording = recordingId === simId
-                    const sigType = deriveSignalType(item)
 
                     return (
                       <tr key={simId || idx} className="hover:bg-surface-2/50 transition-colors">
@@ -218,14 +202,6 @@ export default function SimulationHistory() {
                             }}
                           >
                             {dirLabel(dir)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          <span
-                            className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
-                            style={signalTypeStyle(sigType)}
-                          >
-                            {sigType}
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-center font-mono font-bold text-[11px]" style={{ color: dirColor(dir) }}>

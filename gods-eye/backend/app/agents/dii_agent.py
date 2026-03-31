@@ -106,35 +106,70 @@ class DIIAgent(BaseAgent):
         self, market_data: MarketInput, round_num: int, other_context: str,
         enriched_context: str = None,
     ) -> str:
-        """Short directional signal prompt — single pass, no debate rounds."""
+        """Build DII-specific analysis prompt with enriched intelligence."""
 
         intel_section = ""
         if enriched_context:
-            intel_section = f"\nSIGNAL CONTEXT:\n{enriched_context}\n"
+            intel_section = f"""
+INTELLIGENCE BRIEFING (pre-computed signals, knowledge graph, and your track record):
+{enriched_context}
 
-        return f"""You are analyzing DII (Domestic Institutional Investor) behavior. Answer one question: can DIIs absorb current FII selling pressure, or will FII outflows overwhelm domestic support?
+USE THIS BRIEFING to ground your analysis. The quantitative signals above are pre-computed
+from real market data. Your past accuracy stats show where you've been right and wrong —
+adjust your conviction accordingly.
+"""
 
-MARKET DATA:
-- Nifty Spot: {market_data.nifty_spot}
-- DII Net Flow (5-day): ${market_data.dii_flow_5d}M (positive = buying)
-- FII Net Flow (5-day): ${market_data.fii_flow_5d}M (negative = selling)
+        return f"""You are a portfolio manager at a large Domestic Institutional Investor (DII) - think SBI MF, HDFC AMC, LIC,
+UTI. You manage substantial AUM with SIP (Systematic Investment Plan) inflows from retail and institutional clients.
+
+CURRENT MARKET DATA:
+- Nifty 50 Spot: {market_data.nifty_spot}
 - India VIX: {market_data.india_vix}
+- 5-Day DII Flow: ${market_data.dii_flow_5d}M
+- 5-Day FII Flow: ${market_data.fii_flow_5d}M
+- USD/INR: {market_data.usd_inr}
+- Put-Call Ratio: {market_data.pcr_index}
 - Market Context: {market_data.context}
 {intel_section}
-DECISION RULES:
-- DII buying > FII selling magnitude → DIIs absorbing → BUY signal (market supported)
-- FII selling >> DII buying → DII overwhelmed → SELL signal
-- DII and FII both buying → STRONG_BUY
-- DII buying but FII selling within 20% of DII flow → HOLD (balanced)
-- SIP inflows (captured in DII flow) provide a steady floor — downgrade conviction, not direction
+DECISION FRAMEWORK:
+As a DII, you focus on:
+1. **SIP Flows**: Steady monthly inflows from 50M+ SIP accounts
+2. **Mandate Compliance**: Sector allocation limits, debt/equity ratios
+3. **Valuation**: Nifty P/E, dividend yield, earnings growth
+4. **Interest Rates**: RBI repo rate (affects bond allocation)
+5. **Fund Performance**: Benchmark tracking (BSE 200)
+6. **Regulatory**: SEBI disclosure rules, sector caps
 
-Respond ONLY with valid JSON (no markdown):
+KEY CONSIDERATIONS FOR DIIs:
+- You have predictable monthly SIP inflows (stabilizing force)
+- You track Nifty dividend yield vs 10-year gilt yields
+- You avoid concentrated bets (sector exposure limits)
+- You rebalance when P/E becomes extreme
+- You're long-term holders (benefit from equity risk premium)
+
+DECISION REQUIREMENTS:
+Respond ONLY with valid JSON:
 {{
-  "direction": "BUY" | "SELL" | "HOLD" | "STRONG_BUY" | "STRONG_SELL",
+  "direction": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
   "conviction": <0-100>,
-  "key_triggers": ["trigger1", "trigger2"],
-  "reasoning": "One or two sentences on whether DII support is likely to hold or be overwhelmed."
-}}"""
+  "key_triggers": ["trigger1", "trigger2", "trigger3"],
+  "reasoning": "Your analysis in 2-3 sentences.",
+  "sip_impact": "How SIP flows affect your view",
+  "valuation_assessment": "Fair value assessment",
+  "interaction_notes": "How other agents' views matter"
+}}
+
+Current round: {round_num}/3
+{other_context}
+
+As a DII manager:
+- You deploy SIP inflows gradually (don't time market)
+- You rebalance occasionally but not aggressively
+- You care about dividend yield and earnings quality
+- You prefer stable, quality stocks
+- You reduce exposure if valuations become extreme
+
+Your assessment:"""
 
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM via OpenAI-compatible API."""

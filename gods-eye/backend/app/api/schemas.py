@@ -256,7 +256,6 @@ class QuantBacktestDaySchema(BaseModel):
     actual_move_pct: Optional[float]
     is_correct: Optional[bool]
     pnl_points: float
-    lots: int = 0
 
 
 class QuantBacktestRequest(BaseModel):
@@ -280,94 +279,3 @@ class QuantBacktestRunResponse(BaseModel):
     total_pnl_points: float
     elapsed_seconds: float
     days: List[QuantBacktestDaySchema]
-    sharpe_ratio: Optional[float] = None
-    max_drawdown_pct: Optional[float] = None
-    win_loss_ratio: Optional[float] = None
-
-
-# ── Phase 12: Hybrid Scoring and LLM Validator ───────────────────────────────
-
-class AgentBreakdownEntrySchema(BaseModel):
-    direction: str
-    conviction: float
-
-
-# ── Phase 13: Risk Management ─────────────────────────────────────────────────
-
-class RiskParamsSchema(BaseModel):
-    """Position sizing and stop/target levels computed by RiskManager."""
-    lots: int
-    stop_distance: float
-    target_distance: float
-    stop_level: float
-    target_level: float
-    vix_used: float
-    risk_reward: float   # always 1.5
-
-
-class HybridSignalResponse(BaseModel):
-    """Response for POST /api/signal/hybrid/{instrument}/{date}."""
-    model_config = {"protected_namespaces": ()}
-
-    instrument: str
-    date: str
-    direction: str                               # Quant direction (locked)
-    hybrid_score: float                          # 0-100 fused score
-    conviction: float                            # Post-validation conviction
-    tradeable: bool                              # False if skip or score < 50
-    tier: str                                    # "strong" | "moderate" | "skip"
-    instrument_hint: str                         # e.g. "NIFTY_CE"
-    quant_breakdown: Dict[str, Any]              # score, direction, tier, factors
-    agent_breakdown: Dict[str, AgentBreakdownEntrySchema]
-    agent_consensus_score: float
-    validator_verdict: str                       # "confirm" | "adjust" | "skip"
-    validator_reasoning: str
-    risk_params: RiskParamsSchema                # Position sizing and stop/target levels
-    risk_blocked: bool                           # True if daily loss limit reached before this signal
-    risk_block_reason: Optional[str] = None      # Human-readable explanation when blocked
-
-
-# ── Phase 14: Hybrid Backtest ─────────────────────────────────────────────────
-
-class HybridBacktestDaySchema(BaseModel):
-    """Single day result in a hybrid backtest run."""
-
-    date: str
-    direction: str
-    hybrid_score: float
-    conviction: float
-    tradeable: bool
-    tier: str
-    quant_score: int
-    agent_consensus_score: float
-    validator_verdict: str
-    lots: int
-    actual_move_pct: Optional[float]
-    is_correct: Optional[bool]
-    pnl_points: float
-
-
-class HybridBacktestRequest(BaseModel):
-    """Request body for POST /api/backtest/hybrid-run."""
-
-    instrument: str = Field(default="NIFTY", description="NIFTY or BANKNIFTY")
-    from_date: str = Field(..., description="Start date YYYY-MM-DD (inclusive)")
-    to_date: str = Field(..., description="End date YYYY-MM-DD (inclusive)")
-
-
-class HybridBacktestRunResponse(BaseModel):
-    """Response for POST /api/backtest/hybrid-run."""
-
-    instrument: str
-    from_date: str
-    to_date: str
-    total_days: int
-    tradeable_days: int
-    correct_days: int
-    win_rate_pct: Optional[float]
-    total_pnl_points: float
-    sharpe_ratio: Optional[float]
-    max_drawdown_pct: Optional[float]
-    win_loss_ratio: Optional[float]
-    elapsed_seconds: float
-    days: List[HybridBacktestDaySchema]

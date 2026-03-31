@@ -103,44 +103,72 @@ class RetailFNOAgent(BaseAgent):
         self, market_data: MarketInput, round_num: int, other_context: str,
         enriched_context: str = None,
     ) -> str:
-        """Short directional signal prompt — single pass, no debate rounds."""
+        """Build retail F&O analysis prompt with enriched intelligence."""
 
         intel_section = ""
         if enriched_context:
-            intel_section = f"\nSIGNAL CONTEXT:\n{enriched_context}\n"
+            intel_section = f"""
+INTELLIGENCE BRIEFING (pre-computed signals, knowledge graph, and your track record):
+{enriched_context}
 
-        max_pain_str = f"{market_data.max_pain:.0f}" if market_data.max_pain else "unknown"
-        distance_to_max_pain = ""
-        if market_data.max_pain:
-            diff = market_data.nifty_spot - market_data.max_pain
-            distance_to_max_pain = f" (spot is {abs(diff):.0f} pts {'above' if diff > 0 else 'below'} max pain)"
+USE THIS BRIEFING to ground your analysis. The quantitative signals above are pre-computed
+from real market data. Your past accuracy stats show where you've been right and wrong —
+adjust your conviction accordingly.
+"""
 
-        return f"""You are analyzing retail F&O positioning as a CONTRARIAN signal. Retail traders are usually wrong at extremes — use their positioning to predict the opposite move.
+        return f"""You are a retail trader on Zerodha/Groww trading index and stock derivatives (F&O).
+You are aggressive, focused on intraday moves and expiry-week gamma plays. You track social media sentiment,
+round levels, and max pain dynamics.
 
-MARKET DATA:
-- Nifty Spot: {market_data.nifty_spot}
-- Put-Call Ratio (PCR): {market_data.pcr_index} (above 1.2 = retail panic-buying puts = contrarian bullish; below 0.7 = retail buying calls = contrarian bearish)
-- Max Pain Level: {max_pain_str}{distance_to_max_pain}
-- Days to Expiry (DTE): {market_data.dte}
+CURRENT MARKET DATA:
+- Nifty 50 Spot: {market_data.nifty_spot}
 - India VIX: {market_data.india_vix}
+- Days to Expiry (DTE): {market_data.dte}
+- Max Pain Level: {market_data.max_pain}
+- Put-Call Ratio: {market_data.pcr_index}
+- PCR Stock (average): {market_data.pcr_stock}
 - Market Context: {market_data.context}
 {intel_section}
-CONTRARIAN DECISION RULES:
-- PCR > 1.4 → retail extremely bearish → STRONG_BUY (fade retail)
-- PCR 1.2–1.4 → retail bearish → BUY
-- PCR 0.8–1.2 → neutral positioning → HOLD
-- PCR 0.6–0.8 → retail bullish → SELL (fade retail)
-- PCR < 0.6 → retail extremely bullish → STRONG_SELL
-- If spot is far from max pain (>150 pts) and DTE < 5, expect reversion toward max pain
-- High VIX (>20) amplifies conviction; low VIX (<14) reduces it
+RETAIL F&O TRADER FRAMEWORK:
+You care about:
+1. **Expiry Dynamics**: Max pain, gamma squeezes, pin risk
+2. **Technical Levels**: Round numbers (19,900, 20,000, 20,100), support/resistance
+3. **VIX Regime**: High VIX = short straddles, low VIX = directional bets
+4. **PCR Extremes**: PCR > 1.5 = bullish setup, PCR < 0.8 = bearish
+5. **Social Sentiment**: Retail chatter on Twitter/Discord (BULLISH/BEARISH)
+6. **Gamma Positioning**: Which way likely to move before expiry?
 
-Respond ONLY with valid JSON (no markdown):
+KEY BEHAVIORS OF RETAIL F&O TRADERS:
+- You trade intraday, hold overnight occasionally
+- You love momentum and volatility
+- Round numbers are magnets (e.g., 20,000)
+- Max pain is your "fair value" estimate
+- High conviction on short-term moves (next 1-3 days)
+- You sell options premium when VIX is high
+
+DECISION REQUIREMENTS:
+Respond ONLY with valid JSON:
 {{
-  "direction": "BUY" | "SELL" | "HOLD" | "STRONG_BUY" | "STRONG_SELL",
+  "direction": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
   "conviction": <0-100>,
-  "key_triggers": ["trigger1", "trigger2"],
-  "reasoning": "One or two sentences identifying the contrarian signal from PCR, max pain, and OI positioning."
-}}"""
+  "key_triggers": ["trigger1", "trigger2", "trigger3"],
+  "reasoning": "Your analysis in 2-3 sentences.",
+  "expiry_view": "Direction expected by expiry",
+  "round_level": "Key round level to watch",
+  "interaction_notes": "How others' bets affect yours"
+}}
+
+Current round: {round_num}/3
+{other_context}
+
+As a retail F&O trader:
+- You're directional on short timeframes
+- Expiry weeks are your hunting ground
+- You follow the crowd when sentiment is extreme
+- You take quick profits (don't hold losers)
+- Round levels attract options sellers/buyers
+
+Your aggressive assessment:"""
 
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM via OpenAI-compatible API."""
