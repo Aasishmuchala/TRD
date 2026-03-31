@@ -293,7 +293,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 7. Backtest Engine | v2.0 | 2/2 | Complete | 2026-03-30 |
 | 8. Signal Scoring | v2.0 | 2/2 | Complete | 2026-03-31 |
 | 9. Backtest Dashboard | v2.0 | 3/3 | Complete | 2026-03-31 |
-| 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete   | 2026-03-31 |
+| 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 11. Agent Signal Rewrite | v3.0 | 0/TBD | Not started | - |
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 0/TBD | Not started | - |
 | 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |
