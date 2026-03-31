@@ -15,10 +15,10 @@
 
 ### Agent Signal Rewrite
 
-- [ ] **AGENT-01**: All 6 agent prompts rewritten for directional trading signals
-- [ ] **AGENT-02**: FII agent: flow data + USD/INR + DXY → predict FII behavior
-- [ ] **AGENT-03**: DII agent: SIP flows vs FII outflow absorption
-- [ ] **AGENT-04**: Retail F&O agent: PCR extremes, max pain, OI for contrarian signals
+- [x] **AGENT-01**: All 6 agent prompts rewritten for directional trading signals
+- [x] **AGENT-02**: FII agent: flow data + USD/INR + DXY → predict FII behavior
+- [x] **AGENT-03**: DII agent: SIP flows vs FII outflow absorption
+- [x] **AGENT-04**: Retail F&O agent: PCR extremes, max pain, OI for contrarian signals
 - [x] **AGENT-05**: Algo agent: pure quant (RSI, VWAP, Supertrend) — no LLM
 - [ ] **AGENT-06**: All agents run in parallel, single round, ~5 seconds total
 
@@ -67,10 +67,10 @@
 | QUANT-03 | Phase 10 — Quantitative Signal Engine | Complete |
 | QUANT-04 | Phase 10 — Quantitative Signal Engine | Complete |
 | QUANT-05 | Phase 10 — Quantitative Signal Engine | Complete |
-| AGENT-01 | Phase 11 — Agent Signal Rewrite | Pending |
-| AGENT-02 | Phase 11 — Agent Signal Rewrite | Pending |
-| AGENT-03 | Phase 11 — Agent Signal Rewrite | Pending |
-| AGENT-04 | Phase 11 — Agent Signal Rewrite | Pending |
+| AGENT-01 | Phase 11 — Agent Signal Rewrite | Complete |
+| AGENT-02 | Phase 11 — Agent Signal Rewrite | Complete |
+| AGENT-03 | Phase 11 — Agent Signal Rewrite | Complete |
+| AGENT-04 | Phase 11 — Agent Signal Rewrite | Complete |
 | AGENT-05 | Phase 11 — Agent Signal Rewrite | Complete |
 | AGENT-06 | Phase 11 — Agent Signal Rewrite | Pending |
 | HYB-01 | Phase 12 — Hybrid Scoring and LLM Validator | Pending |

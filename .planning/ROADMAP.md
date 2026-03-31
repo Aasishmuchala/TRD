@@ -234,7 +234,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Rewrite FII, DII, Retail F&O, Promoter, RBI _build_prompt methods (AGENT-01 through AGENT-04)
+- [x] 11-01-PLAN.md — Rewrite FII, DII, Retail F&O, Promoter, RBI _build_prompt methods (AGENT-01 through AGENT-04)
 - [x] 11-02-PLAN.md — Replace AlgoQuantAgent with QuantSignalEngine delegation — no LLM (AGENT-05)
 - [ ] 11-03-PLAN.md — Collapse Orchestrator + StreamingOrchestrator to single-round asyncio.gather dispatch (AGENT-06)
 
@@ -299,7 +299,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 8. Signal Scoring | v2.0 | 2/2 | Complete | 2026-03-31 |
 | 9. Backtest Dashboard | v2.0 | 3/3 | Complete | 2026-03-31 |
 | 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete    | 2026-03-31 |
-| 11. Agent Signal Rewrite | v3.0 | 1/3 | In Progress|  |
+| 11. Agent Signal Rewrite | v3.0 | 2/3 | In Progress|  |
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 0/TBD | Not started | - |
 | 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |
 | 14. Fast Backtesting Both Modes | v3.0 | 0/TBD | Not started | - |
