@@ -30,7 +30,11 @@ from app.api.schemas import (
     HybridSignalResponse,
     AgentBreakdownEntrySchema,
     RiskParamsSchema,
+    HybridBacktestRequest,
+    HybridBacktestRunResponse,
+    HybridBacktestDaySchema,
 )
+from app.engine.hybrid_backtest import hybrid_backtest_engine
 from app.engine.hybrid_scorer import HybridScorer, LLMValidator, ValidatorVerdict
 from app.engine.risk_manager import RiskManager
 from app.engine.daily_loss_guard import daily_loss_guard
@@ -1318,4 +1322,68 @@ async def get_hybrid_signal(instrument: str, date: str):
         risk_params=risk_params_schema,
         risk_blocked=risk_blocked,
         risk_block_reason=risk_block_reason,
+    )
+
+
+# ─── Hybrid Backtest endpoint ──────────────────────────────────────────────────
+
+
+@protected_router.post("/backtest/hybrid-run", response_model=HybridBacktestRunResponse)
+async def run_hybrid_backtest(body: HybridBacktestRequest):
+    """Run a hybrid backtest (quant + agents + validator + risk) over a date range.
+
+    Each day runs: QuantSignalEngine + 6 parallel agents + HybridScorer + LLMValidator + RiskManager.
+    Performance target: 1 month (~22 trading days) in under 5 minutes (FBT-02).
+
+    Returns per-day hybrid results and aggregate risk-adjusted metrics
+    (sharpe_ratio, max_drawdown_pct, win_loss_ratio).
+
+    Raises 400 for invalid instrument or date range.
+    """
+    if body.instrument not in ("NIFTY", "BANKNIFTY"):
+        raise HTTPException(status_code=400, detail="instrument must be NIFTY or BANKNIFTY")
+
+    try:
+        result = await hybrid_backtest_engine.run_hybrid_backtest(
+            body.instrument, body.from_date, body.to_date
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Hybrid backtest failed")
+        raise HTTPException(status_code=500, detail=f"Hybrid backtest failed: {exc}")
+
+    day_schemas = [
+        HybridBacktestDaySchema(
+            date=d.date,
+            direction=d.direction,
+            hybrid_score=d.hybrid_score,
+            conviction=d.conviction,
+            tradeable=d.tradeable,
+            tier=d.tier,
+            quant_score=d.quant_score,
+            agent_consensus_score=d.agent_consensus_score,
+            validator_verdict=d.validator_verdict,
+            lots=d.lots,
+            actual_move_pct=d.actual_move_pct,
+            is_correct=d.is_correct,
+            pnl_points=d.pnl_points,
+        )
+        for d in result.days
+    ]
+
+    return HybridBacktestRunResponse(
+        instrument=result.instrument,
+        from_date=result.from_date,
+        to_date=result.to_date,
+        total_days=result.total_days,
+        tradeable_days=result.tradeable_days,
+        correct_days=result.correct_days,
+        win_rate_pct=result.win_rate_pct,
+        total_pnl_points=result.total_pnl_points,
+        sharpe_ratio=result.sharpe_ratio,
+        max_drawdown_pct=result.max_drawdown_pct,
+        win_loss_ratio=result.win_loss_ratio,
+        elapsed_seconds=result.elapsed_seconds,
+        days=day_schemas,
     )

@@ -325,3 +325,49 @@ class HybridSignalResponse(BaseModel):
     risk_params: RiskParamsSchema                # Position sizing and stop/target levels
     risk_blocked: bool                           # True if daily loss limit reached before this signal
     risk_block_reason: Optional[str] = None      # Human-readable explanation when blocked
+
+
+# ── Phase 14: Hybrid Backtest ─────────────────────────────────────────────────
+
+class HybridBacktestDaySchema(BaseModel):
+    """Single day result in a hybrid backtest run."""
+
+    date: str
+    direction: str
+    hybrid_score: float
+    conviction: float
+    tradeable: bool
+    tier: str
+    quant_score: int
+    agent_consensus_score: float
+    validator_verdict: str
+    lots: int
+    actual_move_pct: Optional[float]
+    is_correct: Optional[bool]
+    pnl_points: float
+
+
+class HybridBacktestRequest(BaseModel):
+    """Request body for POST /api/backtest/hybrid-run."""
+
+    instrument: str = Field(default="NIFTY", description="NIFTY or BANKNIFTY")
+    from_date: str = Field(..., description="Start date YYYY-MM-DD (inclusive)")
+    to_date: str = Field(..., description="End date YYYY-MM-DD (inclusive)")
+
+
+class HybridBacktestRunResponse(BaseModel):
+    """Response for POST /api/backtest/hybrid-run."""
+
+    instrument: str
+    from_date: str
+    to_date: str
+    total_days: int
+    tradeable_days: int
+    correct_days: int
+    win_rate_pct: Optional[float]
+    total_pnl_points: float
+    sharpe_ratio: Optional[float]
+    max_drawdown_pct: Optional[float]
+    win_loss_ratio: Optional[float]
+    elapsed_seconds: float
+    days: List[HybridBacktestDaySchema]
