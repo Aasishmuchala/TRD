@@ -5,6 +5,7 @@ import Welcome from './pages/Welcome'
 import Dashboard from './pages/Dashboard'
 import AgentDetail from './pages/AgentDetail'
 import SimulationHistory from './pages/SimulationHistory'
+import Backtest from './pages/Backtest'
 import PaperTrading from './pages/PaperTrading'
 import Settings from './pages/Settings'
 import Skills from './pages/Skills'
@@ -25,6 +26,7 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/agents" element={<AgentDetail />} />
                 <Route path="/history" element={<SimulationHistory />} />
+                <Route path="/backtest" element={<Backtest />} />
                 <Route path="/paper-trading" element={<PaperTrading />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/skills" element={<Skills />} />
