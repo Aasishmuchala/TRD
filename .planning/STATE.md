@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-30T22:14:34.976Z"
-last_activity: 2026-03-30
+status: verifying
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-31T04:31:04.204Z"
+last_activity: 2026-03-31
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 08 (signal-scoring) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-03-30
+Status: Phase complete — ready for verification
+Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 07 P01 | 3 | 2 tasks | 2 files |
 | Phase 07 P02 | 40 | 2 tasks | 2 files |
 | Phase 08 P01 | 2 | 2 tasks | 2 files |
+| Phase 08 P02 | 6 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 08]: SignalScorer.score() is a pure static method — no instance state, no side effects; makes it trivially testable and safe to call from any context
 - [Phase 08]: HOLD direction always produces 0 sentiment score regardless of conviction — max score 40, always tier=skip unless 3+ technicals align
 - [Phase 08]: ScoreResult uses @dataclass not Pydantic BaseModel — no HTTP boundary at engine layer; dataclass is lighter and appropriate
+- [Phase 08]: vars(score_result) converts ScoreResult dataclass to plain dict at engine boundary — JSON-serializable, consistent with asdict() pattern
+- [Phase 08]: Optional[SignalScoreSchema] = None on BacktestDayResponse allows pre-Phase-8 persisted runs to deserialise gracefully without 422
+- [Phase 08]: Inline VIX classify + PCR-to-OI-sentiment helpers in routes.py simulate handler — no separate module needed for 3-line helpers used in one place
 
 ### Pending Todos
 
@@ -99,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T22:14:34.972Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-31T04:31:04.200Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
