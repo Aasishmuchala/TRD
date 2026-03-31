@@ -293,7 +293,12 @@ Plans:
   1. The signal page shows a live signal card with four distinct sections: quant score breakdown (factors and points), agent consensus (each agent's direction and conviction), validator verdict (confirm/adjust/skip with explanation), and the final recommended trade with risk parameters
   2. The trade history page has a column or tag distinguishing quant-driven signals (validator confirmed with no agent override) from agent-confirmed signals (agent consensus moved the hybrid score above threshold)
   3. The performance comparison page shows rules-only vs hybrid backtests side by side with accuracy, P&L, Sharpe ratio, and drawdown — selectable date range applies to both modes simultaneously
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Signal page (/signal): quant breakdown + agent consensus + validator verdict + risk params (DASH-07)
+- [ ] 15-02-PLAN.md — SimulationHistory signal_type tag column: QUANT/HYBRID/AGENT badge + CSV export (DASH-08)
+- [ ] 15-03-PLAN.md — Performance page (/performance): rules-only vs hybrid comparison with shared date range (DASH-09)
 
 ## Progress
 
