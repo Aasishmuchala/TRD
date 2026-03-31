@@ -248,7 +248,11 @@ Plans:
   3. The validator response includes a plain-language explanation of why it confirmed, adjusted, or skipped — visible to the user alongside the signal
   4. The validator cannot flip direction: a BUY signal remains BUY after validation even if conviction is reduced; only conviction and tradeable status change
   5. The complete signal output includes direction, hybrid score, quant breakdown, agent breakdown, validator verdict, validator reasoning, and recommended instrument (Nifty/Bank Nifty CE/PE)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — TDD: HybridScorer pure engine (formula, direction-lock, verdict paths)
+- [ ] 12-02-PLAN.md — LLMValidator + POST /api/signal/hybrid/{instrument}/{date} route
 
 ### Phase 13: Risk Management Rules
 **Goal**: Every tradeable signal (score > 50, not skipped by validator) is accompanied by position size, stop loss level, and target exit — computed deterministically from signal conviction and current VIX — and the daily max-loss guard prevents any new signals once the day limit is hit
@@ -300,7 +304,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 9. Backtest Dashboard | v2.0 | 3/3 | Complete | 2026-03-31 |
 | 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 11. Agent Signal Rewrite | v3.0 | 3/3 | Complete    | 2026-03-31 |
-| 12. Hybrid Scoring and LLM Validator | v3.0 | 0/TBD | Not started | - |
+| 12. Hybrid Scoring and LLM Validator | v3.0 | 0/2 | Not started | - |
 | 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |
 | 14. Fast Backtesting Both Modes | v3.0 | 0/TBD | Not started | - |
 | 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |
