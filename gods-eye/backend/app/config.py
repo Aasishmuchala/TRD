@@ -32,6 +32,10 @@ class Config:
     TEMPERATURE: float = 0.3
     QUANT_LLM_BALANCE: float = 0.45  # 0.0 = pure LLM, 1.0 = pure quant
 
+    # Risk Management Configuration
+    RISK_MAX_DAILY_LOSS: float = float(os.getenv("GODS_EYE_RISK_MAX_DAILY_LOSS", "5000.0"))
+    RISK_VIX_STOP_MULTIPLIER: float = float(os.getenv("GODS_EYE_RISK_VIX_STOP_MULTIPLIER", "5.0"))
+
     # Database Configuration
     DATABASE_PATH: str = os.getenv(
         "GODS_EYE_DB_PATH",
