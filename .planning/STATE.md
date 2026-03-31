@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-03-31T20:47:01.299Z"
-last_activity: 2026-03-31
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-03-31T21:02:16.034Z"
+last_activity: 2026-03-31 -- Phase 14 execution started
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 12
+  completed_plans: 10
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Combine quantitative rules (fast, consistent) with qualitative AI analysis (contextual, explainable) for Nifty/Bank Nifty options.
-**Current focus:** Phase 13 — risk-management-rules
+**Current focus:** Phase 14 — fast-backtesting-both-modes
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Executing Phase 13
-Last activity: 2026-03-31
+Phase: 14 (fast-backtesting-both-modes) — EXECUTING
+Plan: 1 of ?
+Status: Executing Phase 14
+Last activity: 2026-03-31 -- Phase 14 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 12 P02 | 698 | 2 tasks | 3 files |
 | Phase 13 P01 | 2 | 2 tasks | 2 files |
 | Phase 13 P02 | 324 | 2 tasks | 4 files |
+| Phase 14 P01 | 218 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 13]: daily_loss_guard singleton reads config.RISK_MAX_DAILY_LOSS at import time — simple, no startup wiring needed
 - [Phase 13]: route calls is_blocked() only, not record_loss() — guard recording is Phase 14 backtest P&L accounting concern
 - [Phase 13]: DailyLossGuard uses IST timezone (UTC+5:30) for day boundary — matches Indian trading session calendar
+- [Phase 14]: RiskManager.compute called per-day inside backtest loop only when tier != skip — O(1) pure math, zero I/O, no performance impact
+- [Phase 14]: Risk metrics (sharpe, drawdown, win_loss) computed in engine not API layer — engine owns full P&L accounting post Phase 14-01
+- [Phase 14]: NIFTY_LOT=25 hardcoded constant in quant_backtest.py loop — standard Nifty F&O lot size
 
 ### Pending Todos
 
@@ -143,6 +147,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T20:46:09.149Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-03-31T21:02:16.026Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
