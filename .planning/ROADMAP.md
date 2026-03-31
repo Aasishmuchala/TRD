@@ -197,7 +197,7 @@ Plans:
 
 - [x] **Phase 10: Quantitative Signal Engine** - Pure rules-based score (0-100) from FII/DII flows, PCR, RSI-14, VIX, and Supertrend — zero LLM calls, complete in under 10 seconds for 1-year backtest (completed 2026-03-31)
 - [x] **Phase 11: Agent Signal Rewrite** - Rewrite all 6 agent prompts for directional signal output and run them in parallel in a single round (~5 seconds total) (completed 2026-03-31)
-- [ ] **Phase 12: Hybrid Scoring and LLM Validator** - Combine quant score (60%) and agent consensus (40%) into a final signal, with a single LLM validator call that can reduce conviction or skip but cannot flip direction
+- [x] **Phase 12: Hybrid Scoring and LLM Validator** - Combine quant score (60%) and agent consensus (40%) into a final signal, with a single LLM validator call that can reduce conviction or skip but cannot flip direction (completed 2026-03-31)
 - [ ] **Phase 13: Risk Management Rules** - Apply configurable position sizing, daily max-loss guard, VIX-scaled stop loss, and 1.5x risk target exit to every signal
 - [ ] **Phase 14: Fast Backtesting Both Modes** - Rules-only backtest (1 year in <10 seconds) and hybrid backtest (1 month in <5 minutes) with risk-adjusted metrics side by side
 - [ ] **Phase 15: Dashboard Updates** - Signal page showing quant score + agent reasoning + validator output; trade history distinguishing quant-driven vs agent-confirmed signals; performance comparison of both modes
@@ -252,7 +252,7 @@ Plans:
 
 Plans:
 - [x] 12-01-PLAN.md — TDD: HybridScorer pure engine (formula, direction-lock, verdict paths)
-- [ ] 12-02-PLAN.md — LLMValidator + POST /api/signal/hybrid/{instrument}/{date} route
+- [x] 12-02-PLAN.md — LLMValidator + POST /api/signal/hybrid/{instrument}/{date} route
 
 ### Phase 13: Risk Management Rules
 **Goal**: Every tradeable signal (score > 50, not skipped by validator) is accompanied by position size, stop loss level, and target exit — computed deterministically from signal conviction and current VIX — and the daily max-loss guard prevents any new signals once the day limit is hit
@@ -304,7 +304,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 9. Backtest Dashboard | v2.0 | 3/3 | Complete | 2026-03-31 |
 | 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 11. Agent Signal Rewrite | v3.0 | 3/3 | Complete    | 2026-03-31 |
-| 12. Hybrid Scoring and LLM Validator | v3.0 | 1/2 | In Progress|  |
+| 12. Hybrid Scoring and LLM Validator | v3.0 | 2/2 | Complete   | 2026-03-31 |
 | 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |
 | 14. Fast Backtesting Both Modes | v3.0 | 0/TBD | Not started | - |
 | 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |

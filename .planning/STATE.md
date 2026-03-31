@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-03-31T20:01:45.118Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-03-31T20:17:46.916Z"
 last_activity: 2026-03-31 -- Phase 12 execution started
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 11 P01 | 900 | 2 tasks | 5 files |
 | Phase 11 P03 | 300 | 2 tasks | 3 files |
 | Phase 12 P01 | 127 | 2 tasks | 2 files |
+| Phase 12 P02 | 698 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 12]: HybridScorer.fuse() is a pure static method — no instance state, no I/O; safe to call from any context including backtests
 - [Phase 12]: Direction-lock enforced unconditionally: quant_result.direction always becomes HybridResult.direction regardless of agent consensus or validator verdict
 - [Phase 12]: HybridResult.conviction post-validation is separate from hybrid_score — conviction=hybrid_score on confirm, reduced on adjust, 0 on skip
+- [Phase 12]: LLMValidator co-located with HybridScorer in hybrid_scorer.py as async classmethod — single module, single import
+- [Phase 12]: Placeholder verdict pattern: HybridScorer.fuse() called twice — with placeholder for LLM prompt construction, then with real verdict for final result
+- [Phase 12]: Validator failure fallback: any exception in LLMValidator.call_validator() returns confirm verdict, never HTTP 500
 
 ### Pending Todos
 
@@ -131,6 +135,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T20:01:45.113Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-03-31T20:17:46.911Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
