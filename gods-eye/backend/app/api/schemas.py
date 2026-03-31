@@ -288,6 +288,19 @@ class AgentBreakdownEntrySchema(BaseModel):
     conviction: float
 
 
+# ── Phase 13: Risk Management ─────────────────────────────────────────────────
+
+class RiskParamsSchema(BaseModel):
+    """Position sizing and stop/target levels computed by RiskManager."""
+    lots: int
+    stop_distance: float
+    target_distance: float
+    stop_level: float
+    target_level: float
+    vix_used: float
+    risk_reward: float   # always 1.5
+
+
 class HybridSignalResponse(BaseModel):
     """Response for POST /api/signal/hybrid/{instrument}/{date}."""
     model_config = {"protected_namespaces": ()}
@@ -305,3 +318,6 @@ class HybridSignalResponse(BaseModel):
     agent_consensus_score: float
     validator_verdict: str                       # "confirm" | "adjust" | "skip"
     validator_reasoning: str
+    risk_params: RiskParamsSchema                # Position sizing and stop/target levels
+    risk_blocked: bool                           # True if daily loss limit reached before this signal
+    risk_block_reason: Optional[str] = None      # Human-readable explanation when blocked

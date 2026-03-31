@@ -29,8 +29,11 @@ from app.api.schemas import (
     QuantBacktestRequest,
     HybridSignalResponse,
     AgentBreakdownEntrySchema,
+    RiskParamsSchema,
 )
 from app.engine.hybrid_scorer import HybridScorer, LLMValidator, ValidatorVerdict
+from app.engine.risk_manager import RiskManager
+from app.engine.daily_loss_guard import daily_loss_guard
 from app.engine.backtest_engine import BacktestEngine
 from app.engine.signal_scorer import SignalScorer
 from app.engine.quant_signal_engine import QuantInputs, QuantSignalEngine
@@ -1254,7 +1257,38 @@ async def get_hybrid_signal(instrument: str, date: str):
     # ── Step 7: Final fuse with real verdict ────────────────────────────────
     hybrid = HybridScorer.fuse(quant_result, final_outputs, verdict)
 
-    # ── Step 8: Serialize and return ────────────────────────────────────────
+    # ── Step 8: Risk params + daily loss guard ───────────────────────────────
+    # Check guard before computing (guard check is non-destructive — record_loss
+    # is reserved for Phase 14 backtest P&L accounting)
+    risk_blocked = daily_loss_guard.is_blocked()
+    risk_block_reason = (
+        f"Daily max-loss limit of {config.RISK_MAX_DAILY_LOSS:.0f} pts reached "
+        f"(cumulative: {daily_loss_guard.cumulative_loss():.1f} pts). "
+        "No new signals until tomorrow (IST)."
+    ) if risk_blocked else None
+
+    # entry_close: use the instrument close on the signal date
+    entry_close = closes[-1]
+
+    # vix_value: already loaded as vix_val above
+    risk_params = RiskManager.compute(
+        tier=hybrid.tier,
+        direction=hybrid.direction,
+        entry_close=entry_close,
+        vix=vix_val,
+    )
+
+    risk_params_schema = RiskParamsSchema(
+        lots=risk_params.lots,
+        stop_distance=risk_params.stop_distance,
+        target_distance=risk_params.target_distance,
+        stop_level=risk_params.stop_level,
+        target_level=risk_params.target_level,
+        vix_used=risk_params.vix_used,
+        risk_reward=risk_params.risk_reward,
+    )
+
+    # ── Step 9: Serialize and return ────────────────────────────────────────
     agent_breakdown_serialized = {
         k: AgentBreakdownEntrySchema(
             direction=v.direction,
@@ -1277,4 +1311,7 @@ async def get_hybrid_signal(instrument: str, date: str):
         agent_consensus_score=hybrid.agent_consensus_score,
         validator_verdict=hybrid.validator_verdict,
         validator_reasoning=hybrid.validator_reasoning,
+        risk_params=risk_params_schema,
+        risk_blocked=risk_blocked,
+        risk_block_reason=risk_block_reason,
     )
