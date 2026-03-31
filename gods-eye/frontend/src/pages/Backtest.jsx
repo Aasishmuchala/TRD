@@ -6,6 +6,7 @@ import StatsPanel from '../components/StatsPanel'
 import AgentAccuracyTable from '../components/AgentAccuracyTable'
 import EquityCurve from '../components/EquityCurve'
 import DayDetailModal from '../components/DayDetailModal'
+import ModeCompare from '../components/ModeCompare'
 
 export default function Backtest() {
   // Form state
@@ -20,20 +21,29 @@ export default function Backtest() {
   const [error, setError] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
 
+  // Mode state
+  const [activeMode, setActiveMode] = useState('quant')  // 'quant' | 'hybrid' | 'agent'
+  const [quantResult, setQuantResult] = useState(null)
+  const [hybridResult, setHybridResult] = useState(null)
+
   const handleRun = async (e) => {
     e.preventDefault()
     if (!fromDate || !toDate) return
     setLoading(true)
     setError(null)
-    setResult(null)
     try {
-      const data = await apiClient.runBacktest({
-        instrument,
-        from_date: fromDate,
-        to_date: toDate,
-        mock_mode: mockMode,
-      })
-      setResult(data)
+      if (activeMode === 'quant') {
+        const data = await apiClient.runQuantBacktest({ instrument, from_date: fromDate, to_date: toDate })
+        setQuantResult(data)
+      } else if (activeMode === 'hybrid') {
+        const data = await apiClient.runHybridBacktest({ instrument, from_date: fromDate, to_date: toDate })
+        setHybridResult(data)
+      } else {
+        // legacy agent mode
+        setResult(null)
+        const data = await apiClient.runBacktest({ instrument, from_date: fromDate, to_date: toDate, mock_mode: mockMode })
+        setResult(data)
+      }
     } catch (err) {
       setError(err.message || 'Backtest failed')
     } finally {
@@ -54,6 +64,29 @@ export default function Backtest() {
 
         {/* Run form */}
         <form onSubmit={handleRun} className="terminal-card p-4 mb-5">
+          {/* Mode tabs */}
+          <div className="flex gap-2 mb-4">
+            {[
+              { id: 'quant', label: 'RULES ONLY', hint: '1yr < 10s' },
+              { id: 'hybrid', label: 'HYBRID', hint: '1mo < 5min' },
+              { id: 'agent', label: 'AGENT (legacy)', hint: '3-round' },
+            ].map(({ id, label, hint }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveMode(id)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                  activeMode === id
+                    ? 'bg-primary/20 text-primary border-primary/40'
+                    : 'bg-surface-2 text-onSurfaceDim border-[rgba(255,255,255,0.08)] hover:border-primary/30'
+                }`}
+              >
+                {label}
+                <span className="ml-1 text-[9px] opacity-60">{hint}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-wrap items-end gap-3">
             {/* Instrument */}
             <div className="flex flex-col gap-1">
@@ -92,21 +125,23 @@ export default function Backtest() {
               />
             </div>
 
-            {/* Mock mode toggle */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">Mode</label>
-              <button
-                type="button"
-                onClick={() => setMockMode((m) => !m)}
-                className={`px-3 py-2 rounded-lg text-[10px] font-mono font-bold border transition-all ${
-                  mockMode
-                    ? 'bg-neutral/10 text-neutral border-neutral/30'
-                    : 'bg-primary/10 text-primary border-primary/30'
-                }`}
-              >
-                {mockMode ? 'MOCK' : 'LIVE LLM'}
-              </button>
-            </div>
+            {/* Mock mode toggle — agent mode only */}
+            {activeMode === 'agent' && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">Mode</label>
+                <button
+                  type="button"
+                  onClick={() => setMockMode((m) => !m)}
+                  className={`px-3 py-2 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                    mockMode
+                      ? 'bg-neutral/10 text-neutral border-neutral/30'
+                      : 'bg-primary/10 text-primary border-primary/30'
+                  }`}
+                >
+                  {mockMode ? 'MOCK' : 'LIVE LLM'}
+                </button>
+              </div>
+            )}
 
             {/* Submit */}
             <button
@@ -137,8 +172,8 @@ export default function Backtest() {
           </div>
         )}
 
-        {/* Results */}
-        {result && (
+        {/* Results — Agent (legacy) mode */}
+        {result && activeMode === 'agent' && (
           <div className="space-y-5">
             {/* Summary + Stats */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -191,6 +226,104 @@ export default function Backtest() {
                           <td className={`py-2 text-right font-bold ${
                             day.pnl_points > 0 ? 'text-bull' : day.pnl_points < 0 ? 'text-bear' : 'text-onSurfaceDim'
                           }`}>{day.pnl_points?.toFixed(1)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Results — Quant (Rules Only) mode */}
+        {quantResult && activeMode === 'quant' && (
+          <div className="space-y-5">
+            <div className="terminal-card p-4">
+              <h2 className="text-xs font-mono text-onSurfaceDim uppercase tracking-wider mb-3">Rules-Only Backtest</h2>
+              <p className="text-[10px] font-mono text-onSurfaceDim">
+                {quantResult.from_date} &rarr; {quantResult.to_date} &middot; {quantResult.total_days} days &middot; {quantResult.tradeable_days} tradeable &middot; elapsed {quantResult.elapsed_seconds?.toFixed(1)}s
+              </p>
+            </div>
+            <ModeCompare quantResult={quantResult} hybridResult={hybridResult} />
+            {/* Quant day table */}
+            {quantResult.days?.length > 0 && (
+              <div className="terminal-card p-4">
+                <div className="section-header mb-3">Rules-Only Day-by-Day</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px] font-mono">
+                    <thead>
+                      <tr className="text-onSurfaceDim border-b border-[rgba(255,255,255,0.06)]">
+                        <th className="text-left py-2 pr-3">Date</th>
+                        <th className="text-left py-2 pr-3">Dir</th>
+                        <th className="text-right py-2 pr-3">Score</th>
+                        <th className="text-center py-2 pr-3">Tier</th>
+                        <th className="text-right py-2 pr-3">Lots</th>
+                        <th className="text-right py-2 pr-3">Actual</th>
+                        <th className="text-center py-2 pr-3">OK</th>
+                        <th className="text-right py-2">P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quantResult.days.map((day) => (
+                        <tr key={day.date} className="border-b border-[rgba(255,255,255,0.03)]">
+                          <td className="py-2 pr-3 text-onSurfaceMuted">{day.date}</td>
+                          <td className={`py-2 pr-3 font-bold ${day.direction === 'BUY' ? 'text-bull' : day.direction === 'SELL' ? 'text-bear' : 'text-onSurfaceDim'}`}>{day.direction}</td>
+                          <td className="py-2 pr-3 text-right text-onSurfaceMuted">{day.total_score}</td>
+                          <td className={`py-2 pr-3 text-center ${day.tier === 'strong' ? 'text-bull' : day.tier === 'moderate' ? 'text-primary' : 'text-onSurfaceDim'}`}>{day.tier}</td>
+                          <td className="py-2 pr-3 text-right text-onSurfaceMuted">{day.lots ?? 0}</td>
+                          <td className={`py-2 pr-3 text-right font-bold ${(day.actual_move_pct ?? 0) > 0 ? 'text-bull' : (day.actual_move_pct ?? 0) < 0 ? 'text-bear' : 'text-onSurfaceDim'}`}>{day.actual_move_pct?.toFixed(2) ?? '—'}%</td>
+                          <td className="py-2 pr-3 text-center">{day.is_correct === true ? '✓' : day.is_correct === false ? '✗' : '—'}</td>
+                          <td className={`py-2 text-right font-bold ${day.pnl_points > 0 ? 'text-bull' : day.pnl_points < 0 ? 'text-bear' : 'text-onSurfaceDim'}`}>{day.pnl_points?.toFixed(0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Results — Hybrid mode */}
+        {hybridResult && activeMode === 'hybrid' && (
+          <div className="space-y-5">
+            <div className="terminal-card p-4">
+              <h2 className="text-xs font-mono text-onSurfaceDim uppercase tracking-wider mb-3">Hybrid Backtest</h2>
+              <p className="text-[10px] font-mono text-onSurfaceDim">
+                {hybridResult.from_date} &rarr; {hybridResult.to_date} &middot; {hybridResult.total_days} days &middot; {hybridResult.tradeable_days} tradeable &middot; elapsed {hybridResult.elapsed_seconds?.toFixed(1)}s
+              </p>
+            </div>
+            <ModeCompare quantResult={quantResult} hybridResult={hybridResult} />
+            {/* Hybrid day table */}
+            {hybridResult.days?.length > 0 && (
+              <div className="terminal-card p-4">
+                <div className="section-header mb-3">Hybrid Day-by-Day</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px] font-mono">
+                    <thead>
+                      <tr className="text-onSurfaceDim border-b border-[rgba(255,255,255,0.06)]">
+                        <th className="text-left py-2 pr-3">Date</th>
+                        <th className="text-left py-2 pr-3">Dir</th>
+                        <th className="text-right py-2 pr-3">H-Score</th>
+                        <th className="text-center py-2 pr-3">Verdict</th>
+                        <th className="text-right py-2 pr-3">Lots</th>
+                        <th className="text-right py-2 pr-3">Actual</th>
+                        <th className="text-center py-2 pr-3">OK</th>
+                        <th className="text-right py-2">P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {hybridResult.days.map((day) => (
+                        <tr key={day.date} className="border-b border-[rgba(255,255,255,0.03)]">
+                          <td className="py-2 pr-3 text-onSurfaceMuted">{day.date}</td>
+                          <td className={`py-2 pr-3 font-bold ${day.direction === 'BUY' ? 'text-bull' : day.direction === 'SELL' ? 'text-bear' : 'text-onSurfaceDim'}`}>{day.direction}</td>
+                          <td className="py-2 pr-3 text-right text-onSurfaceMuted">{day.hybrid_score?.toFixed(1)}</td>
+                          <td className={`py-2 pr-3 text-center ${day.validator_verdict === 'confirm' ? 'text-bull' : day.validator_verdict === 'skip' ? 'text-bear' : 'text-primary'}`}>{day.validator_verdict}</td>
+                          <td className="py-2 pr-3 text-right text-onSurfaceMuted">{day.lots ?? 0}</td>
+                          <td className={`py-2 pr-3 text-right font-bold ${(day.actual_move_pct ?? 0) > 0 ? 'text-bull' : (day.actual_move_pct ?? 0) < 0 ? 'text-bear' : 'text-onSurfaceDim'}`}>{day.actual_move_pct?.toFixed(2) ?? '—'}%</td>
+                          <td className="py-2 pr-3 text-center">{day.is_correct === true ? '✓' : day.is_correct === false ? '✗' : '—'}</td>
+                          <td className={`py-2 text-right font-bold ${day.pnl_points > 0 ? 'text-bull' : day.pnl_points < 0 ? 'text-bear' : 'text-onSurfaceDim'}`}>{day.pnl_points?.toFixed(0)}</td>
                         </tr>
                       ))}
                     </tbody>
