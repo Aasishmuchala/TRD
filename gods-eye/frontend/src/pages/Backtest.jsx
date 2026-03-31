@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
+import BacktestSummary from '../components/BacktestSummary'
+import StatsPanel from '../components/StatsPanel'
+import AgentAccuracyTable from '../components/AgentAccuracyTable'
+import EquityCurve from '../components/EquityCurve'
+import DayDetailModal from '../components/DayDetailModal'
 
 export default function Backtest() {
   // Form state
@@ -11,8 +16,9 @@ export default function Backtest() {
 
   // Async state
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)   // BacktestRunResponse shape
+  const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [selectedDay, setSelectedDay] = useState(null)
 
   const handleRun = async (e) => {
     e.preventDefault()
@@ -131,17 +137,72 @@ export default function Backtest() {
           </div>
         )}
 
-        {/* Results area — child panels injected by Plans 02 and 03 */}
+        {/* Results */}
         {result && (
           <div className="space-y-5">
-            {/* Plans 02 and 03 will add BacktestSummary, StatsPanel, AgentAccuracyTable, EquityCurve, DayDetailModal here */}
-            <div className="terminal-card p-4">
-              <p className="text-[10px] font-mono text-onSurfaceDim">
-                Run complete — {result.summary.day_count} days processed
-              </p>
+            {/* Summary + Stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <BacktestSummary summary={result.summary} mockMode={mockMode} />
+              <StatsPanel days={result.days || []} />
             </div>
+
+            {/* Agent Accuracy Table */}
+            <AgentAccuracyTable agents={result.summary?.per_agent_accuracy || {}} />
+
+            {/* Equity Curve */}
+            <EquityCurve days={result.days || []} onDayClick={(day) => setSelectedDay(day)} />
+
+            {/* Day-by-Day Results Table */}
+            {result.days && result.days.length > 0 && (
+              <div className="terminal-card p-4">
+                <div className="section-header mb-3">Day-by-Day Results</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px] font-mono">
+                    <thead>
+                      <tr className="text-onSurfaceDim border-b border-[rgba(255,255,255,0.06)]">
+                        <th className="text-left py-2 pr-3">Date</th>
+                        <th className="text-left py-2 pr-3">Predicted</th>
+                        <th className="text-right py-2 pr-3">Conviction</th>
+                        <th className="text-right py-2 pr-3">Actual Move</th>
+                        <th className="text-center py-2 pr-3">Correct</th>
+                        <th className="text-right py-2">P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.days.map((day) => (
+                        <tr
+                          key={day.date}
+                          onClick={() => setSelectedDay(day)}
+                          className="border-b border-[rgba(255,255,255,0.03)] cursor-pointer hover:bg-surface-2 transition-colors"
+                        >
+                          <td className="py-2 pr-3 text-onSurfaceMuted">{day.date}</td>
+                          <td className={`py-2 pr-3 font-bold ${
+                            day.predicted_direction?.includes('BUY') ? 'text-bull' :
+                            day.predicted_direction?.includes('SELL') ? 'text-bear' : 'text-neutral-bright'
+                          }`}>{day.predicted_direction}</td>
+                          <td className="py-2 pr-3 text-right text-onSurfaceMuted">{day.predicted_conviction?.toFixed(0)}%</td>
+                          <td className={`py-2 pr-3 text-right font-bold ${
+                            day.actual_move_pct > 0.1 ? 'text-bull' :
+                            day.actual_move_pct < -0.1 ? 'text-bear' : 'text-onSurfaceDim'
+                          }`}>{day.actual_move_pct?.toFixed(2)}%</td>
+                          <td className="py-2 pr-3 text-center">
+                            {day.is_correct === true ? '✓' : day.is_correct === false ? '✗' : '—'}
+                          </td>
+                          <td className={`py-2 text-right font-bold ${
+                            day.pnl_points > 0 ? 'text-bull' : day.pnl_points < 0 ? 'text-bear' : 'text-onSurfaceDim'
+                          }`}>{day.pnl_points?.toFixed(1)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Day Detail Modal */}
+        <DayDetailModal day={selectedDay} onClose={() => setSelectedDay(null)} />
       </div>
     </Layout>
   )
