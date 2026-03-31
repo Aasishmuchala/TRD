@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: executing
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-03-31T04:50:07.705Z"
+status: verifying
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-03-31T04:51:10.412Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 09 (backtest-dashboard) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 08 P02 | 6 | 2 tasks | 5 files |
 | Phase 09 P01 | 337s | 3 tasks | 4 files |
 | Phase 09 P02 | 131s | 2 tasks | 4 files |
+| Phase 09 P03 | 192s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 09]: Backtest results area left as placeholder — Plans 02/03 will inject BacktestSummary, StatsPanel, AgentAccuracyTable, EquityCurve, DayDetailModal components
 - [Phase 09]: Inline AGENT_LABELS/AGENT_COLORS in AgentAccuracyTable to avoid dependency on constants file
 - [Phase 09]: Sample variance (n-1) for Sharpe stddev — handles small backtests; N/A when < 2 active data points
+- [Phase 09]: onDayClick wired at LineChart level — chart onClick provides activePayload reliably across all chart areas
+- [Phase 09]: DayDetailModal placed before closing Layout tag — z-50 fixed overlay sits above sidebar and scrollable content
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T04:50:07.701Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-03-31T04:51:10.407Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None

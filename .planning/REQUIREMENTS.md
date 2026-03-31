@@ -39,9 +39,9 @@
 - [x] **DASH-01**: User can select date range and run backtest from the UI
 - [x] **DASH-02**: Dashboard shows overall accuracy (1-day direction), win rate, and total P&L
 - [x] **DASH-03**: Dashboard shows per-agent accuracy breakdown over the backtest period
-- [ ] **DASH-04**: Dashboard shows equity curve (cumulative P&L over time)
+- [x] **DASH-04**: Dashboard shows equity curve (cumulative P&L over time)
 - [x] **DASH-05**: Dashboard shows max drawdown, Sharpe ratio, and average win/loss size
-- [ ] **DASH-06**: User can drill into individual backtest days to see agent reasoning vs actual outcome
+- [x] **DASH-06**: User can drill into individual backtest days to see agent reasoning vs actual outcome
 
 ## Future Requirements
 
@@ -84,9 +84,9 @@
 | DASH-01 | Phase 9 — Backtest Dashboard | Complete |
 | DASH-02 | Phase 9 — Backtest Dashboard | Complete |
 | DASH-03 | Phase 9 — Backtest Dashboard | Complete |
-| DASH-04 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-04 | Phase 9 — Backtest Dashboard | Complete |
 | DASH-05 | Phase 9 — Backtest Dashboard | Complete |
-| DASH-06 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-06 | Phase 9 — Backtest Dashboard | Complete |
 
 **Coverage:**
 - v2.0 requirements: 23 total
