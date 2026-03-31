@@ -32,6 +32,7 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
   const [scenarios, setScenarios] = useState(fallbackScenarios)
   const [selected, setSelected] = useState(null)
   const [liveAvailable, setLiveAvailable] = useState(false)
+  const [marketClosed, setMarketClosed] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
 
   useEffect(() => {
@@ -40,8 +41,14 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
       .catch(() => null)
     // Check if live market data is reachable
     apiClient.getMarketLive()
-      .then((data) => { if (data?.nifty_spot > 0) setLiveAvailable(true) })
-      .catch(() => null)
+      .then((data) => {
+        if (data?.nifty_spot > 0 && data?.data_source !== 'error') {
+          setLiveAvailable(true)
+        } else {
+          setMarketClosed(true)
+        }
+      })
+      .catch(() => setMarketClosed(true))
   }, [])
 
   const handleSimulate = () => {
@@ -123,7 +130,7 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-onSurface">Simulate Live Market</p>
             <p className="text-[10px] text-onSurfaceDim" aria-live="polite">
-              {liveAvailable ? 'Real-time NSE data available' : 'Market data loading...'}
+              {liveAvailable ? 'Real-time Dhan data available' : marketClosed ? 'Market closed — use presets below' : 'Checking market data...'}
             </p>
           </div>
           <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-bull bg-bull/10 border border-bull/20" aria-label="Live market data mode">
