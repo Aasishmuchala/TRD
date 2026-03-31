@@ -102,70 +102,34 @@ class PromoterAgent(BaseAgent):
         self, market_data: MarketInput, round_num: int, other_context: str,
         enriched_context: str = None,
     ) -> str:
-        """Build promoter analysis prompt with enriched intelligence."""
+        """Short directional signal prompt — single pass, no debate rounds."""
 
         intel_section = ""
         if enriched_context:
-            intel_section = f"""
-INTELLIGENCE BRIEFING (pre-computed signals, knowledge graph, and your track record):
-{enriched_context}
+            intel_section = f"\nSIGNAL CONTEXT:\n{enriched_context}\n"
 
-USE THIS BRIEFING to ground your analysis. The quantitative signals above are pre-computed
-from real market data. Your past accuracy stats show where you've been right and wrong —
-adjust your conviction accordingly.
-"""
+        return f"""You are analyzing promoter and corporate insider behavior as a signal for Nifty direction. Promoters buy when the market is undervalued or when they want to defend their holdings; they trim when valuations are stretched.
 
-        return f"""You are a company promoter/insider analyzing your stock's performance and control implications.
-Your primary goal is maintaining promoter control while maximizing shareholder value.
-
-CURRENT MARKET DATA:
-- Stock Price: {market_data.nifty_spot} (proxy for typical stock)
-- Index VIX: {market_data.india_vix}
-- Market Liquidity: Reflected by FII/DII flows
-- FII Flow (5d): ${market_data.fii_flow_5d}M
-- DII Flow (5d): ${market_data.dii_flow_5d}M
+MARKET DATA:
+- Nifty Spot: {market_data.nifty_spot}
+- FII Net Flow (5-day): ${market_data.fii_flow_5d}M (negative = FII selling creates promoter support opportunity)
+- DII Net Flow (5-day): ${market_data.dii_flow_5d}M
+- India VIX: {market_data.india_vix} (high VIX = promoter buying opportunity to defend pledged shares)
 - Market Context: {market_data.context}
 {intel_section}
-PROMOTER DECISION FRAMEWORK:
-As a promoter, you focus on:
-1. **Pledge Ratios**: If > 35%, you risk losing control in a downturn
-2. **Stock Valuation**: Is current price fair? Should you buy more or trim exposure?
-3. **Bulk/Block Deals**: Strategic timing for stake increases/decreases
-4. **SEBI Disclosure**: Mandatory after 2% change in holding
-5. **Control Maintenance**: Keeping >50% ownership (or family + allies)
-6. **Capital Raising**: Using stock for fundraising at good valuations
+DECISION RULES:
+- Heavy FII selling + high VIX → promoters likely supporting → BUY signal
+- Low VIX + sustained rally → promoters trimming overvalued stakes → SELL signal
+- Moderate FII selling + moderate VIX → promoters holding → HOLD
+- Budget or election context: promoters cautious → lower conviction
 
-KEY BEHAVIORS OF PROMOTERS:
-- You buy when pledged shares are underwater (lower pledge ratio)
-- You sell when stock is overvalued (take profits)
-- You time SEBI filings strategically
-- You react to downside risk (avoid loss of control)
-- You support stock through selective buying in downturns
-- You monitor competitor actions and hostile takeover risk
-
-DECISION REQUIREMENTS:
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON (no markdown):
 {{
-  "direction": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
+  "direction": "BUY" | "SELL" | "HOLD" | "STRONG_BUY" | "STRONG_SELL",
   "conviction": <0-100>,
-  "key_triggers": ["trigger1", "trigger2", "trigger3"],
-  "reasoning": "Your analysis in 2-3 sentences.",
-  "control_status": "Status of control (safe/at_risk/threatened)",
-  "action": "Buy/Hold/Trim based on control dynamics",
-  "interaction_notes": "How broader market affects control"
-}}
-
-Current round: {round_num}/3
-{other_context}
-
-As a promoter:
-- You're conservative (don't want to lose control)
-- You support stock during sharp declines
-- You take advantage of rallies to trim overvalued positions
-- You coordinate with allies to strengthen control
-- You avoid sector-wide downturns becoming company-specific crises
-
-Your strategic assessment:"""
+  "key_triggers": ["trigger1", "trigger2"],
+  "reasoning": "One or two sentences on whether promoter behavior is supportive or distributive given current flow and VIX conditions."
+}}"""
 
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM via OpenAI-compatible API."""

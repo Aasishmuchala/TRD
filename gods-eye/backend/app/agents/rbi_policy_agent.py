@@ -103,74 +103,36 @@ class RBIPolicyAgent(BaseAgent):
         self, market_data: MarketInput, round_num: int, other_context: str,
         enriched_context: str = None,
     ) -> str:
-        """Build RBI policy analysis prompt with enriched intelligence."""
+        """Short directional signal prompt — single pass, no debate rounds."""
 
         intel_section = ""
         if enriched_context:
-            intel_section = f"""
-INTELLIGENCE BRIEFING (pre-computed signals, knowledge graph, and your track record):
-{enriched_context}
+            intel_section = f"\nSIGNAL CONTEXT:\n{enriched_context}\n"
 
-USE THIS BRIEFING to ground your analysis. The quantitative signals above are pre-computed
-from real market data. Your past accuracy stats show where you've been right and wrong —
-adjust your conviction accordingly.
-"""
+        return f"""You are assessing the RBI monetary policy stance as a signal for Indian equity direction. Rate cuts are bullish for equities; rate hikes or tightening are bearish.
 
-        return f"""You are the RBI (Reserve Bank of India) Monetary Policy Committee analyzing market conditions.
-Your mandate is price stability (inflation), financial system stability, and growth support.
-
-CURRENT MACROECONOMIC DATA:
-- Nifty 50 Spot: {market_data.nifty_spot}
+MARKET DATA:
+- Nifty Spot: {market_data.nifty_spot}
+- USD/INR: {market_data.usd_inr} (above 84 = rupee pressure = RBI hawkish bias)
+- DXY: {market_data.dxy} (above 104 = global dollar strength = RBI constrained)
+- FII Flow (5-day): ${market_data.fii_flow_5d}M (heavy outflows = rupee pressure = RBI defensive)
 - India VIX: {market_data.india_vix}
-- USD/INR: {market_data.usd_inr} (rupee weakness = inflation risk)
-- US Dollar Index (DXY): {market_data.dxy}
-- FII Flow (5d): ${market_data.fii_flow_5d}M (large outflows = rupee pressure)
 - Market Context: {market_data.context}
 {intel_section}
-RBI POLICY FRAMEWORK:
-You consider:
-1. **Inflation Target**: RBI aims for 4% CPI (band: 2-6%)
-2. **Repo Rate Corridor**: Repo rate vs reverse repo
-3. **Rupee Strength**: If INR weakens > 2% in month, RBI may intervene
-4. **Forex Reserves**: If dropping rapidly, RBI cuts off outflows
-5. **Growth vs Inflation**: RBI faces rate cut/hike tradeoff
-6. **Global Policy**: Fed rate path influences RBI decisions
+DECISION RULES:
+- Stable rupee (USD/INR < 83.5) + DXY weakening + low FII outflows → RBI can cut → BUY
+- Weak rupee (USD/INR > 84.5) OR DXY > 105 OR heavy FII outflows → RBI constrained/hawkish → SELL
+- USD/INR 83.5–84.5 + mixed signals → HOLD
+- Context "budget" or "election" → reduce conviction by 15 pts (RBI on hold during political periods)
+- BUY = rate cut coming (bullish equities); SELL = tightening bias (bearish); HOLD = status quo
 
-KEY RBI BEHAVIORS:
-- RBI cuts rates if inflation trends down OR growth stalls
-- RBI hikes if CPI accelerates (especially food/energy)
-- RBI intervenes in forex to defend rupee if needed
-- RBI follows a data-dependent approach (next 6-8 months)
-- Weak rupee = higher import inflation = hawkish bias
-- Strong rupee + low inflation = dovish bias (rate cut potential)
-
-DECISION REQUIREMENTS:
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON (no markdown):
 {{
-  "direction": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
+  "direction": "BUY" | "SELL" | "HOLD" | "STRONG_BUY" | "STRONG_SELL",
   "conviction": <0-100>,
-  "key_triggers": ["trigger1", "trigger2", "trigger3"],
-  "reasoning": "Your analysis in 2-3 sentences.",
-  "policy_stance": "Dovish/Neutral/Hawkish",
-  "next_action": "Cut/Hold/Hike in next review",
-  "interaction_notes": "How market affects RBI decisions"
-}}
-
-Current round: {round_num}/3
-{other_context}
-
-INTERPRETATION FOR MARKET:
-- RBI "STRONG_BUY" = rate cuts coming (bullish for equities)
-- RBI "BUY" = cautiously dovish (slight easing)
-- RBI "HOLD" = status quo (neutral)
-- RBI "SELL" = tightening bias (bearish)
-- RBI "STRONG_SELL" = aggressive tightening (very bearish)
-
-As RBI, assess the macroeconomic backdrop and set a policy stance that maintains
-inflation control while supporting growth. Remember: RBI decisions take 6-8 weeks
-to propagate through the economy.
-
-Your assessment:"""
+  "key_triggers": ["trigger1", "trigger2"],
+  "reasoning": "One or two sentences on the RBI policy bias implied by rupee, DXY, and FII flow conditions."
+}}"""
 
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM via OpenAI-compatible API."""
