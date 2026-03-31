@@ -262,3 +262,136 @@ class HybridScorer:
             validator_verdict=verdict,
             validator_reasoning=validator.reasoning,
         )
+
+
+# ---------------------------------------------------------------------------
+# LLM Validator
+# ---------------------------------------------------------------------------
+
+
+class LLMValidator:
+    """Single LLM call that reviews the hybrid signal and returns a ValidatorVerdict."""
+
+    VALIDATOR_PROMPT_TEMPLATE = """\
+You are a disciplined options trader reviewing a hybrid market signal before acting on it.
+
+SIGNAL SUMMARY
+==============
+Instrument   : {instrument}
+Date         : {date}
+Direction    : {direction}
+Hybrid Score : {hybrid_score:.1f} / 100  ({tier})
+
+QUANT ENGINE (60% weight)
+-------------------------
+Score     : {quant_score}
+Direction : {quant_direction}
+Factors fired:
+{quant_factors_text}
+
+AGENT CONSENSUS (40% weight)
+----------------------------
+Consensus score : {agent_consensus_score:.1f}
+Per-agent calls :
+{agent_calls_text}
+
+YOUR TASK
+=========
+Decide ONE of:
+  confirm  — signal is coherent; conviction stands as-is
+  adjust   — signal has meaningful contradiction or risk; reduce conviction by 10-30 pts
+  skip     — signal has a fatal flaw or extreme contradiction; do NOT trade
+
+Rules you MUST follow:
+1. You CANNOT change the direction ({direction}). Only conviction and tradeable status are yours to influence.
+2. "adjust" is appropriate when quant and agent consensus disagree on direction OR a key
+   risk factor (e.g., VIX spike, PCR extreme not reflected in quant) is visible.
+3. "skip" is appropriate ONLY when both quant and majority of agents disagree, or when
+   the instrument is at a known event risk (earnings, RBI decision, index expiry) that
+   makes directional prediction unreliable.
+4. Keep your reasoning to 2 sentences maximum.
+
+RESPONSE FORMAT (JSON only, no other text):
+{{
+  "verdict": "confirm" | "adjust" | "skip",
+  "reasoning": "<2 sentences max>",
+  "adjustment_amount": <number 0-30, use 0 for confirm/skip>
+}}
+"""
+
+    @staticmethod
+    def _build_quant_factors_text(quant_breakdown: dict) -> str:
+        """Format quant factors for the prompt."""
+        lines = []
+        for name, data in quant_breakdown.get("factors", {}).items():
+            if data.get("threshold_hit"):
+                lines.append(f"  - {name}: +{data['points']} pts ({data['side']})")
+        return "\n".join(lines) if lines else "  (no factors fired)"
+
+    @staticmethod
+    def _build_agent_calls_text(agent_breakdown: dict) -> str:
+        """Format per-agent calls for the prompt."""
+        lines = []
+        for agent_key, data in agent_breakdown.items():
+            direction = data["direction"] if isinstance(data, dict) else data.direction
+            conviction = data["conviction"] if isinstance(data, dict) else data.conviction
+            lines.append(f"  - {agent_key}: {direction} @ {conviction:.0f}")
+        return "\n".join(lines) if lines else "  (no agents)"
+
+    @staticmethod
+    def _parse_verdict_response(raw: str) -> ValidatorVerdict:
+        """Parse JSON verdict from LLM response. Falls back to confirm on parse error."""
+        import json, re
+        try:
+            # Strip markdown fences if present
+            text = re.sub(r"```(?:json)?|```", "", raw).strip()
+            data = json.loads(text)
+            verdict = data.get("verdict", "confirm").lower()
+            if verdict not in ("confirm", "adjust", "skip"):
+                verdict = "confirm"
+            return ValidatorVerdict(
+                verdict=verdict,
+                reasoning=str(data.get("reasoning", ""))[:500],
+                adjustment_amount=float(data.get("adjustment_amount", 0)),
+            )
+        except Exception:
+            # Safe fallback: confirm so we never crash the trade signal
+            return ValidatorVerdict(
+                verdict="confirm",
+                reasoning="Validator response parse error — defaulting to confirm.",
+                adjustment_amount=0.0,
+            )
+
+    @classmethod
+    async def call_validator(
+        cls,
+        hybrid_result: "HybridResult",
+        instrument: str,
+        date: str,
+    ) -> ValidatorVerdict:
+        """Make the single LLM validator call. Returns ValidatorVerdict."""
+        from app.auth.llm_client import get_llm_client
+
+        quant_factors_text = cls._build_quant_factors_text(hybrid_result.quant_breakdown)
+        agent_calls_text = cls._build_agent_calls_text(hybrid_result.agent_breakdown)
+
+        prompt = cls.VALIDATOR_PROMPT_TEMPLATE.format(
+            instrument=instrument.upper(),
+            date=date,
+            direction=hybrid_result.direction,
+            hybrid_score=hybrid_result.hybrid_score,
+            tier=hybrid_result.tier,
+            quant_score=hybrid_result.quant_breakdown.get("score", 0),
+            quant_direction=hybrid_result.quant_breakdown.get("direction", "HOLD"),
+            quant_factors_text=quant_factors_text,
+            agent_consensus_score=hybrid_result.agent_consensus_score,
+            agent_calls_text=agent_calls_text,
+        )
+
+        llm = get_llm_client()
+        raw = await llm.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=200,
+        )
+        return cls._parse_verdict_response(raw)

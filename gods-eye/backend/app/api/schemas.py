@@ -279,3 +279,29 @@ class QuantBacktestRunResponse(BaseModel):
     total_pnl_points: float
     elapsed_seconds: float
     days: List[QuantBacktestDaySchema]
+
+
+# ── Phase 12: Hybrid Scoring and LLM Validator ───────────────────────────────
+
+class AgentBreakdownEntrySchema(BaseModel):
+    direction: str
+    conviction: float
+
+
+class HybridSignalResponse(BaseModel):
+    """Response for POST /api/signal/hybrid/{instrument}/{date}."""
+    model_config = {"protected_namespaces": ()}
+
+    instrument: str
+    date: str
+    direction: str                               # Quant direction (locked)
+    hybrid_score: float                          # 0-100 fused score
+    conviction: float                            # Post-validation conviction
+    tradeable: bool                              # False if skip or score < 50
+    tier: str                                    # "strong" | "moderate" | "skip"
+    instrument_hint: str                         # e.g. "NIFTY_CE"
+    quant_breakdown: Dict[str, Any]              # score, direction, tier, factors
+    agent_breakdown: Dict[str, AgentBreakdownEntrySchema]
+    agent_consensus_score: float
+    validator_verdict: str                       # "confirm" | "adjust" | "skip"
+    validator_reasoning: str
