@@ -124,4 +124,18 @@ export const apiClient = {
     body: JSON.stringify(data),
   }, 0, 600000),
   getBacktestResult: (runId) => request(`${API_BASE}/backtest/results/${runId}`),
+
+  // Fast Backtest — Rules-Only (quant engine, ~1yr in <10s)
+  runQuantBacktest: (data) => request(`${API_BASE}/backtest/quant-run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, 0, 60000),
+
+  // Fast Backtest — Hybrid (rules + agents, ~1mo in <5min)
+  runHybridBacktest: (data) => request(`${API_BASE}/backtest/hybrid-run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, 0, 600000),
 }
