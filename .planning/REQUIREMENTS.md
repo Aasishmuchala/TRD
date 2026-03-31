@@ -36,7 +36,7 @@
 
 ### Backtest Dashboard
 
-- [ ] **DASH-01**: User can select date range and run backtest from the UI
+- [x] **DASH-01**: User can select date range and run backtest from the UI
 - [ ] **DASH-02**: Dashboard shows overall accuracy (1-day direction), win rate, and total P&L
 - [ ] **DASH-03**: Dashboard shows per-agent accuracy breakdown over the backtest period
 - [ ] **DASH-04**: Dashboard shows equity curve (cumulative P&L over time)
@@ -81,7 +81,7 @@
 | SIG-01 | Phase 8 — Signal Scoring | Complete |
 | SIG-02 | Phase 8 — Signal Scoring | Complete |
 | SIG-03 | Phase 8 — Signal Scoring | Complete |
-| DASH-01 | Phase 9 — Backtest Dashboard | Pending |
+| DASH-01 | Phase 9 — Backtest Dashboard | Complete |
 | DASH-02 | Phase 9 — Backtest Dashboard | Pending |
 | DASH-03 | Phase 9 — Backtest Dashboard | Pending |
 | DASH-04 | Phase 9 — Backtest Dashboard | Pending |

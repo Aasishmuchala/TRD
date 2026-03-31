@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Backtesting & Signal Engine
-status: verifying
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-31T04:31:45.163Z"
+status: executing
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-31T04:45:50.711Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 11
+  completed_plans: 9
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Prove God's Eye has a tradeable edge on Nifty/Bank Nifty options before risking real money.
-**Current focus:** Phase 08 — signal-scoring
+**Current focus:** Phase 09 — backtest-dashboard
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 09 (backtest-dashboard) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 07 P02 | 40 | 2 tasks | 2 files |
 | Phase 08 P01 | 2 | 2 tasks | 2 files |
 | Phase 08 P02 | 6 | 2 tasks | 5 files |
+| Phase 09 P01 | 337s | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 08]: vars(score_result) converts ScoreResult dataclass to plain dict at engine boundary — JSON-serializable, consistent with asdict() pattern
 - [Phase 08]: Optional[SignalScoreSchema] = None on BacktestDayResponse allows pre-Phase-8 persisted runs to deserialise gracefully without 422
 - [Phase 08]: Inline VIX classify + PCR-to-OI-sentiment helpers in routes.py simulate handler — no separate module needed for 3-line helpers used in one place
+- [Phase 09]: Backtest nav item placed between History and Skills per plan spec (Dashboard > Agents > History > Backtest > Skills > Paper Trading > Settings)
+- [Phase 09]: Backtest results area left as placeholder — Plans 02/03 will inject BacktestSummary, StatsPanel, AgentAccuracyTable, EquityCurve, DayDetailModal components
 
 ### Pending Todos
 
@@ -103,6 +106,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T04:31:04.200Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-31T04:45:50.706Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
