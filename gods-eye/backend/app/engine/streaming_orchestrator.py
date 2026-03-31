@@ -1,14 +1,14 @@
-"""Streaming orchestrator — yields events as agents complete each round.
+"""Streaming orchestrator — yields events as agents complete in a single round.
 
-Same logic as Orchestrator, but instead of gathering all results and
-returning at the end, it yields JSON-serializable event dicts that can
-be pushed over WebSocket in real-time.
+Dispatches all 6 agents simultaneously:
+- QUANT agent (AlgoQuantAgent): awaited inline — instant, yielded first
+- 5 LLM agents: dispatched in parallel via asyncio.wait, yielded as each finishes
 
-Event types:
+Event types emitted (in order):
     simulation_start   — simulation begins, metadata
-    round_start        — round N begins
-    agent_result       — single agent completed this round
-    round_complete     — all agents done for this round
+    round_start        — round 1 begins (only once)
+    agent_result       — single agent completed (6 total)
+    round_complete     — all agents done for round 1
     aggregation        — final aggregated result
     simulation_end     — all done, timing + metadata
     error              — something went wrong
@@ -37,7 +37,7 @@ from app.config import config
 
 
 class StreamingOrchestrator:
-    """Orchestrates 3-round simulation, yielding events as they happen."""
+    """Orchestrates single-round parallel simulation, yielding events as they happen."""
 
     def __init__(self):
         self.agents: Dict[str, BaseAgent] = {
@@ -57,7 +57,7 @@ class StreamingOrchestrator:
     async def stream_simulation(
         self, market_data: MarketInput, data_source: str = "fallback"
     ) -> AsyncGenerator[dict, None]:
-        """Yield simulation events as agents complete.
+        """Single-round parallel simulation — yield events as each agent completes.
 
         Usage:
             async for event in orchestrator.stream_simulation(market_input):
@@ -65,7 +65,6 @@ class StreamingOrchestrator:
         """
         start_time = time.time()
         simulation_id = f"sim_{uuid.uuid4().hex[:12]}"
-        round_history = []
 
         # Build enriched context
         agent_contexts = {}
@@ -87,97 +86,27 @@ class StreamingOrchestrator:
             "feedback_active": feedback_active,
         }
 
-        # ============== ROUND 1: Independent Analysis ==============
-        yield {"type": "round_start", "round": 1, "description": "Independent Analysis"}
+        yield {"type": "round_start", "round": 1, "description": "Parallel Signal Analysis"}
 
-        round1_outputs = {}
-        round1_data = {"round": 1, "agents": {}}
+        round_outputs = {}
+        round_data = {"round": 1, "agents": {}}
 
-        async for agent_name, response in self._stream_round(
-            market_data, 1, None, agent_contexts
-        ):
-            round1_outputs[agent_name] = response
-            round1_data["agents"][agent_name] = {
-                "direction": response.direction,
-                "conviction": response.conviction,
-                "type": response.agent_type,
-            }
-            yield {
-                "type": "agent_result",
-                "round": 1,
-                "agent_name": agent_name,
-                "agent_type": response.agent_type,
-                "direction": response.direction,
-                "conviction": response.conviction,
-                "reasoning": response.reasoning,
-                "key_triggers": response.key_triggers,
-                "time_horizon": response.time_horizon,
-            }
-
-        round_history.append(round1_data)
-        yield {"type": "round_complete", "round": 1, "agents_completed": len(round1_outputs)}
-
-        # ============== ROUND 2: React to Others ==============
-        yield {"type": "round_start", "round": 2, "description": "Reacting to Other Agents"}
-
-        round2_outputs = {}
-        round2_data = {"round": 2, "agents": {}}
-
-        async for agent_name, response in self._stream_round(
-            market_data, 2, round1_outputs, agent_contexts
-        ):
-            round2_outputs[agent_name] = response
-            round2_data["agents"][agent_name] = {
-                "direction": response.direction,
-                "conviction": response.conviction,
-                "type": response.agent_type,
-            }
-            # Include direction change info
-            changed = (
-                agent_name in round1_outputs
-                and round1_outputs[agent_name].direction != response.direction
-            )
-            yield {
-                "type": "agent_result",
-                "round": 2,
-                "agent_name": agent_name,
-                "agent_type": response.agent_type,
-                "direction": response.direction,
-                "conviction": response.conviction,
-                "reasoning": response.reasoning,
-                "key_triggers": response.key_triggers,
-                "time_horizon": response.time_horizon,
-                "direction_changed": changed,
-                "previous_direction": round1_outputs.get(agent_name, None)
-                and round1_outputs[agent_name].direction,
-            }
-
-        round_history.append(round2_data)
-        yield {"type": "round_complete", "round": 2, "agents_completed": len(round2_outputs)}
-
-        # ============== ROUND 3 (if needed): Equilibrium ==============
-        direction_changed = self._check_direction_changes(round1_outputs, round2_outputs)
-        final_outputs = round2_outputs
-        round3_outputs = None  # Initialize — only populated if Round 3 runs
-
-        if direction_changed:
-            yield {"type": "round_start", "round": 3, "description": "Finding Equilibrium"}
-
-            round3_outputs = {}
-            round3_data = {"round": 3, "agents": {}}
-
-            async for agent_name, response in self._stream_round(
-                market_data, 3, round2_outputs, agent_contexts
-            ):
-                round3_outputs[agent_name] = response
-                round3_data["agents"][agent_name] = {
+        # QUANT agent — instant, yield first
+        for agent_name, agent in self.agents.items():
+            if agent.agent_type == "QUANT":
+                response = await agent.analyze(
+                    market_data, 1, None,
+                    enriched_context=agent_contexts.get(agent_name, ""),
+                )
+                round_outputs[agent_name] = response
+                round_data["agents"][agent_name] = {
                     "direction": response.direction,
                     "conviction": response.conviction,
-                    "type": response.agent_type,
+                    "type": "QUANT",
                 }
                 yield {
                     "type": "agent_result",
-                    "round": 3,
+                    "round": 1,
                     "agent_name": agent_name,
                     "agent_type": response.agent_type,
                     "direction": response.direction,
@@ -187,15 +116,69 @@ class StreamingOrchestrator:
                     "time_horizon": response.time_horizon,
                 }
 
-            round_history.append(round3_data)
-            final_outputs = round3_outputs
-            yield {"type": "round_complete", "round": 3, "agents_completed": len(round3_outputs)}
-        else:
-            yield {"type": "round_skipped", "round": 3, "reason": "All agents held direction — consensus reached in Round 2"}
+        # LLM agents — dispatch all simultaneously, yield as each completes
+        llm_items = [
+            (name, agent)
+            for name, agent in self.agents.items()
+            if agent.agent_type == "LLM"
+        ]
+
+        if llm_items:
+            tasks = {}
+            for agent_name, agent in llm_items:
+                task = asyncio.create_task(
+                    agent.analyze(
+                        market_data, 1, None,
+                        enriched_context=agent_contexts.get(agent_name, ""),
+                    )
+                )
+                tasks[task] = agent_name
+
+            pending = set(tasks.keys())
+            while pending:
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done:
+                    agent_name = tasks[task]
+                    try:
+                        response = task.result()
+                        if isinstance(response, AgentResponse):
+                            round_outputs[agent_name] = response
+                            round_data["agents"][agent_name] = {
+                                "direction": response.direction,
+                                "conviction": response.conviction,
+                                "type": "LLM",
+                            }
+                            yield {
+                                "type": "agent_result",
+                                "round": 1,
+                                "agent_name": agent_name,
+                                "agent_type": response.agent_type,
+                                "direction": response.direction,
+                                "conviction": response.conviction,
+                                "reasoning": response.reasoning,
+                                "key_triggers": response.key_triggers,
+                                "time_horizon": response.time_horizon,
+                            }
+                    except Exception as e:
+                        yield {
+                            "type": "agent_result",
+                            "round": 1,
+                            "agent_name": agent_name,
+                            "agent_type": "LLM",
+                            "direction": "HOLD",
+                            "conviction": 25.0,
+                            "reasoning": f"Agent error: {str(e)}",
+                            "key_triggers": ["error"],
+                            "time_horizon": "Unknown",
+                        }
+
+        yield {"type": "round_complete", "round": 1, "agents_completed": len(round_outputs)}
 
         # ============== AGGREGATION ==============
         aggregator_result = Aggregator.aggregate(
-            final_outputs, hybrid=True, tuned_weights=tuned_weights
+            round_outputs, hybrid=True, tuned_weights=tuned_weights
         )
 
         yield {
@@ -212,8 +195,7 @@ class StreamingOrchestrator:
         execution_time_ms = (time.time() - start_time) * 1000
 
         # Log per-agent predictions
-        final_round = 3 if direction_changed else 2
-        for agent_key, response in final_outputs.items():
+        for agent_key, response in round_outputs.items():
             self.agent_memory.log_agent_prediction(
                 simulation_id=simulation_id,
                 agent_key=agent_key,
@@ -222,7 +204,7 @@ class StreamingOrchestrator:
                 reasoning=response.reasoning,
                 key_triggers=response.key_triggers,
                 context=market_data.context,
-                round_num=final_round,
+                round_num=1,
             )
 
         # Build and log full result
@@ -232,8 +214,8 @@ class StreamingOrchestrator:
             simulation_id=simulation_id,
             timestamp=datetime.now(),
             market_input=market_data,
-            agents_output=final_outputs,
-            round_history=round_history,
+            agents_output=round_outputs,
+            round_history=[round_data],
             aggregator_result=aggregator_result,
             execution_time_ms=execution_time_ms,
             model_used=config.MODEL,
@@ -254,9 +236,9 @@ class StreamingOrchestrator:
             self.review_engine.review_simulation(
                 simulation_id=simulation_id,
                 market_data=market_data,
-                round1_outputs=round1_outputs,
-                round2_outputs=round2_outputs,
-                round3_outputs=round3_outputs,
+                round1_outputs=round_outputs,
+                round2_outputs=round_outputs,
+                round3_outputs=None,
                 aggregator_result=agg_dict,
             )
         )
@@ -266,84 +248,22 @@ class StreamingOrchestrator:
             "type": "simulation_end",
             "simulation_id": simulation_id,
             "execution_time_ms": round(execution_time_ms, 1),
-            "total_rounds": final_round,
+            "total_rounds": 1,
             "model_used": config.MODEL,
             "feedback_active": feedback_active,
             "learning_enabled": config.LEARNING_ENABLED,
             "data_source": data_source,
         }
 
-    async def _stream_round(
-        self,
-        market_data: MarketInput,
-        round_num: int,
-        other_agents: Optional[Dict[str, AgentResponse]],
-        agent_contexts: Dict[str, str],
-    ) -> AsyncGenerator[tuple, None]:
-        """Run a round, yielding (agent_name, response) as each completes.
-
-        QUANT agents complete instantly (yielded first).
-        LLM agents run in parallel but yield individually as they finish.
-        """
-        # QUANT agents first (instant)
-        for agent_name, agent in self.agents.items():
-            if agent.agent_type == "QUANT":
-                response = await agent.analyze(
-                    market_data, round_num, other_agents,
-                    enriched_context=agent_contexts.get(agent_name, ""),
-                )
-                yield agent_name, response
-
-        # LLM agents in parallel, yielding as each completes
-        llm_items = [
-            (name, agent)
-            for name, agent in self.agents.items()
-            if agent.agent_type == "LLM"
-        ]
-
-        if not llm_items:
-            return
-
-        # Create tasks with name tracking
-        tasks = {}
-        for agent_name, agent in llm_items:
-            task = asyncio.create_task(
-                agent.analyze(
-                    market_data, round_num, other_agents,
-                    enriched_context=agent_contexts.get(agent_name, ""),
-                )
-            )
-            tasks[task] = agent_name
-
-        # Yield as each completes (not in submission order)
-        pending = set(tasks.keys())
-        while pending:
-            done, pending = await asyncio.wait(
-                pending, return_when=asyncio.FIRST_COMPLETED
-            )
-            for task in done:
-                agent_name = tasks[task]
-                try:
-                    response = task.result()
-                    if isinstance(response, AgentResponse):
-                        yield agent_name, response
-                except Exception as e:
-                    # Yield a fallback for failed agents
-                    yield agent_name, AgentResponse(
-                        agent_name=agent_name,
-                        agent_type="LLM",
-                        direction="HOLD",
-                        conviction=25.0,
-                        reasoning=f"Agent error: {str(e)}",
-                        key_triggers=["error"],
-                        time_horizon="Unknown",
-                    )
-
     @staticmethod
     def _check_direction_changes(
         round1: Dict[str, AgentResponse],
         round2: Dict[str, AgentResponse],
     ) -> bool:
+        """Check if any agent changed direction between rounds.
+
+        Kept for backward compatibility — no longer called in single-round design.
+        """
         for name in round1:
             if name in round2 and round1[name].direction != round2[name].direction:
                 return True
