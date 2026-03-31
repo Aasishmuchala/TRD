@@ -195,7 +195,7 @@ Plans:
 
 **Milestone Goal:** Replace the 3-round qualitative debate with a quantitative rules engine (60%) combined with single-round parallel agent calls (40%), validated by one LLM pass — delivering faster, more consistent signals with full risk rules and dual-mode backtesting.
 
-- [ ] **Phase 10: Quantitative Signal Engine** - Pure rules-based score (0-100) from FII/DII flows, PCR, RSI-14, VIX, and Supertrend — zero LLM calls, complete in under 10 seconds for 1-year backtest
+- [x] **Phase 10: Quantitative Signal Engine** - Pure rules-based score (0-100) from FII/DII flows, PCR, RSI-14, VIX, and Supertrend — zero LLM calls, complete in under 10 seconds for 1-year backtest (completed 2026-03-31)
 - [ ] **Phase 11: Agent Signal Rewrite** - Rewrite all 6 agent prompts for directional signal output and run them in parallel in a single round (~5 seconds total)
 - [ ] **Phase 12: Hybrid Scoring and LLM Validator** - Combine quant score (60%) and agent consensus (40%) into a final signal, with a single LLM validator call that can reduce conviction or skip but cannot flip direction
 - [ ] **Phase 13: Risk Management Rules** - Apply configurable position sizing, daily max-loss guard, VIX-scaled stop loss, and 1.5x risk target exit to every signal
@@ -218,7 +218,7 @@ Plans:
 
 Plans:
 - [x] 10-01-PLAN.md — TDD: QuantSignalEngine pure rules module (11 scoring rules, 20 tests)
-- [ ] 10-02-PLAN.md — QuantBacktestEngine + GET /api/signal/quant + POST /api/backtest/quant-run
+- [x] 10-02-PLAN.md — QuantBacktestEngine + GET /api/signal/quant + POST /api/backtest/quant-run
 
 ### Phase 11: Agent Signal Rewrite
 **Goal**: All 6 agents produce directional trading signals (BUY/SELL/HOLD with conviction) in a single parallel round — the FII, DII, Retail F&O, and RBI agents use rewritten signal-oriented prompts; the Algo agent runs as pure quant with no LLM call; all finish together in approximately 5 seconds
@@ -293,7 +293,7 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 7. Backtest Engine | v2.0 | 2/2 | Complete | 2026-03-30 |
 | 8. Signal Scoring | v2.0 | 2/2 | Complete | 2026-03-31 |
 | 9. Backtest Dashboard | v2.0 | 3/3 | Complete | 2026-03-31 |
-| 10. Quantitative Signal Engine | v3.0 | 1/2 | In Progress|  |
+| 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete   | 2026-03-31 |
 | 11. Agent Signal Rewrite | v3.0 | 0/TBD | Not started | - |
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 0/TBD | Not started | - |
 | 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |

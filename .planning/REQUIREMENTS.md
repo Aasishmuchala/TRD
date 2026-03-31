@@ -11,7 +11,7 @@
 - [x] **QUANT-02**: Each signal has defined thresholds and point values
 - [x] **QUANT-03**: Score > 50 = tradeable, direction = higher-scoring side
 - [x] **QUANT-04**: Zero LLM calls, pure computation on Dhan data
-- [ ] **QUANT-05**: Backtest 1 year in under 10 seconds
+- [x] **QUANT-05**: Backtest 1 year in under 10 seconds
 
 ### Agent Signal Rewrite
 
@@ -66,7 +66,7 @@
 | QUANT-02 | Phase 10 — Quantitative Signal Engine | Complete |
 | QUANT-03 | Phase 10 — Quantitative Signal Engine | Complete |
 | QUANT-04 | Phase 10 — Quantitative Signal Engine | Complete |
-| QUANT-05 | Phase 10 — Quantitative Signal Engine | Pending |
+| QUANT-05 | Phase 10 — Quantitative Signal Engine | Complete |
 | AGENT-01 | Phase 11 — Agent Signal Rewrite | Pending |
 | AGENT-02 | Phase 11 — Agent Signal Rewrite | Pending |
 | AGENT-03 | Phase 11 — Agent Signal Rewrite | Pending |

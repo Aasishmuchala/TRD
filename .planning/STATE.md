@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Hybrid Trading Engine
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-31T18:36:20.582Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-31T19:08:29.334Z"
 last_activity: 2026-03-31 -- Phase 10 execution started
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 10 P01 | 190 | 2 tasks | 4 files |
+| Phase 10 P02 | 1145 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 10]: Bidirectional rules (fii_flow, pcr, rsi, vix, supertrend) use single factor key with side field (buy/sell) to indicate which threshold fired — avoids double-keying and matches Plan 02 import contract
 - [Phase 10]: factors dict built for EVERY evaluated rule (threshold_hit=False when rule did not fire) — downstream consumers can inspect all 6 factors without KeyError
 - [Phase 10]: Direction boundary: strictly > 50 required (50 == HOLD, 51 == tradeable) — confirmed by plan spec wording
+- [Phase 10]: QuantBacktestRequest(BaseModel) used for quant-run POST body — BacktestRunRequest pattern already in schemas.py, typed validation at boundary
+- [Phase 10]: factors dict omitted from QuantBacktestDaySchema — keeps bulk payload small while full factors available in-memory if needed later
+- [Phase 10]: vix_5d_avg excludes current-day VIX (uses strict d < date filter) — prevents same-day data contamination in 5-day average
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T18:36:20.578Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-03-31T19:08:29.330Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
