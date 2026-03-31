@@ -24,9 +24,9 @@ export default function GraduationChecklist({ criteria = [] }) {
       </div>
 
       <div className="space-y-2">
-        {criteria.map((item) => (
+        {criteria.map((item, idx) => (
           <div
-            key={item.metric}
+            key={idx}
             className={`flex items-center gap-2.5 p-2.5 rounded-lg ${
               item.passed ? 'bg-bull/5 border border-bull/10' : 'bg-surface-2'
             }`}

@@ -18,7 +18,8 @@ export default function AccuracyPanel() {
           })
         )
         setData(results)
-      } catch {
+      } catch (err) {
+        console.error('Failed to fetch accuracy:', err)
       } finally {
         setLoading(false)
       }

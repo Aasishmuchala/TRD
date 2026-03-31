@@ -67,7 +67,7 @@ export default function Settings() {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
-      setFetchError(err.message || 'Failed to save settings')
+      console.error('Failed to save:', err)
     } finally {
       setSaving(false)
     }

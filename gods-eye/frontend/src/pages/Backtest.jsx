@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
-import BacktestSummary from '../components/BacktestSummary'
-import StatsPanel from '../components/StatsPanel'
-import AgentAccuracyTable from '../components/AgentAccuracyTable'
-import EquityCurve from '../components/EquityCurve'
-import DayDetailModal from '../components/DayDetailModal'
-import { dirColor, dirLabel } from '../utils/format'
 
 export default function Backtest() {
   // Form state
@@ -19,9 +13,6 @@ export default function Backtest() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)   // BacktestRunResponse shape
   const [error, setError] = useState(null)
-
-  // Drill-down state
-  const [selectedDay, setSelectedDay] = useState(null)
 
   const handleRun = async (e) => {
     e.preventDefault()
@@ -140,75 +131,18 @@ export default function Backtest() {
           </div>
         )}
 
-        {/* Results area */}
+        {/* Results area — child panels injected by Plans 02 and 03 */}
         {result && (
           <div className="space-y-5">
-            {/* Plan 02: Summary + Stats + Agent Accuracy */}
-            <BacktestSummary summary={result.summary} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <StatsPanel days={result.days} />
-              <AgentAccuracyTable perAgentAccuracy={result.summary.per_agent_accuracy} />
-            </div>
-
-            {/* Plan 03: Equity Curve */}
-            <EquityCurve days={result.days} onDayClick={setSelectedDay} />
-
-            {/* Plan 03: Day-by-Day Results table */}
-            <div className="terminal-card">
-              <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.06)]">
-                <h2 className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">Day-by-Day Results</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="border-b border-[rgba(255,255,255,0.06)]">
-                    <tr>
-                      <th className="text-left px-3 py-2 text-[10px] font-mono text-onSurfaceDim">Date</th>
-                      <th className="text-left px-3 py-2 text-[10px] font-mono text-onSurfaceDim">Prediction</th>
-                      <th className="text-right px-3 py-2 text-[10px] font-mono text-onSurfaceDim">Actual</th>
-                      <th className="text-right px-3 py-2 text-[10px] font-mono text-onSurfaceDim">P&amp;L</th>
-                      <th className="text-center px-3 py-2 text-[10px] font-mono text-onSurfaceDim">Result</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[rgba(255,255,255,0.04)]">
-                    {result.days.map((day) => (
-                      <tr
-                        key={day.date}
-                        onClick={() => setSelectedDay(day)}
-                        className="hover:bg-surface-2/50 cursor-pointer transition-colors"
-                      >
-                        <td className="px-3 py-2 font-mono text-[10px] text-onSurfaceMuted">{day.date}</td>
-                        <td className="px-3 py-2">
-                          <span className="text-[10px] font-mono font-bold" style={{ color: dirColor(day.predicted_direction) }}>
-                            {dirLabel(day.predicted_direction)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-[11px]" style={{ color: day.actual_move_pct >= 0 ? '#00E676' : '#FF1744' }}>
-                          {day.actual_move_pct >= 0 ? '+' : ''}{day.actual_move_pct.toFixed(2)}%
-                        </td>
-                        <td className="px-3 py-2 text-right font-mono text-[11px]" style={{ color: day.pnl_points >= 0 ? '#00E676' : '#FF1744' }}>
-                          {day.pnl_points >= 0 ? '+' : ''}{day.pnl_points.toFixed(0)}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {day.direction_correct === null
-                            ? <span className="text-[9px] font-mono text-neutral">HELD</span>
-                            : day.direction_correct
-                            ? <span className="text-[9px] font-mono text-bull">WIN</span>
-                            : <span className="text-[9px] font-mono text-bear">LOSS</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {/* Plans 02 and 03 will add BacktestSummary, StatsPanel, AgentAccuracyTable, EquityCurve, DayDetailModal here */}
+            <div className="terminal-card p-4">
+              <p className="text-[10px] font-mono text-onSurfaceDim">
+                Run complete — {result.summary.day_count} days processed
+              </p>
             </div>
           </div>
         )}
       </div>
-
-      {/* Day drill-down modal */}
-      <DayDetailModal day={selectedDay} onClose={() => setSelectedDay(null)} />
     </Layout>
   )
 }

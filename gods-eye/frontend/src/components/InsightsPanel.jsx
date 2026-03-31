@@ -162,8 +162,8 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
             <div className="mt-auto">
               <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Top Triggers</span>
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {data.triggers.map((t) => (
-                  <span key={t} className="tag-primary text-[10px]">{t}</span>
+                {data.triggers.map((t, i) => (
+                  <span key={i} className="tag-primary text-[10px]">{t}</span>
                 ))}
               </div>
             </div>

@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 import { agents as agentColors, agentLabels } from '../utils/colors'
-import { dirColor } from '../utils/format'
 
 const AGENT_KEYS = ['fii', 'dii', 'retail_fno', 'algo', 'promoter', 'rbi']
 const AGENT_DESCS = {
@@ -13,6 +12,13 @@ const AGENT_DESCS = {
   algo: 'Pure quantitative engine analyzing technical signals deterministically',
   promoter: 'Company insider tracking pledged holdings and bulk deal patterns',
   rbi: 'Monetary policy committee focused on inflation control and forex stability',
+}
+
+const dirColor = (dir) => {
+  if (!dir) return '#FFC107'
+  if (dir.includes('BUY')) return '#00E676'
+  if (dir.includes('SELL')) return '#FF1744'
+  return '#FFC107'
 }
 
 function AgentCard({ agentKey, isActive, onClick }) {
@@ -247,8 +253,8 @@ export default function AgentDetail() {
                   <div className="section-header mb-3">Failure Patterns</div>
                   {patterns?.patterns?.length > 0 ? (
                     <div className="space-y-3">
-                      {patterns.patterns.map((p) => (
-                        <div key={p.type} className="bg-surface-2 rounded-lg p-3 border border-bear/10">
+                      {patterns.patterns.map((p, i) => (
+                        <div key={i} className="bg-surface-2 rounded-lg p-3 border border-bear/10">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="w-1.5 h-1.5 bg-bear rounded-full" />
                             <span className="text-[11px] font-mono font-bold text-bear">
@@ -260,8 +266,8 @@ export default function AgentDetail() {
                           </p>
                           {p.example_contexts?.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                              {p.example_contexts.slice(0, 3).map((ctx) => (
-                                <span key={ctx} className="text-[9px] font-mono px-1.5 py-0.5 bg-surface-3 rounded text-onSurfaceDim">
+                              {p.example_contexts.slice(0, 3).map((ctx, j) => (
+                                <span key={j} className="text-[9px] font-mono px-1.5 py-0.5 bg-surface-3 rounded text-onSurfaceDim">
                                   {ctx}
                                 </span>
                               ))}
