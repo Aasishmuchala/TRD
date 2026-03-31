@@ -200,7 +200,7 @@ Plans:
 - [x] **Phase 12: Hybrid Scoring and LLM Validator** - Combine quant score (60%) and agent consensus (40%) into a final signal, with a single LLM validator call that can reduce conviction or skip but cannot flip direction (completed 2026-03-31)
 - [x] **Phase 13: Risk Management Rules** - Apply configurable position sizing, daily max-loss guard, VIX-scaled stop loss, and 1.5x risk target exit to every signal (completed 2026-03-31)
 - [x] **Phase 14: Fast Backtesting Both Modes** - Rules-only backtest (1 year in <10 seconds) and hybrid backtest (1 month in <5 minutes) with risk-adjusted metrics side by side (completed 2026-03-31)
-- [ ] **Phase 15: Dashboard Updates** - Signal page showing quant score + agent reasoning + validator output; trade history distinguishing quant-driven vs agent-confirmed signals; performance comparison of both modes
+- [x] **Phase 15: Dashboard Updates** - Signal page showing quant score + agent reasoning + validator output; trade history distinguishing quant-driven vs agent-confirmed signals; performance comparison of both modes (completed 2026-03-31)
 
 ## Phase Details
 
@@ -296,7 +296,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Signal page (/signal): quant breakdown + agent consensus + validator verdict + risk params (DASH-07)
+- [x] 15-01-PLAN.md — Signal page (/signal): quant breakdown + agent consensus + validator verdict + risk params (DASH-07)
 - [x] 15-02-PLAN.md — SimulationHistory signal_type tag column: QUANT/HYBRID/AGENT badge + CSV export (DASH-08)
 - [x] 15-03-PLAN.md — Performance page (/performance): rules-only vs hybrid comparison with shared date range (DASH-09)
 
@@ -321,4 +321,4 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 13. Risk Management Rules | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 14. Fast Backtesting Both Modes | v3.0 | 3/3 | Complete    | 2026-03-31 |
-| 15. Dashboard Updates | v3.0 | 2/3 | In Progress|  |
+| 15. Dashboard Updates | v3.0 | 3/3 | Complete   | 2026-03-31 |
