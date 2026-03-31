@@ -7,10 +7,10 @@
 
 ### Quantitative Signal Engine
 
-- [ ] **QUANT-01**: Rules engine computes score (0-100) from FII/DII flows, PCR, RSI-14, VIX, Supertrend
-- [ ] **QUANT-02**: Each signal has defined thresholds and point values
-- [ ] **QUANT-03**: Score > 50 = tradeable, direction = higher-scoring side
-- [ ] **QUANT-04**: Zero LLM calls, pure computation on Dhan data
+- [x] **QUANT-01**: Rules engine computes score (0-100) from FII/DII flows, PCR, RSI-14, VIX, Supertrend
+- [x] **QUANT-02**: Each signal has defined thresholds and point values
+- [x] **QUANT-03**: Score > 50 = tradeable, direction = higher-scoring side
+- [x] **QUANT-04**: Zero LLM calls, pure computation on Dhan data
 - [ ] **QUANT-05**: Backtest 1 year in under 10 seconds
 
 ### Agent Signal Rewrite
@@ -62,10 +62,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QUANT-01 | Phase 10 — Quantitative Signal Engine | Pending |
-| QUANT-02 | Phase 10 — Quantitative Signal Engine | Pending |
-| QUANT-03 | Phase 10 — Quantitative Signal Engine | Pending |
-| QUANT-04 | Phase 10 — Quantitative Signal Engine | Pending |
+| QUANT-01 | Phase 10 — Quantitative Signal Engine | Complete |
+| QUANT-02 | Phase 10 — Quantitative Signal Engine | Complete |
+| QUANT-03 | Phase 10 — Quantitative Signal Engine | Complete |
+| QUANT-04 | Phase 10 — Quantitative Signal Engine | Complete |
 | QUANT-05 | Phase 10 — Quantitative Signal Engine | Pending |
 | AGENT-01 | Phase 11 — Agent Signal Rewrite | Pending |
 | AGENT-02 | Phase 11 — Agent Signal Rewrite | Pending |
