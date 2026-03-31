@@ -1139,6 +1139,7 @@ async def run_quant_backtest(body: QuantBacktestRequest):
             actual_move_pct=d.actual_move_pct,
             is_correct=d.is_correct,
             pnl_points=d.pnl_points,
+            lots=d.lots,
         )
         for d in result.days
     ]
@@ -1154,6 +1155,9 @@ async def run_quant_backtest(body: QuantBacktestRequest):
         total_pnl_points=result.total_pnl_points,
         elapsed_seconds=result.elapsed_seconds,
         days=day_schemas,
+        sharpe_ratio=result.sharpe_ratio,
+        max_drawdown_pct=result.max_drawdown_pct,
+        win_loss_ratio=result.win_loss_ratio,
     )
 
 

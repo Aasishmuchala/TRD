@@ -256,6 +256,7 @@ class QuantBacktestDaySchema(BaseModel):
     actual_move_pct: Optional[float]
     is_correct: Optional[bool]
     pnl_points: float
+    lots: int = 0
 
 
 class QuantBacktestRequest(BaseModel):
@@ -279,6 +280,9 @@ class QuantBacktestRunResponse(BaseModel):
     total_pnl_points: float
     elapsed_seconds: float
     days: List[QuantBacktestDaySchema]
+    sharpe_ratio: Optional[float] = None
+    max_drawdown_pct: Optional[float] = None
+    win_loss_ratio: Optional[float] = None
 
 
 # ── Phase 12: Hybrid Scoring and LLM Validator ───────────────────────────────
