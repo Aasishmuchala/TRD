@@ -214,7 +214,11 @@ Plans:
   3. A score above 50 returns direction BUY or SELL; a score at or below 50 returns HOLD — the direction is always deterministic from the score alone
   4. Running the quant engine against one year of stored historical data (approximately 250 trading days) completes in under 10 seconds with zero LLM calls
   5. The quant engine can be invoked standalone (no agent system, no LLM client) and returns a valid ScoreResult for any date with sufficient historical data
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — TDD: QuantSignalEngine pure rules module (11 scoring rules, 20 tests)
+- [ ] 10-02-PLAN.md — QuantBacktestEngine + GET /api/signal/quant + POST /api/backtest/quant-run
 
 ### Phase 11: Agent Signal Rewrite
 **Goal**: All 6 agents produce directional trading signals (BUY/SELL/HOLD with conviction) in a single parallel round — the FII, DII, Retail F&O, and RBI agents use rewritten signal-oriented prompts; the Algo agent runs as pure quant with no LLM call; all finish together in approximately 5 seconds
