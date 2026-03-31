@@ -263,7 +263,11 @@ Plans:
   2. Each tradeable signal specifies position size: strong conviction (score >70) = 2 lots, moderate conviction (50-70) = 1 lot, weak or skipped (<50) = do not trade
   3. Stop loss level is derived from VIX: a higher VIX produces a wider stop — the response shows the VIX value used and the resulting stop distance in points
   4. Each tradeable signal includes a target exit at exactly 1.5x the risk (stop distance), shown as an absolute Nifty/Bank Nifty level
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — TDD: RiskManager pure engine (position sizing, VIX-scaled stop, 1.5x target)
+- [ ] 13-02-PLAN.md — Config additions + DailyLossGuard + hybrid route wiring
 
 ### Phase 14: Fast Backtesting Both Modes
 **Goal**: A user can run a rules-only backtest covering 1 year of history in under 10 seconds and a hybrid backtest covering 1 month in under 5 minutes, with both modes reporting risk-adjusted metrics side by side so the hybrid premium over rules-only is visible
@@ -305,6 +309,6 @@ Phases execute in numeric order: 10 → 11 → 12 → 13 → 14 → 15
 | 10. Quantitative Signal Engine | v3.0 | 2/2 | Complete    | 2026-03-31 |
 | 11. Agent Signal Rewrite | v3.0 | 3/3 | Complete    | 2026-03-31 |
 | 12. Hybrid Scoring and LLM Validator | v3.0 | 2/2 | Complete    | 2026-03-31 |
-| 13. Risk Management Rules | v3.0 | 0/TBD | Not started | - |
+| 13. Risk Management Rules | v3.0 | 0/2 | Not started | - |
 | 14. Fast Backtesting Both Modes | v3.0 | 0/TBD | Not started | - |
 | 15. Dashboard Updates | v3.0 | 0/TBD | Not started | - |
