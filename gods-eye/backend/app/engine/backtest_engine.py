@@ -193,10 +193,14 @@ class BacktestEngine:
         # Save and override config for backtest (restored in finally)
         original_mock = config.MOCK_MODE
         original_model = config.MODEL
+        original_samples = config.SAMPLES_PER_AGENT
+        original_rounds = config.INTERACTION_ROUNDS
         config.MOCK_MODE = mock_mode
-        # Use a fast model for backtesting (Kimi K2.5 is too slow — ~2min per agent call)
         if not mock_mode:
+            # Use fast model + minimal samples for backtesting speed
             config.MODEL = os.getenv("GODS_EYE_BACKTEST_MODEL", "google/gemini-2.0-flash-001")
+            config.SAMPLES_PER_AGENT = 1   # 1 sample instead of 3 (3x faster)
+            config.INTERACTION_ROUNDS = 1  # 1 round instead of 3 (3x faster)
 
         days: List[BacktestDayResult] = []
 
@@ -287,6 +291,8 @@ class BacktestEngine:
         finally:
             config.MOCK_MODE = original_mock
             config.MODEL = original_model
+            config.SAMPLES_PER_AGENT = original_samples
+            config.INTERACTION_ROUNDS = original_rounds
 
         # Aggregate statistics
         eligible = [d for d in days if d.direction_correct is not None]
