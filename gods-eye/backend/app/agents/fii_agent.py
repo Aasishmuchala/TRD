@@ -113,64 +113,35 @@ class FIIAgent(BaseAgent):
         self, market_data: MarketInput, round_num: int, other_context: str,
         enriched_context: str = None,
     ) -> str:
-        """Build FII-specific analysis prompt with enriched intelligence."""
+        """Short directional signal prompt — single pass, no debate rounds."""
 
         intel_section = ""
         if enriched_context:
-            intel_section = f"""
-INTELLIGENCE BRIEFING (pre-computed signals, knowledge graph, and your track record):
-{enriched_context}
+            intel_section = f"\nSIGNAL CONTEXT:\n{enriched_context}\n"
 
-USE THIS BRIEFING to ground your analysis. The quantitative signals above are pre-computed
-from real market data. Your past accuracy stats show where you've been right and wrong —
-adjust your conviction accordingly.
-"""
+        return f"""You are analyzing FII (Foreign Institutional Investor) behavior for the Indian market. Answer one question: based on the data below, will FIIs buy or sell Indian equities tomorrow?
 
-        return f"""You are modeling the trading behavior of a Foreign Institutional Investor (FII) managing
-India-focused portfolios. Your decision is based on capital allocation, yield spreads, currency outlook,
-and EM sentiment.
-
-CURRENT MARKET DATA:
-- Nifty 50 Spot: {market_data.nifty_spot}
+MARKET DATA:
+- Nifty Spot: {market_data.nifty_spot}
+- FII Net Flow (5-day): ${market_data.fii_flow_5d}M (positive = net buying)
+- USD/INR: {market_data.usd_inr} (rising = rupee weakening = FII headwind)
+- DXY (US Dollar Index): {market_data.dxy} (above 104 = strong dollar = EM outflows)
 - India VIX: {market_data.india_vix}
-- 5-Day FII Flow: ${market_data.fii_flow_5d}M
-- USD/INR: {market_data.usd_inr}
-- US Dollar Index (DXY): {market_data.dxy}
-- Put-Call Ratio (Index): {market_data.pcr_index}
 - Market Context: {market_data.context}
 {intel_section}
-ANALYSIS FRAMEWORK:
-As an FII, you consider:
-1. **Yield Spreads**: Indian government bond yields vs US Treasury yields
-2. **FX Outlook**: USD/INR trend and DXY momentum
-3. **EM Sentiment**: Risk appetite for emerging markets
-4. **Valuation**: Nifty P/E vs historical and MSCI EM peers
-5. **Flows**: Your own 5-day net flows, rebalancing triggers
-6. **Geopolitics**: Global risk-off events affecting EM inflows
+DECISION RULES:
+- Continuing 5-day buying trend + DXY below 104 + stable rupee → BUY signal
+- Continuing 5-day selling + DXY above 104 + rupee weakening → SELL signal
+- Mixed signals or flow reversal → HOLD
+- High VIX (>20) amplifies selling pressure, reduces buying conviction
 
-DECISION REQUIREMENTS:
-Respond ONLY with valid JSON (no markdown, no code blocks):
+Respond ONLY with valid JSON (no markdown):
 {{
-  "direction": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
+  "direction": "BUY" | "SELL" | "HOLD" | "STRONG_BUY" | "STRONG_SELL",
   "conviction": <0-100>,
-  "key_triggers": ["trigger1", "trigger2", "trigger3"],
-  "reasoning": "Your analysis in 2-3 sentences.",
-  "view_intraday": "The short-term sentiment",
-  "view_weekly": "The weekly trend",
-  "interaction_notes": "How other agents' views affect this"
-}}
-
-Current round: {round_num}/3
-{other_context}
-
-Focus on realistic FII decision-making. Consider that FIIs:
-- Rebalance quarterly but may adjust for flows
-- Are sensitive to CNX Nifty valuations and yield pickup
-- Track USD/INR for hedging costs
-- React to US Fed policy changes
-- May exit if EM sentiment deteriorates
-
-Your assessment:"""
+  "key_triggers": ["trigger1", "trigger2"],
+  "reasoning": "One or two sentences stating what the FII flow and forex data predict for tomorrow."
+}}"""
 
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM via OpenAI-compatible API."""
