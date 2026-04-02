@@ -14,12 +14,12 @@ def _default_cors_origins():
 class Config:
     """Main configuration for the simulation."""
 
-    # LLM Provider Configuration (replaces Claude-only setup)
-    # Provider: "openai" | "nous" | "custom"
-    LLM_PROVIDER: str = os.getenv("GODS_EYE_LLM_PROVIDER", "openai")
-    LLM_API_KEY: str = os.getenv("LLM_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+    # LLM Provider Configuration
+    # Provider: "anthropic" (OpusCode Pro) | "openai" | "nous" | "custom"
+    LLM_PROVIDER: str = os.getenv("GODS_EYE_LLM_PROVIDER", "anthropic")
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY", os.getenv("ANTHROPIC_API_KEY", os.getenv("OPENAI_API_KEY", "")))
     LLM_INFERENCE_URL: str = os.getenv("LLM_INFERENCE_URL", "")  # Override inference base URL
-    MODEL: str = os.getenv("GODS_EYE_MODEL", "o4-mini")
+    MODEL: str = os.getenv("GODS_EYE_MODEL", "claude-sonnet-4-6")
     MOCK_MODE: bool = os.getenv("GODS_EYE_MOCK", "false").lower() in ("true", "1", "yes")
 
     # Legacy Claude support (backward compat — maps to LLM_API_KEY)
@@ -59,15 +59,28 @@ class Config:
         os.path.join(os.path.expanduser("~"), ".gods-eye", "skills")
     )
 
+    # VIX Regime Filter Configuration (Phase 3 Profitability)
+    VIX_FILTER_ENABLED: bool = os.getenv("GODS_EYE_VIX_FILTER_ENABLED", "true").lower() in ("true", "1", "yes")
+    VIX_HIGH_THRESHOLD: float = float(os.getenv("GODS_EYE_VIX_HIGH_THRESHOLD", "30.0"))
+    VIX_ELEVATED_THRESHOLD: float = float(os.getenv("GODS_EYE_VIX_ELEVATED_THRESHOLD", "20.0"))
+    VIX_ELEVATED_CONVICTION_MULTIPLIER: float = float(os.getenv("GODS_EYE_VIX_ELEVATED_CONVICTION_MULTIPLIER", "0.6"))
+
+    # Stop Loss Configuration (Profitability Roadmap v2)
+    # STOP_LOSS_ENABLED=false disables stop loss for backtests (lets you see baseline vs SL impact)
+    STOP_LOSS_ENABLED: bool = os.getenv("GODS_EYE_STOP_LOSS_ENABLED", "true").lower() in ("true", "1", "yes")
+    STOP_LOSS_ATR_MULTIPLIER: float = float(os.getenv("GODS_EYE_STOP_LOSS_ATR_MULTIPLIER", "1.5"))
+    STOP_LOSS_PCT: float = float(os.getenv("GODS_EYE_STOP_LOSS_PCT", "1.5"))
+    STOP_LOSS_ATR_PERIOD: int = int(os.getenv("GODS_EYE_STOP_LOSS_ATR_PERIOD", "14"))
+
     def __post_init__(self):
         if self.AGENT_WEIGHTS is None:
             self.AGENT_WEIGHTS = {
                 "FII": 0.30,
                 "DII": 0.25,
                 "RETAIL_FNO": 0.15,
-                "ALGO": 0.10,
-                "PROMOTER": 0.10,
-                "RBI": 0.10,
+                "ALGO": 0.20,       # Raised from 0.10 — quant signals are reproducible & backtest-validated
+                "PROMOTER": 0.05,   # Lowered from 0.10 — insider signal is speculative
+                "RBI": 0.05,        # Lowered from 0.10 — policy moves are infrequent
             }
 
         # If no LLM_API_KEY but CLAUDE_API_KEY exists, use that

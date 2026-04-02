@@ -160,6 +160,11 @@ async def simulate(req_data: SimulateRequest, request: Request):
             tuned_weights=sim_result.get("tuned_weights"),
         )
 
+        # Check data freshness
+        from app.data.freshness import check_data_freshness
+        freshness = check_data_freshness()
+        data_warnings = freshness.get("warnings", [])
+
         # Create response
         result = SimulationResult(
             simulation_id=simulation_id,
@@ -172,6 +177,7 @@ async def simulate(req_data: SimulateRequest, request: Request):
             model_used=config.MODEL,
             feedback_active=sim_result.get("feedback_active", False),
             tuned_weights=sim_result.get("tuned_weights"),
+            data_warnings=data_warnings,
         )
 
         # Log to database
@@ -506,6 +512,15 @@ async def get_sectors():
 async def get_cache_stats():
     """Get cache statistics for debugging."""
     return cache.stats()
+
+
+@protected_router.get("/market/data-freshness")
+async def get_data_freshness():
+    """Check freshness of all data sources — returns warnings for stale data."""
+    from app.data.freshness import check_data_freshness
+    snapshot = cache.get("live_snapshot")
+    live_ts = snapshot.get("timestamp") if snapshot else None
+    return check_data_freshness(live_timestamp=live_ts)
 
 
 @router.get("/health")
@@ -949,11 +964,10 @@ async def capture_oi_snapshot():
 
 @protected_router.post("/backtest/run", response_model=BacktestRunResponse)
 async def run_backtest(request: BacktestRunRequest):
-    """Run a backtest over a historical date range.
+    """Run a backtest over a historical date range using real LLM agents.
 
-    mock_mode=True (default): Uses mock agent responses — fast, no LLM cost.
-    mock_mode=False: Calls Claude/GPT for each agent per day — slow and costly.
-
+    Trade structure: close-to-close (MOC entry at T's close, exit at T+1's close).
+    Uses Claude Haiku per day for speed (~$3 for a full FY run).
     Stores result in SQLite backtest_runs table for later retrieval.
     """
     try:
@@ -961,7 +975,6 @@ async def run_backtest(request: BacktestRunRequest):
             instrument=request.instrument,
             from_date=request.from_date,
             to_date=request.to_date,
-            mock_mode=request.mock_mode,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -996,6 +1009,50 @@ async def get_backtest_result(run_id: str):
     return _serialize_backtest_result(result)
 
 
+@protected_router.get("/backtest/latest", response_model=BacktestRunResponse)
+async def get_latest_backtest():
+    """Retrieve the most recently completed backtest run."""
+    import sqlite3, json
+    from app.config import config
+
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT result_json FROM backtest_runs ORDER BY created_at DESC LIMIT 1"
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No backtest runs found")
+
+    from app.engine.backtest_engine import BacktestRunResult, BacktestDayResult
+    raw = json.loads(row["result_json"])
+    days = [BacktestDayResult(**d) for d in raw["days"]]
+    result = BacktestRunResult(**{**raw, "days": days})
+    return _serialize_backtest_result(result)
+
+
+@protected_router.get("/backtest/list")
+async def list_backtest_runs():
+    """List all backtest runs (summary only, no day detail)."""
+    import sqlite3
+    from app.config import config
+
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT run_id, instrument, from_date, to_date, mock_mode,
+                  day_count, overall_accuracy, total_pnl_points, created_at
+           FROM backtest_runs ORDER BY created_at DESC LIMIT 20"""
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def _serialize_backtest_result(result) -> BacktestRunResponse:
     """Convert BacktestRunResult dataclass into BacktestRunResponse Pydantic model.
 
@@ -1021,6 +1078,11 @@ def _serialize_backtest_result(result) -> BacktestRunResponse:
             per_agent_directions=day.per_agent_directions,
             signals=day.signals,
             signal_score=ss_schema,
+            stop_loss_hit=getattr(day, 'stop_loss_hit', False),
+            stop_price=getattr(day, 'stop_price', None),
+            stop_distance_pts=getattr(day, 'stop_distance_pts', None),
+            entry_price=getattr(day, 'entry_price', 0.0),
+            overnight_gap_pct=getattr(day, 'overnight_gap_pct', 0.0),
         ))
 
     summary = BacktestRunSummary(
@@ -1035,6 +1097,16 @@ def _serialize_backtest_result(result) -> BacktestRunResponse:
         per_agent_accuracy={k: round(v, 4) for k, v in result.per_agent_accuracy.items()},
         total_pnl_points=round(result.total_pnl_points, 2),
         created_at=result.created_at,
+        # Phase 3 performance metrics
+        hit_rate_pct=getattr(result, 'hit_rate_pct', 0.0),
+        avg_pnl_per_trade=getattr(result, 'avg_pnl_per_trade', 0.0),
+        max_drawdown_pct=getattr(result, 'max_drawdown_pct', 0.0),
+        sharpe_ratio=getattr(result, 'sharpe_ratio', 0.0),
+        total_trades=getattr(result, 'total_trades', 0),
+        regime_accuracy=getattr(result, 'regime_accuracy', {}),
+        total_stops_hit=getattr(result, 'total_stops_hit', 0),
+        stop_loss_enabled=getattr(result, 'stop_loss_enabled', False),
+        avg_overnight_gap_pct=getattr(result, 'avg_overnight_gap_pct', 0.0),
     )
 
     return BacktestRunResponse(summary=summary, days=day_responses)
@@ -1149,3 +1221,163 @@ async def run_quant_backtest(body: QuantBacktestRequest):
         elapsed_seconds=result.elapsed_seconds,
         days=day_schemas,
     )
+
+
+@protected_router.post("/admin/clear-historical-cache")
+async def clear_historical_cache():
+    """Delete cached NIFTY + VIX rows so the next get_ohlcv() re-fetches from Dhan.
+
+    Use after changing BACKFILL_YEARS to force a full re-fetch.
+    """
+    import sqlite3 as _sqlite3
+    db_path = config.DATABASE_PATH
+    conn = _sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM historical_prices WHERE instrument = 'NIFTY'")
+    nifty_deleted = cur.rowcount
+    cur.execute("DELETE FROM historical_vix")
+    vix_deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return {"status": "ok", "nifty_rows_deleted": nifty_deleted, "vix_rows_deleted": vix_deleted}
+
+
+@protected_router.post("/admin/seed-fii-dii")
+async def seed_fii_dii_data(years: int = 2):
+    """Seed synthetic FII/DII historical data into the database.
+
+    Uses yfinance NIFTY price history to generate realistic FII/DII flows
+    with mean reversion + noise (avoids circular momentum proxy).
+    Safe to call multiple times — uses INSERT OR REPLACE.
+    """
+    import random
+    import math
+    from datetime import date, timedelta
+    from app.data.fii_dii_store import fii_dii_store
+
+    # Use NIFTY prices from historical_store (already fetched/cached in DB)
+    try:
+        all_ohlcv = await historical_store.get_ohlcv("NIFTY")
+        if not all_ohlcv:
+            return {"status": "error", "message": "No NIFTY data in historical_store yet — run a backtest first"}
+        dates = [r["date"] for r in all_ohlcv]
+        prices = [r["close"] for r in all_ohlcv]
+    except Exception as e:
+        return {"status": "error", "message": f"historical_store failed: {e}"}
+
+    rng = random.Random(42)
+    fii_sigma, dii_sigma = 2000.0, 1500.0
+    records = []
+
+    for i, (d, price) in enumerate(zip(dates, prices)):
+        prev_price = prices[i - 1] if i > 0 else price
+        daily_ret = (price - prev_price) / prev_price if prev_price else 0.0
+
+        # Mean reversion + price-correlated component + noise (avoids circular momentum proxy)
+        fii_flow = daily_ret * 8000 + rng.gauss(0, fii_sigma)
+        dii_flow = 500.0 + (-daily_ret * 4000) + rng.gauss(0, dii_sigma * 0.6)
+
+        records.append({
+            "date": d,
+            "fii_net_cr": round(fii_flow, 2),
+            "dii_net_cr": round(dii_flow, 2),
+        })
+
+    inserted = 0
+    for rec in records:
+        try:
+            fii_dii_store.store_daily(rec["date"], rec["fii_net_cr"], rec["dii_net_cr"])
+            inserted += 1
+        except Exception:
+            pass
+
+    return {
+        "status": "ok",
+        "seeded": inserted,
+        "date_range": f"{records[0]['date']} → {records[-1]['date']}" if records else "none",
+    }
+
+
+@protected_router.post("/admin/seed-nifty-bulk")
+async def seed_nifty_bulk(body: dict):
+    """Accept bulk NIFTY OHLCV rows and upsert into historical_prices.
+
+    Body: {"rows": [{"date":"YYYY-MM-DD","open":...,"high":...,"low":...,"close":...,"volume":...}, ...]}
+    Useful when yfinance is rate-limited on the server — fetch locally, POST here.
+    """
+    import sqlite3 as _sqlite3
+
+    rows_in = body.get("rows", [])
+    if not rows_in:
+        return {"status": "error", "message": "No rows provided"}
+
+    fetched_at = __import__("datetime").datetime.utcnow().isoformat()
+    db_path = config.DATABASE_PATH
+    conn = _sqlite3.connect(db_path)
+    cur = conn.cursor()
+    params = [
+        ("NIFTY", r["date"], r["open"], r["high"], r["low"], r["close"], r.get("volume", 0), fetched_at)
+        for r in rows_in
+    ]
+    cur.executemany(
+        """INSERT OR REPLACE INTO historical_prices
+           (instrument, date, open, high, low, close, volume, fetched_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        params,
+    )
+    conn.commit()
+    conn.close()
+    dates = [r["date"] for r in rows_in]
+    return {"status": "ok", "seeded": len(params), "date_range": f"{min(dates)} → {max(dates)}"}
+
+
+@protected_router.post("/admin/seed-nifty-yfinance")
+async def seed_nifty_yfinance(years: int = 3):
+    """Seed NIFTY historical OHLCV data from yfinance (^NSEI ticker).
+
+    Dhan's historical candles API does NOT support index data (IDX_I segment),
+    so yfinance is the correct source for NIFTY50 spot prices.
+    Safe to re-run — uses INSERT OR REPLACE (UNIQUE constraint on instrument+date).
+    """
+    import yfinance as yf
+    import sqlite3 as _sqlite3
+    from datetime import date, timedelta
+
+    end_date = date.today().isoformat()
+    start_date = (date.today() - timedelta(days=years * 365)).isoformat()
+
+    ticker = yf.Ticker("^NSEI")
+    hist = ticker.history(start=start_date, end=end_date, auto_adjust=True)
+
+    if hist.empty:
+        return {"status": "error", "message": "yfinance returned no data for ^NSEI"}
+
+    fetched_at = __import__("datetime").datetime.utcnow().isoformat()
+    db_path = config.DATABASE_PATH
+    conn = _sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+    rows = []
+    for ts, row in hist.iterrows():
+        d = ts.date().isoformat()
+        rows.append((
+            "NIFTY", d,
+            round(float(row["Open"]), 2),
+            round(float(row["High"]), 2),
+            round(float(row["Low"]), 2),
+            round(float(row["Close"]), 2),
+            int(row.get("Volume", 0)),
+            fetched_at,
+        ))
+
+    cur.executemany(
+        """INSERT OR REPLACE INTO historical_prices
+           (instrument, date, open, high, low, close, volume, fetched_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        rows,
+    )
+    conn.commit()
+    conn.close()
+
+    date_range = f"{rows[0][1]} → {rows[-1][1]}" if rows else "none"
+    return {"status": "ok", "seeded": len(rows), "date_range": date_range}

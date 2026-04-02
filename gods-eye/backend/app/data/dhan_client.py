@@ -37,20 +37,31 @@ class DhanClient:
     """Fetches live market data from Dhan API."""
 
     def __init__(self):
-        self._access_token = os.getenv("DHAN_ACCESS_TOKEN", "")
         self._client_id = os.getenv("DHAN_CLIENT_ID", "")
         self._http: Optional[httpx.AsyncClient] = None
+        self._last_token: str = ""  # Track token changes for client refresh
+
+    @property
+    def _access_token(self) -> str:
+        """Always read from env so auto-renewed tokens are picked up."""
+        return os.getenv("DHAN_ACCESS_TOKEN", "")
 
     @property
     def is_configured(self) -> bool:
         return bool(self._access_token and self._client_id)
 
     async def _ensure_client(self) -> httpx.AsyncClient:
+        current_token = self._access_token
+        # Recreate client if token changed (after renewal)
+        if self._http is not None and current_token != self._last_token:
+            await self._http.aclose()
+            self._http = None
         if self._http is None:
+            self._last_token = current_token
             self._http = httpx.AsyncClient(
                 timeout=httpx.Timeout(15.0, connect=10.0),
                 headers={
-                    "access-token": self._access_token,
+                    "access-token": current_token,
                     "client-id": self._client_id,
                     "Content-Type": "application/json",
                     "Accept": "application/json",
@@ -91,8 +102,10 @@ class DhanClient:
         if cached:
             return cached
 
+        # Dhan marketfeed requires integer IDs
+        int_ids = [int(sid) for sid in security_ids]
         data = await self._post("/marketfeed/quote", {
-            exchange_segment: security_ids,
+            exchange_segment: int_ids,
         })
 
         if data:
@@ -101,13 +114,18 @@ class DhanClient:
         return data
 
     async def get_ltp(self, security_ids: List[str], exchange_segment: str = "IDX_I") -> Optional[Dict]:
-        """Get last traded price for securities."""
+        """Get last traded price for securities.
+
+        Note: Dhan marketfeed requires integer security IDs, not strings.
+        """
         cached = cache.get(f"dhan_ltp_{','.join(security_ids)}")
         if cached:
             return cached
 
+        # Dhan marketfeed requires integer IDs
+        int_ids = [int(sid) for sid in security_ids]
         data = await self._post("/marketfeed/ltp", {
-            exchange_segment: security_ids,
+            exchange_segment: int_ids,
         })
 
         if data:
@@ -140,57 +158,103 @@ class DhanClient:
 
         return data
 
+    def _extract_ltp(self, data: Optional[Dict], security_id: str) -> Optional[Dict]:
+        """Extract LTP from Dhan marketfeed response.
+
+        Dhan returns: {"data": {"IDX_I": {"13": {"last_price": 22804.9}}}, "status": "success"}
+        """
+        if not data or "data" not in data:
+            return None
+        # Navigate nested structure: data -> segment -> security_id
+        for segment_data in data["data"].values():
+            if isinstance(segment_data, dict):
+                item = segment_data.get(security_id) or segment_data.get(str(security_id))
+                if item and isinstance(item, dict):
+                    return item
+        return None
+
+    async def fetch_all_indices(self) -> Dict[str, Optional[Dict[str, Any]]]:
+        """Fetch Nifty 50, Bank Nifty, and India VIX in a SINGLE API call.
+
+        This avoids Dhan 429 rate limits by batching all 3 index security IDs
+        into one /marketfeed/ltp request: {"IDX_I": [13, 25, 26]}.
+
+        Returns:
+            {"nifty": {...}, "bank_nifty": {...}, "vix": {...}}
+            Each value is the parsed result dict or None if extraction failed.
+        """
+        all_ids = [NIFTY_50_SECURITY_ID, BANK_NIFTY_SECURITY_ID, INDIA_VIX_SECURITY_ID]
+
+        # Single batched LTP call
+        cached = cache.get("dhan_ltp_all_indices")
+        if cached:
+            data = cached
+        else:
+            int_ids = [int(sid) for sid in all_ids]
+            data = await self._post("/marketfeed/ltp", {
+                "IDX_I": int_ids,
+            })
+            if data:
+                cache.set("dhan_ltp_all_indices", data, ttl=5)
+
+        # Extract each index from the single response
+        nifty_item = self._extract_ltp(data, NIFTY_50_SECURITY_ID)
+        bank_item = self._extract_ltp(data, BANK_NIFTY_SECURITY_ID)
+        vix_item = self._extract_ltp(data, INDIA_VIX_SECURITY_ID)
+
+        return {
+            "nifty": self._parse_index_ltp(nifty_item),
+            "bank_nifty": self._parse_index_ltp(bank_item),
+            "vix": self._parse_vix_ltp(vix_item),
+        }
+
+    def _parse_index_ltp(self, item: Optional[Dict]) -> Optional[Dict[str, Any]]:
+        """Parse a Dhan LTP item into standard index dict."""
+        if not item:
+            return None
+        ltp = float(item.get("last_price", 0) or item.get("LTP", 0) or 0)
+        prev = float(item.get("close", 0) or 0) or ltp
+        return {
+            "last": ltp,
+            "open": float(item.get("open", 0) or 0),
+            "high": float(item.get("high", 0) or 0),
+            "low": float(item.get("low", 0) or 0),
+            "prev_close": prev,
+            "change": ltp - prev if prev else 0,
+            "change_pct": ((ltp - prev) / prev * 100) if prev else 0,
+        }
+
+    def _parse_vix_ltp(self, item: Optional[Dict]) -> Optional[Dict[str, Any]]:
+        """Parse a Dhan LTP item into standard VIX dict."""
+        if not item:
+            return None
+        current = float(item.get("last_price", 0) or item.get("LTP", 0) or 15.0)
+        prev = float(item.get("close", 0) or 0) or current
+        return {
+            "current": current,
+            "change": current - prev,
+            "change_pct": ((current - prev) / prev * 100) if prev else 0,
+        }
+
+    # ---- Legacy single-index methods (kept for backward compat) ----
+
     async def fetch_nifty50(self) -> Dict[str, Any]:
         """Fetch Nifty 50 index quote via Dhan."""
         data = await self.get_ltp([NIFTY_50_SECURITY_ID])
-        if data and "data" in data:
-            for item in data["data"]:
-                if str(item.get("security_id")) == NIFTY_50_SECURITY_ID:
-                    ltp = item.get("LTP", 0) or item.get("last_price", 0)
-                    return {
-                        "last": ltp,
-                        "open": item.get("open", 0),
-                        "high": item.get("high", 0),
-                        "low": item.get("low", 0),
-                        "prev_close": item.get("close", 0),
-                        "change": ltp - (item.get("close", 0) or ltp),
-                        "change_pct": ((ltp - (item.get("close", 0) or ltp)) / (item.get("close", 0) or 1)) * 100 if item.get("close") else 0,
-                    }
-        return None
+        item = self._extract_ltp(data, NIFTY_50_SECURITY_ID)
+        return self._parse_index_ltp(item)
 
     async def fetch_bank_nifty(self) -> Dict[str, Any]:
         """Fetch Bank Nifty index quote via Dhan."""
         data = await self.get_ltp([BANK_NIFTY_SECURITY_ID])
-        if data and "data" in data:
-            for item in data["data"]:
-                if str(item.get("security_id")) == BANK_NIFTY_SECURITY_ID:
-                    ltp = item.get("LTP", 0) or item.get("last_price", 0)
-                    prev = item.get("close", 0) or ltp
-                    return {
-                        "last": ltp,
-                        "open": item.get("open", 0),
-                        "high": item.get("high", 0),
-                        "low": item.get("low", 0),
-                        "prev_close": prev,
-                        "change": ltp - prev,
-                        "change_pct": ((ltp - prev) / prev) * 100 if prev else 0,
-                    }
-        return None
+        item = self._extract_ltp(data, BANK_NIFTY_SECURITY_ID)
+        return self._parse_index_ltp(item)
 
     async def fetch_india_vix(self) -> Dict[str, Any]:
         """Fetch India VIX via Dhan."""
         data = await self.get_ltp([INDIA_VIX_SECURITY_ID])
-        if data and "data" in data:
-            for item in data["data"]:
-                if str(item.get("security_id")) == INDIA_VIX_SECURITY_ID:
-                    current = item.get("LTP", 0) or item.get("last_price", 15.0)
-                    prev = item.get("close", 0) or current
-                    return {
-                        "current": current,
-                        "change": current - prev,
-                        "change_pct": ((current - prev) / prev) * 100 if prev else 0,
-                    }
-        return None
+        item = self._extract_ltp(data, INDIA_VIX_SECURITY_ID)
+        return self._parse_vix_ltp(item)
 
     async def fetch_options_summary(self) -> Dict[str, Any]:
         """Fetch Nifty options chain and compute PCR, max pain."""
@@ -245,13 +309,21 @@ class DhanClient:
         security_id: str,
         from_date: str,
         to_date: str,
+        exchange_segment: str = "NSE_EQ",
+        instrument: str = "EQUITY",
     ) -> list:
-        """Fetch daily OHLCV candles from Dhan /charts/historical.
+        """Fetch daily OHLCV candles from Dhan /v2/charts/historical.
+
+        NOTE: Dhan does NOT support historical candles for IDX_I (index) segment.
+        For NIFTY/BANKNIFTY/VIX historical data, use Yahoo Finance or another source.
+        This method works for equities (NSE_EQ/EQUITY) and F&O instruments.
 
         Args:
-            security_id: Dhan security ID — "13" (Nifty), "25" (BankNifty), "26" (VIX)
-            from_date: "YYYY-MM-DD"
+            security_id: Dhan security ID (e.g., "2885" for Reliance)
+            from_date: "YYYY-MM-DD" (max 90-day range per request)
             to_date: "YYYY-MM-DD"
+            exchange_segment: "NSE_EQ", "BSE_EQ", "NSE_FNO", etc. (NOT "IDX_I")
+            instrument: "EQUITY", "FUTSTK", "FUTIDX", etc. (NOT "INDEX")
 
         Returns:
             List of {"date": "YYYY-MM-DD", "open": float, "high": float,
@@ -264,9 +336,9 @@ class DhanClient:
         url = f"{DHAN_BASE}/charts/historical"
         payload = {
             "securityId": security_id,
-            "exchangeSegment": "IDX_I",
-            "instrument": "INDEX",
-            "interval": "D",
+            "exchangeSegment": exchange_segment,
+            "instrument": instrument,
+            "expiryCode": 0,
             "fromDate": from_date,
             "toDate": to_date,
         }

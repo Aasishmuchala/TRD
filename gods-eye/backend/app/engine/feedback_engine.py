@@ -8,7 +8,7 @@ The engine reads agent accuracy from AgentMemory and produces:
   2. Prompt hints injected into agent context (via ProfileGenerator)
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from app.memory.agent_memory import AgentMemory, AgentAccuracyStats
 from app.config import config
 
@@ -24,14 +24,23 @@ class FeedbackEngine:
     Below threshold, returns default weights.
     """
 
-    MIN_PREDICTIONS_FOR_TUNING = 30
+    MIN_PREDICTIONS_FOR_TUNING = 15  # Lowered from 30 — activate weight tuning earlier
     MAX_WEIGHT_ADJUSTMENT = 0.20  # ±20% cap
 
     def __init__(self, agent_memory: AgentMemory):
         self.memory = agent_memory
 
-    def get_tuned_weights(self, lookback_days: int = 90) -> Dict[str, float]:
-        """Compute accuracy-tuned agent weights.
+    def get_tuned_weights(
+        self, lookback_days: int = 90, vix_regime: Optional[str] = None
+    ) -> Dict[str, float]:
+        """Compute accuracy-tuned agent weights, optionally stratified by VIX regime.
+
+        Args:
+            lookback_days: How far back to look for predictions.
+            vix_regime: Optional VIX regime ("low_vix", "normal_vix",
+                       "elevated_vix", "high_vix"). If provided, uses
+                       regime-specific accuracy for tuning so different
+                       agents get higher weight in different regimes.
 
         Returns default weights if insufficient data.
         Returns tuned weights if >= MIN_PREDICTIONS_FOR_TUNING predictions exist.
@@ -39,10 +48,13 @@ class FeedbackEngine:
         base_weights = dict(config.AGENT_WEIGHTS)
         agent_keys = list(base_weights.keys())
 
-        # Get accuracy stats for all agents
+        # Get accuracy stats for all agents (regime-specific if requested)
         stats: Dict[str, AgentAccuracyStats] = {}
         for key in agent_keys:
-            s = self.memory.get_agent_accuracy(key, lookback_days)
+            if vix_regime:
+                s = self.memory.get_agent_accuracy_by_regime(key, vix_regime, lookback_days)
+            else:
+                s = self.memory.get_agent_accuracy(key, lookback_days)
             if s.total_predictions > 0:
                 stats[key] = s
 

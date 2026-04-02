@@ -24,7 +24,7 @@ INSTRUMENTS = {
 }
 
 # How far back to backfill (trading days ≈ 1.4 * calendar days)
-BACKFILL_YEARS = 2   # fetch 2 years to guarantee 252+ trading days
+BACKFILL_YEARS = 3   # fetch 3 years — ensures RSI/indicator warm-up data for FY24-25 backtests
 
 
 class HistoricalStore:

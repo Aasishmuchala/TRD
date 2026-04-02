@@ -21,6 +21,8 @@ import httpx
 
 from app.data.cache import cache, MarketCache
 from app.data.dhan_client import dhan_client
+from app.data.pcr_store import pcr_store
+from app.data.fii_dii_store import fii_dii_store
 
 logger = logging.getLogger("gods_eye.market_data")
 
@@ -143,55 +145,69 @@ class MarketDataService:
         if cached:
             return cached
 
-        # Fetch in parallel
-        nifty_task = self._fetch_nifty50()
-        vix_task = self._fetch_india_vix()
+        # Fetch indices in a SINGLE Dhan call (avoids 429 rate limits),
+        # plus FII/DII and breadth in parallel
+        indices_task = self._fetch_all_indices()
         fii_dii_task = self._fetch_fii_dii()
         breadth_task = self._fetch_market_breadth()
-        bank_nifty_task = self._fetch_bank_nifty()
 
-        nifty, vix, fii_dii, breadth, bank_nifty = await asyncio.gather(
-            nifty_task, vix_task, fii_dii_task, breadth_task, bank_nifty_task
+        indices, fii_dii, breadth = await asyncio.gather(
+            indices_task, fii_dii_task, breadth_task
         )
+
+        nifty = indices.get("nifty") or {}
+        bank_nifty = indices.get("bank_nifty") or {}
+        vix = indices.get("vix") or {}
+
+        def _num(val, default=0):
+            """Safely coerce API response values to float."""
+            if val is None:
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        nifty_spot = _num(nifty.get("last"))
 
         snapshot = {
             "timestamp": datetime.now().isoformat(),
             "market_open": self._is_market_open(),
 
             # Nifty 50
-            "nifty_spot": nifty.get("last", 0),
-            "nifty_open": nifty.get("open", 0),
-            "nifty_high": nifty.get("high", 0),
-            "nifty_low": nifty.get("low", 0),
-            "nifty_close": nifty.get("prev_close", 0),
-            "nifty_change": nifty.get("change", 0),
-            "nifty_change_pct": nifty.get("change_pct", 0),
+            "nifty_spot": nifty_spot,
+            "nifty_open": _num(nifty.get("open")),
+            "nifty_high": _num(nifty.get("high")),
+            "nifty_low": _num(nifty.get("low")),
+            "nifty_close": _num(nifty.get("prev_close")),
+            "nifty_change": _num(nifty.get("change")),
+            "nifty_change_pct": _num(nifty.get("change_pct")),
 
             # Bank Nifty
-            "bank_nifty_spot": bank_nifty.get("last", 0),
-            "bank_nifty_change": bank_nifty.get("change", 0),
-            "bank_nifty_change_pct": bank_nifty.get("change_pct", 0),
+            "bank_nifty_spot": _num(bank_nifty.get("last")),
+            "bank_nifty_change": _num(bank_nifty.get("change")),
+            "bank_nifty_change_pct": _num(bank_nifty.get("change_pct")),
 
             # VIX
-            "india_vix": vix.get("current", 15.0),
-            "vix_change": vix.get("change", 0),
-            "vix_change_pct": vix.get("change_pct", 0),
+            "india_vix": _num(vix.get("current"), 15.0),
+            "vix_change": _num(vix.get("change")),
+            "vix_change_pct": _num(vix.get("change_pct")),
 
             # FII / DII
-            "fii_net_today": fii_dii.get("fii_net_today", 0),
-            "dii_net_today": fii_dii.get("dii_net_today", 0),
-            "fii_flow_5d": fii_dii.get("fii_net_5d", 0),
-            "dii_flow_5d": fii_dii.get("dii_net_5d", 0),
+            "fii_net_today": _num(fii_dii.get("fii_net_today")),
+            "dii_net_today": _num(fii_dii.get("dii_net_today")),
+            "fii_flow_5d": _num(fii_dii.get("fii_net_5d")),
+            "dii_flow_5d": _num(fii_dii.get("dii_net_5d")),
 
             # Breadth
-            "advance_decline_ratio": breadth.get("adr", 1.0),
-            "advances": breadth.get("advances", 0),
-            "declines": breadth.get("declines", 0),
-            "unchanged": breadth.get("unchanged", 0),
+            "advance_decline_ratio": _num(breadth.get("adr"), 1.0),
+            "advances": _num(breadth.get("advances")),
+            "declines": _num(breadth.get("declines")),
+            "unchanged": _num(breadth.get("unchanged")),
 
             # Source + error reporting
-            "data_source": "dhan_live" if nifty.get("last", 0) > 0 else "error",
-            "data_error": nifty.get("_error") or (None if nifty.get("last", 0) > 0 else "No live market data available — market may be closed"),
+            "data_source": "dhan_live" if nifty_spot > 0 else "fallback",
+            "data_error": nifty.get("_error") or (None if nifty_spot > 0 else "No live market data available — using fallback data"),
         }
 
         cache.set("live_snapshot", snapshot, ttl=MarketCache.DEFAULT_TTLS["spot"])
@@ -235,6 +251,19 @@ class MarketDataService:
         dxy_task = self._fetch_dxy()
         usd_inr, dxy = await asyncio.gather(usd_inr_task, dxy_task)
 
+        # PCR: prefer live options chain, fallback to stored PCR from pcr_collector
+        pcr_value = options.get("pcr", 0)
+        if not pcr_value or pcr_value == 1.0:
+            try:
+                latest_pcr = pcr_store.get_latest()
+                if latest_pcr and latest_pcr.get("pcr"):
+                    pcr_value = latest_pcr["pcr"]
+                    logger.debug("PCR from store: %.3f (date=%s)", pcr_value, latest_pcr.get("date"))
+            except Exception as e:
+                logger.warning("PCR store fallback failed: %s", e)
+        if not pcr_value:
+            pcr_value = 1.0
+
         return {
             "nifty_spot": nifty_spot,
             "nifty_open": snapshot.get("nifty_open"),
@@ -246,7 +275,7 @@ class MarketDataService:
             "dii_flow_5d": snapshot.get("dii_flow_5d", 0),
             "usd_inr": usd_inr,
             "dxy": dxy,
-            "pcr_index": options.get("pcr", 1.0),
+            "pcr_index": pcr_value,
             "max_pain": options.get("max_pain", nifty_spot),
             "dte": options.get("dte", 5),
             "context": self._detect_context(),
@@ -261,6 +290,35 @@ class MarketDataService:
         }
 
     # ---- NSE Fetchers ----
+
+    async def _fetch_all_indices(self) -> Dict[str, Any]:
+        """Fetch Nifty, Bank Nifty, VIX in a single Dhan API call.
+
+        Returns dict with keys: nifty, bank_nifty, vix — each a data dict or empty dict.
+        """
+        if self._dhan.is_configured:
+            try:
+                result = await self._dhan.fetch_all_indices()
+                nifty = result.get("nifty")
+                if nifty and nifty.get("last", 0) > 0:
+                    logger.debug("All indices from Dhan API (batched)")
+                    return {
+                        "nifty": nifty,
+                        "bank_nifty": result.get("bank_nifty") or {},
+                        "vix": result.get("vix") or {"current": 15.0, "change": 0, "change_pct": 0},
+                    }
+                logger.warning("Dhan batched call returned no Nifty data — market may be closed")
+            except Exception as e:
+                logger.warning("Dhan batched index fetch failed: %s", e)
+        else:
+            logger.error("Dhan API not configured — set DHAN_ACCESS_TOKEN + DHAN_CLIENT_ID")
+
+        # Fallback — all empty
+        return {
+            "nifty": self._error_nifty("Dhan API returned no data"),
+            "bank_nifty": {},
+            "vix": {"current": 15.0, "change": 0, "change_pct": 0},
+        }
 
     async def _fetch_nifty50(self) -> Dict[str, Any]:
         """Fetch Nifty 50 — Dhan only. Error if Dhan fails."""
@@ -356,29 +414,62 @@ class MarketDataService:
         return {"current": 15.0, "change": 0, "change_pct": 0}
 
     async def _fetch_fii_dii(self) -> Dict[str, Any]:
-        """Fetch FII/DII daily activity data with 5-day estimation."""
-        data = await self._nse.get(f"{NSE_API}/fiidiiActivity/category")
+        """Fetch FII/DII daily activity data — stored 5-day sum from real data.
+
+        Primary source: fii_dii_store (SQLite, populated by NSE scraper).
+        Fallback: live NSE API with estimation for 5-day sum.
+        """
         result = {
             "fii_net_today": 0,
             "dii_net_today": 0,
             "fii_net_5d": 0,
             "dii_net_5d": 0,
         }
-        if data and isinstance(data, list):
-            for entry in data:
-                category = entry.get("category", "").upper()
-                net_value = entry.get("netValue", 0)
-                if isinstance(net_value, str):
-                    net_value = float(net_value.replace(",", ""))
 
-                if "FII" in category or "FPI" in category:
-                    result["fii_net_today"] = net_value
-                    # Estimate 5d as today * 2.5 (conservative estimate;
-                    # actual data would require NSE historical API)
-                    result["fii_net_5d"] = net_value * 2.5
-                elif "DII" in category:
-                    result["dii_net_today"] = net_value
-                    result["dii_net_5d"] = net_value * 2.5
+        # Try stored data first (real 5-day rolling sum)
+        try:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            five_day = fii_dii_store.get_5d_sum(today_str)
+            if five_day and five_day.get("days_found", 0) > 0:
+                result["fii_net_5d"] = five_day["fii_5d_net"]
+                result["dii_net_5d"] = five_day["dii_5d_net"]
+                logger.debug(
+                    "FII/DII 5d from store: FII=%+.0f Cr (%d days), DII=%+.0f Cr",
+                    result["fii_net_5d"], five_day["days_found"], result["dii_net_5d"],
+                )
+
+            # Get today's net from store
+            today_data = fii_dii_store.get_by_date(today_str)
+            if today_data:
+                result["fii_net_today"] = today_data.get("fii_net_cr", 0)
+                result["dii_net_today"] = today_data.get("dii_net_cr", 0)
+                return result
+        except Exception as e:
+            logger.warning("FII/DII store read failed: %s", e)
+
+        # Fallback: live NSE API for today's data
+        try:
+            data = await self._nse.get(f"{NSE_API}/fiidiiActivity/category")
+            if data and isinstance(data, list):
+                for entry in data:
+                    category = entry.get("category", "").upper()
+                    net_value = entry.get("netValue", 0)
+                    if isinstance(net_value, str):
+                        net_value = float(net_value.replace(",", ""))
+
+                    if "FII" in category or "FPI" in category:
+                        result["fii_net_today"] = net_value
+                    elif "DII" in category:
+                        result["dii_net_today"] = net_value
+
+                # If we got live data but no stored 5d, estimate
+                if result["fii_net_5d"] == 0 and result["fii_net_today"] != 0:
+                    result["fii_net_5d"] = result["fii_net_today"] * 2.5
+                    result["dii_net_5d"] = result["dii_net_today"] * 2.5
+                    logger.debug("FII/DII 5d estimated from today's live data (×2.5)")
+        except Exception as e:
+            logger.warning("Live NSE FII/DII fetch also failed: %s", e)
+
         return result
 
     async def _fetch_options_chain(self, symbol: str = "NIFTY") -> Dict[str, Any]:
@@ -492,19 +583,22 @@ class MarketDataService:
 
     async def _fetch_market_breadth(self) -> Dict[str, Any]:
         """Fetch advance/decline data."""
-        data = await self._nse.get(f"{NSE_API}/equity-stockIndices?index=NIFTY%2050")
-        if data and "advance" in data:
-            adv_data = data["advance"]
-            advances = adv_data.get("advances", 25)
-            declines = adv_data.get("declines", 25)
-            unchanged = adv_data.get("unchanged", 0)
-            adr = advances / declines if declines > 0 else 1.0
-            return {
-                "advances": advances,
-                "declines": declines,
-                "unchanged": unchanged,
-                "adr": round(adr, 2),
-            }
+        try:
+            data = await self._nse.get(f"{NSE_API}/equity-stockIndices?index=NIFTY%2050")
+            if data and "advance" in data:
+                adv_data = data["advance"]
+                advances = int(adv_data.get("advances", 25))
+                declines = int(adv_data.get("declines", 25))
+                unchanged = int(adv_data.get("unchanged", 0))
+                adr = advances / declines if declines > 0 else 1.0
+                return {
+                    "advances": advances,
+                    "declines": declines,
+                    "unchanged": unchanged,
+                    "adr": round(adr, 2),
+                }
+        except Exception as e:
+            logger.warning("Market breadth fetch failed: %s", e)
         return {"advances": 25, "declines": 25, "unchanged": 0, "adr": 1.0}
 
     # ---- Forex Fetchers ----

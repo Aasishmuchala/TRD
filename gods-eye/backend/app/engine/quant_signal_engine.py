@@ -39,7 +39,7 @@ Instrument hint:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +61,12 @@ class QuantInputs:
     vix: float              # Current India VIX level
     vix_5d_avg: float       # 5-day average VIX for direction detection
     supertrend: str         # "bullish" or "bearish"
+
+    # Phase 4 additions
+    macd_histogram: Optional[float] = None    # MACD(12,26,9) histogram value
+    macd_signal_cross: Optional[str] = None   # "bullish_cross" | "bearish_cross" | None
+    bb_position: Optional[float] = None       # Price position relative to Bollinger Bands(20,2)
+                                               # <0 = below lower band, >1 = above upper band, 0.5 = at middle
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +95,9 @@ class QuantScoreResult:
 
 class QuantSignalEngine:
     """Deterministic rules engine mapping market inputs to a 0-100 directional score."""
+
+    # Epsilon for float comparisons (avoids floating-point edge cases near zero)
+    _EPSILON = 1e-6
 
     @staticmethod
     def compute_quant_score(
@@ -198,6 +207,70 @@ class QuantSignalEngine:
             factors["supertrend"] = {"points": pts, "threshold_hit": True, "side": "sell"}
         else:
             factors["supertrend"] = {"points": 0, "threshold_hit": False, "side": "buy"}
+
+        # ------------------------------------------------------------------
+        # MACD (12, 26, 9) — Phase 4 addition
+        # Bullish cross (MACD crosses above signal) → buy +15
+        # Bearish cross (MACD crosses below signal) → sell +15
+        # Histogram direction as secondary signal → ±5
+        # ------------------------------------------------------------------
+        if inputs.macd_signal_cross is not None:
+            cross = inputs.macd_signal_cross.lower().strip()
+            if cross == "bullish_cross":
+                pts = 15
+                buy_points += pts
+                factors["macd"] = {"points": pts, "threshold_hit": True, "side": "buy"}
+            elif cross == "bearish_cross":
+                pts = 15
+                sell_points += pts
+                factors["macd"] = {"points": pts, "threshold_hit": True, "side": "sell"}
+            else:
+                # No cross — use histogram direction for a weaker signal
+                if inputs.macd_histogram is not None:
+                    if inputs.macd_histogram > QuantSignalEngine._EPSILON:
+                        pts = 5
+                        buy_points += pts
+                        factors["macd"] = {"points": pts, "threshold_hit": True, "side": "buy"}
+                    elif inputs.macd_histogram < -QuantSignalEngine._EPSILON:
+                        pts = 5
+                        sell_points += pts
+                        factors["macd"] = {"points": pts, "threshold_hit": True, "side": "sell"}
+                    else:
+                        factors["macd"] = {"points": 0, "threshold_hit": False, "side": "buy"}
+                else:
+                    factors["macd"] = {"points": 0, "threshold_hit": False, "side": "buy"}
+        elif inputs.macd_histogram is not None:
+            if inputs.macd_histogram > QuantSignalEngine._EPSILON:
+                pts = 5
+                buy_points += pts
+                factors["macd"] = {"points": pts, "threshold_hit": True, "side": "buy"}
+            elif inputs.macd_histogram < -QuantSignalEngine._EPSILON:
+                pts = 5
+                sell_points += pts
+                factors["macd"] = {"points": pts, "threshold_hit": True, "side": "sell"}
+            else:
+                factors["macd"] = {"points": 0, "threshold_hit": False, "side": "buy"}
+        else:
+            factors["macd"] = {"points": 0, "threshold_hit": False, "side": "buy"}
+
+        # ------------------------------------------------------------------
+        # Bollinger Bands (20, 2) — Phase 4 addition
+        # Price below lower band (bb_position < 0) → oversold, buy +10
+        # Price above upper band (bb_position > 1) → overbought, sell +10
+        # ------------------------------------------------------------------
+        if inputs.bb_position is not None:
+            if inputs.bb_position < 0:
+                pts = 10
+                buy_points += pts
+                factors["bollinger"] = {"points": pts, "threshold_hit": True, "side": "buy"}
+            elif inputs.bb_position > 1.0:
+                pts = 10
+                sell_points += pts
+                factors["bollinger"] = {"points": pts, "threshold_hit": True, "side": "sell"}
+            else:
+                factors["bollinger"] = {"points": 0, "threshold_hit": False, "side": "buy"}
+        else:
+            factors["bollinger"] = {"points": 0, "threshold_hit": False, "side": "buy"}
 
         # ------------------------------------------------------------------
         # Direction logic

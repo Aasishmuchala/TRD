@@ -117,6 +117,7 @@ class SimulationResult(BaseModel):
     model_used: str
     feedback_active: bool = Field(default=False, description="Whether accuracy feedback engine is active")
     tuned_weights: Optional[Dict[str, float]] = Field(default=None, description="Accuracy-tuned agent weights")
+    data_warnings: List[str] = Field(default_factory=list, description="Warnings about stale or missing data sources")
 
 
 class PresetScenario(BaseModel):
@@ -186,16 +187,22 @@ class BacktestDayResponse(BaseModel):
     signal_score: Optional[SignalScoreSchema] = None  # None for pre-Phase-8 persisted runs
     # round_history omitted from list response — heavy; available via detail endpoint
 
+    # Stop loss fields (Profitability Roadmap v2)
+    stop_loss_hit: bool = False
+    stop_price: Optional[float] = None
+    stop_distance_pts: Optional[float] = None
+
+    # Latency fields
+    entry_price: float = 0.0             # T+1 open — actual execution price
+    overnight_gap_pct: float = 0.0       # T close → T+1 open gap (%)
+
 
 class BacktestRunRequest(BaseModel):
     """Request body for POST /api/backtest/run."""
     instrument: str = Field(default="NIFTY", description="NIFTY or BANKNIFTY")
     from_date: str = Field(..., description="Start date YYYY-MM-DD (inclusive)")
     to_date: str = Field(..., description="End date YYYY-MM-DD (inclusive)")
-    mock_mode: bool = Field(
-        default=True,
-        description="True = fast mock agents (default); False = real LLM calls"
-    )
+    # mock_mode removed — backtests always use real LLM agents (close-to-close strategy)
 
 
 class BacktestRunSummary(BaseModel):
@@ -211,6 +218,21 @@ class BacktestRunSummary(BaseModel):
     per_agent_accuracy: Dict[str, float]  # agent_key -> 0-1
     total_pnl_points: float
     created_at: str
+
+    # Phase 3 performance metrics
+    hit_rate_pct: float = 0.0
+    avg_pnl_per_trade: float = 0.0
+    max_drawdown_pct: float = 0.0
+    sharpe_ratio: float = 0.0
+    total_trades: int = 0
+    regime_accuracy: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+
+    # Stop loss stats (Profitability Roadmap v2)
+    total_stops_hit: int = 0
+    stop_loss_enabled: bool = False
+
+    # Latency stats
+    avg_overnight_gap_pct: float = 0.0   # mean |gap| across tradeable days
 
 
 class BacktestRunResponse(BaseModel):

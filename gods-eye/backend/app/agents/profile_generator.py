@@ -17,6 +17,7 @@ from app.data.signal_engine import SignalEngine
 from app.knowledge.market_graph import MarketKnowledgeGraph
 from app.memory.agent_memory import AgentMemory
 from app.learning.skill_store import get_skill_store
+from app.engine.feedback_engine import FeedbackEngine
 
 
 class ProfileGenerator:
@@ -30,6 +31,7 @@ class ProfileGenerator:
     def __init__(self, agent_memory: Optional[AgentMemory] = None):
         self.memory = agent_memory
         self.graph = MarketKnowledgeGraph
+        self.feedback_engine = FeedbackEngine(agent_memory) if agent_memory else None
 
     def build_context(
         self,
@@ -71,7 +73,24 @@ class ProfileGenerator:
             if memory_section:
                 sections.append(memory_section)
 
-        # 5. Learned skills (auto-learning patterns)
+        # 5. Quant Signal Engine summary (grounds all agents in quant evidence)
+        quant_section = self._build_quant_summary(market_data)
+        if quant_section:
+            sections.append(quant_section)
+
+        # 6. Accuracy track record + corrective hints (from FeedbackEngine)
+        if self.feedback_engine and self.feedback_engine.should_activate():
+            accuracy_section = self._build_accuracy_context(agent_key)
+            if accuracy_section:
+                sections.append(accuracy_section)
+
+        # 7. BSE bulk/block deals (Promoter agent only)
+        if agent_key == "PROMOTER":
+            deals_section = self._build_deals_context()
+            if deals_section:
+                sections.append(deals_section)
+
+        # 8. Learned skills (auto-learning patterns)
         try:
             skill_store = get_skill_store()
             market_dict = {
@@ -92,6 +111,123 @@ class ProfileGenerator:
             pass  # Skills are optional enhancement
 
         return "\n\n".join(sections)
+
+    def _build_quant_summary(self, market_data: MarketInput) -> str:
+        """Build a quant signal engine summary for grounding LLM decisions.
+
+        This gives every agent a shared quantitative baseline to reason against,
+        so their LLM analysis is grounded in reproducible numbers.
+        """
+        try:
+            from app.engine.quant_signal_engine import QuantSignalEngine, QuantInputs
+            from app.data.fii_dii_store import fii_dii_store
+            from app.data.pcr_store import pcr_store
+
+            # Build QuantInputs from MarketInput
+            today_str = __import__("datetime").datetime.now().strftime("%Y-%m-%d")
+
+            # Get real FII/DII from store if available
+            fii_dii = fii_dii_store.get_by_date(today_str)
+            fii_net = fii_dii.get("fii_net_cr", 0) if fii_dii else 0
+            dii_net = fii_dii.get("dii_net_cr", 0) if fii_dii else 0
+
+            # Get real PCR from store
+            pcr_data = pcr_store.get_latest()
+            pcr_val = pcr_data.get("pcr", market_data.pcr_index) if pcr_data else market_data.pcr_index
+
+            inputs = QuantInputs(
+                rsi_14=market_data.rsi_14 or 50.0,
+                supertrend_signal=0,  # Would need historical data to compute
+                vix=market_data.india_vix,
+                pcr=pcr_val,
+                fii_net_cr=fii_net,
+                dii_net_cr=dii_net,
+                volume_ratio=1.0,
+            )
+
+            result = QuantSignalEngine.compute_quant_score(inputs)
+
+            lines = [
+                "=== QUANT ENGINE CONSENSUS ===",
+                f"  Score: {result.total_score}/100 → {result.direction} ({result.tier} tier)",
+                f"  Buy signals: {result.buy_points} pts | Sell signals: {result.sell_points} pts",
+            ]
+
+            # Top contributing factors
+            for factor_name, factor_data in result.factors.items():
+                if factor_data.get("threshold_hit"):
+                    side = factor_data.get("side", "?")
+                    pts = factor_data.get("points", 0)
+                    lines.append(f"  Active: {factor_name} → {side.upper()} +{pts}pts")
+
+            if result.instrument_hint:
+                lines.append(f"  Instrument hint: {result.instrument_hint}")
+
+            return "\n".join(lines)
+
+        except Exception:
+            return ""
+
+    def _build_accuracy_context(self, agent_key: str) -> str:
+        """Build accuracy track record and corrective hints for an agent.
+
+        Combines raw accuracy stats with failure pattern hints from FeedbackEngine.
+        """
+        sections = []
+
+        # Raw accuracy stats
+        if self.memory:
+            stats = self.memory.get_agent_accuracy(agent_key, lookback_days=90)
+            if stats.total_predictions >= 5:
+                pct = stats.accuracy_pct
+                total = stats.total_predictions
+                sections.append(
+                    f"=== YOUR TRACK RECORD (last 90 days) ===\n"
+                    f"  Accuracy: {pct:.0f}% ({int(pct * total / 100)}/{total} correct)\n"
+                    f"  {'Strong track record — trust your analysis' if pct >= 60 else 'Below target — consider hedging conviction by 10-15%'}"
+                )
+
+        # Failure pattern hints from FeedbackEngine
+        if self.feedback_engine:
+            hints = self.feedback_engine.get_prompt_hints(agent_key)
+            if hints:
+                sections.append(hints)
+
+        return "\n\n".join(sections)
+
+    def _build_deals_context(self) -> str:
+        """Build BSE bulk/block deals context for the Promoter agent.
+
+        Shows recent large deals and net sentiment so the Promoter agent
+        can detect insider/promoter buying or selling patterns.
+        """
+        try:
+            from app.data.bse_deals_store import bse_deals_store
+
+            sentiment = bse_deals_store.get_net_sentiment(days=5)
+            if sentiment["total_deals"] == 0:
+                return ""
+
+            lines = ["=== BSE BULK/BLOCK DEALS (last 5 days) ==="]
+            lines.append(f"Total deals: {sentiment['total_deals']}")
+            lines.append(f"Buy deals: {sentiment['net_buy_count']} ({sentiment['net_buy_value_cr']:.0f} Cr)")
+            lines.append(f"Sell deals: {sentiment['net_sell_count']} ({sentiment['net_sell_value_cr']:.0f} Cr)")
+            lines.append(f"Net sentiment: {sentiment['sentiment']}")
+
+            # Show top large deals
+            large_deals = bse_deals_store.get_large_promoter_deals(days=7, min_quantity=100000)
+            if large_deals:
+                lines.append("\nNotable large deals:")
+                for deal in large_deals[:5]:
+                    lines.append(
+                        f"  {deal['date']}: {deal['client_name']} {deal['buy_sell']} "
+                        f"{deal['quantity']:,} shares of {deal['security']} @ Rs.{deal['price']:.2f} "
+                        f"({deal['deal_type']})"
+                    )
+
+            return "\n".join(lines)
+        except Exception:
+            return ""  # BSE deals are an optional enhancement
 
     def _build_signal_context(self, agent_key: str, market_data: MarketInput) -> str:
         """Build agent-specific pre-computed signal package.

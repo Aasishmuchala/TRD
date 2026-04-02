@@ -123,6 +123,19 @@ PROVIDERS = {
         "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
         "default_model": "Hermes-3-Llama-3.1-70B",
     },
+    "anthropic": {
+        "name": "Anthropic (OpusCode)",
+        "auth_base": "",
+        "device_code_endpoint": "",
+        "token_endpoint": "",
+        "inference_base": "https://claude.opuscode.pro/api",
+        "client_id": "",
+        "scope": "",
+        "audience": "",
+        "grant_type": "",
+        "default_model": "claude-opus-4-6",
+        "api_format": "anthropic",  # Uses /v1/messages instead of /chat/completions
+    },
     "custom": {
         "name": "Custom Provider",
         "auth_base": "",

@@ -174,9 +174,13 @@ class TechnicalSignals:
             return {"error": f"No rows at or before {date_str}"}
 
         closes = [r["close"] for r in window]
+        # VWAP uses a 20-day rolling window only — using the full multi-year history
+        # produces a permanently-inflated deviation (NIFTY trending up means current
+        # price is always ~10-12% above the long-run average, making the signal useless).
+        vwap_window = window[-20:] if len(window) >= 20 else window
         return {
             "rsi": TechnicalSignals.compute_rsi(closes),
-            "vwap_deviation_pct": TechnicalSignals.compute_vwap_deviation(window),
+            "vwap_deviation_pct": TechnicalSignals.compute_vwap_deviation(vwap_window),
             "supertrend": TechnicalSignals.compute_supertrend(window),
         }
 

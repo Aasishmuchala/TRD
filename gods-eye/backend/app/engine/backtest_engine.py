@@ -9,6 +9,7 @@ This module provides:
 import asyncio
 import json
 import logging
+import math
 import os
 import sqlite3
 import uuid
@@ -20,8 +21,11 @@ from app.api.schemas import MarketInput
 from app.config import config
 from app.data.historical_store import historical_store
 from app.data.technical_signals import TechnicalSignals
+from app.data.fii_dii_store import fii_dii_store as _fii_dii_store, get_fii_dii_for_quant
+from app.data.pcr_store import pcr_store as _pcr_store
 from app.engine.orchestrator import Orchestrator
 from app.engine.signal_scorer import SignalScorer
+from app.engine.stop_loss_engine import StopLossEngine
 
 logger = logging.getLogger("gods_eye.backtest")
 
@@ -67,6 +71,15 @@ class BacktestDayResult:
     signals: Dict                         # {"rsi": float, "supertrend": str, ...}
     signal_score: Optional[Dict] = field(default=None)  # ScoreResult as plain dict
 
+    # Stop loss fields (Profitability Roadmap v2)
+    stop_loss_hit: bool = False                  # True if stop triggered during next day
+    stop_price: Optional[float] = None           # NIFTY stop level (None when HOLD)
+    stop_distance_pts: Optional[float] = None    # Distance from entry to stop in pts
+
+    # Entry price (T's close in close-to-close structure)
+    entry_price: float = 0.0                     # T's close — MOC entry price
+    overnight_gap_pct: float = 0.0               # Unused in close-to-close (gap is part of P&L)
+
 
 @dataclass
 class BacktestRunResult:
@@ -83,6 +96,23 @@ class BacktestRunResult:
     total_pnl_points: float
     created_at: str                           # ISO timestamp
 
+    # Phase 3 performance metrics
+    hit_rate_pct: float = 0.0                 # % of non-HOLD days direction was correct
+    avg_pnl_per_trade: float = 0.0            # mean P&L points on non-HOLD days
+    max_drawdown_pct: float = 0.0             # max peak-to-trough on cumulative P&L curve
+    sharpe_ratio: float = 0.0                 # (mean daily P&L / std daily P&L) × √252
+    total_trades: int = 0                     # count of non-HOLD days
+
+    # Phase 3 regime accuracy
+    regime_accuracy: Dict[str, Dict[str, float]] = field(default_factory=dict)
+
+    # Stop loss stats (Profitability Roadmap v2)
+    total_stops_hit: int = 0             # trades where stop was triggered before EOD
+    stop_loss_enabled: bool = False      # whether stop loss was active for this run
+
+    # Latency stats
+    avg_overnight_gap_pct: float = 0.0   # mean |gap| (T close → T+1 open) across trades
+
 
 # ---------------------------------------------------------------------------
 # Engine
@@ -93,7 +123,7 @@ class BacktestEngine:
 
     Usage:
         engine = BacktestEngine()
-        result = await engine.run_backtest("NIFTY", "2024-01-01", "2024-02-01", mock_mode=True)
+        result = await engine.run_backtest("NIFTY", "2024-01-01", "2024-02-01")
     """
 
     def __init__(self, db_path: str = None):
@@ -146,15 +176,19 @@ class BacktestEngine:
         instrument: str = "NIFTY",
         from_date: str = None,
         to_date: str = None,
-        mock_mode: bool = True,
     ) -> BacktestRunResult:
-        """Run a full backtest over a date range.
+        """Run a full backtest over a date range using real LLM agents.
+
+        Trade structure: close-to-close.
+          - Signal generated at T's close (3:25 PM IST).
+          - Entry via MOC order at T's close (3:29 PM).
+          - Exit at T+1's close.
+          - Overnight gap (T close → T+1 open) is intended strategy P&L.
 
         Args:
             instrument:  "NIFTY" or "BANKNIFTY"
             from_date:   start date "YYYY-MM-DD" (inclusive); defaults to 30 days ago
             to_date:     end date "YYYY-MM-DD" (inclusive); defaults to yesterday
-            mock_mode:   if True, agents use MockResponseGenerator (no LLM API calls)
 
         Returns:
             BacktestRunResult with per-day results and aggregate statistics.
@@ -167,8 +201,8 @@ class BacktestEngine:
             from_date = (today - timedelta(days=30)).isoformat()
 
         logger.info(
-            "Starting backtest: instrument=%s from=%s to=%s mock=%s",
-            instrument, from_date, to_date, mock_mode,
+            "Starting backtest: instrument=%s from=%s to=%s (real LLM, close-to-close)",
+            instrument, from_date, to_date,
         )
 
         # Fetch all OHLCV rows (entire history) and VIX closes
@@ -190,17 +224,16 @@ class BacktestEngine:
                 instrument, from_date, to_date,
             )
 
-        # Save and override config for backtest (restored in finally)
-        original_mock = config.MOCK_MODE
+        # Override config for backtest speed (restored in finally)
         original_model = config.MODEL
         original_samples = config.SAMPLES_PER_AGENT
         original_rounds = config.INTERACTION_ROUNDS
-        config.MOCK_MODE = mock_mode
-        if not mock_mode:
-            # Use fast model + minimal samples for backtesting speed
-            config.MODEL = os.getenv("GODS_EYE_BACKTEST_MODEL", "google/gemini-2.0-flash-001")
-            config.SAMPLES_PER_AGENT = 1   # 1 sample instead of 3 (3x faster)
-            config.INTERACTION_ROUNDS = 1  # 1 round instead of 3 (3x faster)
+        original_mock = config.MOCK_MODE
+        # Always real LLM — use Claude Sonnet 4.6 unless overridden by env var
+        config.MOCK_MODE = False
+        config.MODEL = os.getenv("GODS_EYE_BACKTEST_MODEL", "claude-sonnet-4-6")
+        config.SAMPLES_PER_AGENT = 1   # 1 sample instead of 3 (3x faster)
+        config.INTERACTION_ROUNDS = 1  # 1 round instead of 3 (3x faster)
 
         days: List[BacktestDayResult] = []
 
@@ -225,8 +258,14 @@ class BacktestEngine:
                 next_date = next_row["date"]
                 nifty_next_close = next_row["close"]
 
-                # Compute actual move
+                # Signal generated using T's close data
                 nifty_close = row["close"]
+
+                # Close-to-close structure: signal at 3:25 PM → MOC entry at T's close
+                # (3:29 PM), hold overnight, exit at T+1's close.
+                # The overnight gap (T close → T+1 open) is intended P&L — it's where
+                # FII/DII flows and macro moves first manifest.
+                entry_price = nifty_close
                 actual_move_pct = (nifty_next_close - nifty_close) / nifty_close * 100
 
                 # Build MarketInput from historical data (no future data leakage)
@@ -263,9 +302,67 @@ class BacktestEngine:
                     for name, resp in final_outputs.items()
                 }
 
-                # Correctness and P&L
+                # Correctness and P&L — based on entry_price (T+1 open), not T close
                 direction_correct = self._is_correct(predicted_direction, actual_move_pct)
-                pnl_points = self._compute_pnl(predicted_direction, actual_move_pct, nifty_close)
+                pnl_points = self._compute_pnl(predicted_direction, actual_move_pct, entry_price)
+
+                # ---- Stop Loss (Profitability Roadmap v2) ----
+                stop_hit = False
+                sl_stop_price: Optional[float] = None
+                sl_stop_dist: Optional[float] = None
+
+                if config.STOP_LOSS_ENABLED and predicted_direction not in ("HOLD",):
+                    # Build OHLCV window: all rows strictly BEFORE signal_date (no leakage)
+                    ohlcv_window = [r for r in all_ohlcv if r["date"] < signal_date]
+
+                    # Stop computed from entry_price (T+1 open) — latency-correct
+                    sl_result = StopLossEngine.compute_stop_for_day(
+                        direction=predicted_direction,
+                        entry_close=entry_price,
+                        ohlcv_window=ohlcv_window,
+                        atr_multiplier=config.STOP_LOSS_ATR_MULTIPLIER,
+                        pct_stop=config.STOP_LOSS_PCT,
+                    )
+
+                    if sl_result.method != "none":
+                        sl_stop_price = sl_result.stop_price
+                        sl_stop_dist = sl_result.stop_distance_pts
+
+                        # Gap-open stop check: if T+1 opens past the stop (gap risk),
+                        # stop is hit at T+1 open. Use T+1 open as a single-point range.
+                        next_open = next_row["open"]
+                        gap_stop_hit = StopLossEngine.check_stop_hit(
+                            direction=predicted_direction,
+                            stop_price=sl_result.stop_price,
+                            day_low=next_open,
+                            day_high=next_open,
+                        )
+
+                        # Intraday stop check: full T+1 day range
+                        intraday_stop_hit = StopLossEngine.check_stop_hit(
+                            direction=predicted_direction,
+                            stop_price=sl_result.stop_price,
+                            day_low=next_row["low"],
+                            day_high=next_row["high"],
+                        )
+
+                        stop_hit = gap_stop_hit or intraday_stop_hit
+
+                        if stop_hit:
+                            # Override P&L with capped stop-loss exit
+                            pnl_points = StopLossEngine.compute_stopped_pnl(
+                                direction=predicted_direction,
+                                entry_price=entry_price,
+                                stop_price=sl_result.stop_price,
+                            )
+                            logger.debug(
+                                "Stop hit on %s: direction=%s entry=%.1f stop=%.1f "
+                                "gap_hit=%s intraday_hit=%s pnl=%.1f",
+                                signal_date, predicted_direction, entry_price,
+                                sl_result.stop_price, gap_stop_hit, intraday_stop_hit,
+                                pnl_points,
+                            )
+                # ---- End Stop Loss ----
 
                 # Technical signals (sliced to signal date — no leakage)
                 signals = TechnicalSignals.compute_signals_for_date(all_ohlcv, signal_date)
@@ -292,6 +389,11 @@ class BacktestEngine:
                     round_history=round_history,
                     signals=signals,
                     signal_score=vars(score_result),
+                    stop_loss_hit=stop_hit,
+                    stop_price=sl_stop_price,
+                    stop_distance_pts=sl_stop_dist,
+                    entry_price=round(entry_price, 2),
+                    overnight_gap_pct=0.0,  # N/A in close-to-close (gap is part of P&L)
                 )
                 days.append(day_result)
                 logger.debug(
@@ -301,7 +403,7 @@ class BacktestEngine:
                 )
 
         finally:
-            config.MOCK_MODE = original_mock
+            config.MOCK_MODE = original_mock   # restore original (False in prod, True in tests)
             config.MODEL = original_model
             config.SAMPLES_PER_AGENT = original_samples
             config.INTERACTION_ROUNDS = original_rounds
@@ -313,17 +415,42 @@ class BacktestEngine:
         total_pnl_points = sum(d.pnl_points for d in days)
         per_agent_accuracy = self._compute_per_agent_accuracy(days)
 
+        # Phase 3 performance metrics
+        total_trades = len(eligible)
+        hit_rate_pct = round((len(correct) / total_trades * 100) if total_trades else 0.0, 2)
+        avg_pnl_per_trade = round((sum(d.pnl_points for d in eligible) / total_trades) if total_trades else 0.0, 2)
+        max_drawdown_pct = self._compute_max_drawdown(days)
+        sharpe_ratio = self._compute_sharpe(days)
+
+        # Phase 3 regime accuracy
+        regime_accuracy = self._compute_regime_accuracy(days, vix_map)
+
+        # Stop loss summary
+        total_stops_hit = sum(1 for d in days if d.stop_loss_hit)
+
+        # overnight_gap_pct is not tracked in close-to-close (gap is intended P&L)
+        avg_overnight_gap_pct = 0.0
+
         run_result = BacktestRunResult(
             run_id=str(uuid.uuid4()),
             instrument=instrument,
             from_date=from_date,
             to_date=to_date,
-            mock_mode=mock_mode,
+            mock_mode=False,  # always real LLM — mock backtest mode removed
             days=days,
             overall_accuracy=round(overall_accuracy, 4),
             per_agent_accuracy=per_agent_accuracy,
             total_pnl_points=round(total_pnl_points, 2),
             created_at=datetime.utcnow().isoformat(),
+            hit_rate_pct=hit_rate_pct,
+            avg_pnl_per_trade=avg_pnl_per_trade,
+            max_drawdown_pct=max_drawdown_pct,
+            sharpe_ratio=sharpe_ratio,
+            total_trades=total_trades,
+            regime_accuracy=regime_accuracy,
+            total_stops_hit=total_stops_hit,
+            stop_loss_enabled=config.STOP_LOSS_ENABLED,
+            avg_overnight_gap_pct=avg_overnight_gap_pct,
         )
 
         # Persist to SQLite
@@ -373,13 +500,29 @@ class BacktestEngine:
         close_5d_ago = recent_closes[-6] if len(recent_closes) >= 6 else recent_closes[0]
         momentum_5d_pct = ((close_today - close_5d_ago) / close_5d_ago) * 100
 
-        # Simulate FII/DII from momentum: falling market → FII selling, DII buying
-        fii_flow_proxy = momentum_5d_pct * 1500  # -2% move → -3000 Cr outflow
-        dii_flow_proxy = -momentum_5d_pct * 800   # DII absorbs opposite
+        # Real FII/DII from store (Profitability Roadmap v2 Phase 1)
+        # Falls back to momentum proxy when no real data for this date (logs warning).
+        fii_dii_data = get_fii_dii_for_quant(_fii_dii_store, signal_date)
+        if fii_dii_data["fii_net_cr"] != 0.0 or fii_dii_data["dii_net_cr"] != 0.0:
+            # Real data available — pass directly in INR crores.
+            # fii_flow_5d in MarketInput is in INR crores throughout the system.
+            # AlgoQuantAgent no longer applies a unit conversion (Profitability Roadmap v2).
+            fii_flow_5d = fii_dii_data["fii_net_cr"]
+            dii_flow_5d = fii_dii_data["dii_net_cr"]
+        else:
+            # Fallback: momentum proxy (no real data for this date)
+            logger.debug("FII/DII proxy used for %s — no real data in store", signal_date)
+            fii_flow_5d = momentum_5d_pct * 1500
+            dii_flow_5d = -momentum_5d_pct * 800
 
-        # PCR from RSI: oversold → high PCR (put heavy), overbought → low PCR
-        rsi_val = rsi_14 if rsi_14 is not None else 50
-        pcr_proxy = 0.6 + (rsi_val / 100) * 0.8  # range 0.6-1.4
+        # Real PCR from store (Profitability Roadmap v2 Phase 2)
+        # Dhan doesn't provide historical option chain, so real PCR only exists for
+        # dates collected since pcr_collector started. Falls back to 1.0 (neutral).
+        real_pcr = _pcr_store.get_pcr(signal_date)
+        if real_pcr is not None:
+            pcr_index = real_pcr
+        else:
+            pcr_index = 1.0  # Neutral fallback — no scoring effect on PCR factor
 
         # Context from momentum
         if momentum_5d_pct < -2:
@@ -400,11 +543,11 @@ class BacktestEngine:
             nifty_low=row["low"],
             nifty_close=close_today,
             india_vix=india_vix,
-            fii_flow_5d=round(fii_flow_proxy, 0),
-            dii_flow_5d=round(dii_flow_proxy, 0),
+            fii_flow_5d=round(fii_flow_5d, 2),
+            dii_flow_5d=round(dii_flow_5d, 2),
             usd_inr=84.0,
             dxy=103.0,
-            pcr_index=round(pcr_proxy, 2),
+            pcr_index=round(pcr_index, 3),
             pcr_stock=1.0,
             max_pain=close_today,
             dte=15,
@@ -414,14 +557,25 @@ class BacktestEngine:
             historical_prices=historical_closes,
         )
 
+    # Minimum total agent weight for a directional family to trigger a trade.
+    # FII alone (0.30) is just enough; PROMOTER+RBI (0.20) is not.
+    DIRECTIONAL_WEIGHT_THRESHOLD = 0.25
+
     def _compute_consensus(
         self, final_outputs: Dict
     ) -> Tuple[str, float]:
-        """Compute consensus by grouping BUY/SELL families.
+        """Compute weighted consensus using config.AGENT_WEIGHTS.
 
         Groups: BUY family (STRONG_BUY, BUY), SELL family (SELL, STRONG_SELL), HOLD.
-        The family with the most votes wins. Within that family, uses the strongest
-        signal if conviction is high enough.
+
+        A directional family triggers a trade if its total weight >= DIRECTIONAL_WEIGHT_THRESHOLD
+        (default 0.25).  This means FII alone (0.30) calling SELL → SELL signal, which
+        correctly respects the stated agent weight architecture instead of raw vote counts.
+
+        If both BUY and SELL families clear the threshold, the heavier one wins.
+        If neither clears the threshold, result is HOLD.
+
+        Conviction = weighted-average conviction of the winning family's agents.
 
         Returns:
             (direction, conviction) tuple
@@ -432,40 +586,45 @@ class BacktestEngine:
         buy_family = {"STRONG_BUY", "BUY"}
         sell_family = {"SELL", "STRONG_SELL"}
 
-        buy_votes = []
-        sell_votes = []
-        hold_votes = []
+        buy_weight = 0.0
+        sell_weight = 0.0
+        buy_conv_sum = 0.0
+        sell_conv_sum = 0.0
+        hold_conv_sum = 0.0
+        hold_count = 0
 
-        for resp in final_outputs.values():
+        for agent_name, resp in final_outputs.items():
+            # Normalise key: backtest uses uppercase names like "FII", "DII", etc.
+            key = agent_name.upper().replace("_AGENT", "").replace("RETAIL_FNO", "RETAIL_FNO")
+            w = config.AGENT_WEIGHTS.get(key, 0.10)
             d = resp.direction
             if d in buy_family:
-                buy_votes.append(resp.conviction)
+                buy_weight += w
+                buy_conv_sum += resp.conviction * w
             elif d in sell_family:
-                sell_votes.append(resp.conviction)
+                sell_weight += w
+                sell_conv_sum += resp.conviction * w
             else:
-                hold_votes.append(resp.conviction)
+                hold_conv_sum += resp.conviction
+                hold_count += 1
 
-        # Family with most votes wins. Ties: BUY/SELL beat HOLD (actionable > passive)
-        families = [
-            ("BUY", len(buy_votes), buy_votes),
-            ("SELL", len(sell_votes), sell_votes),
-            ("HOLD", len(hold_votes), hold_votes),
-        ]
-        families.sort(key=lambda f: (f[1], sum(f[2]) if f[2] else 0), reverse=True)
-        winning_family = families[0][0]
-        winning_convictions = families[0][2]
+        threshold = self.DIRECTIONAL_WEIGHT_THRESHOLD
 
-        # Pick specific direction based on avg conviction
-        avg_conv = sum(winning_convictions) / len(winning_convictions) if winning_convictions else 50
-        if winning_family == "BUY":
-            winning_direction = "STRONG_BUY" if avg_conv > 70 else "BUY"
-        elif winning_family == "SELL":
-            winning_direction = "STRONG_SELL" if avg_conv > 70 else "SELL"
+        if buy_weight >= threshold or sell_weight >= threshold:
+            # At least one directional family cleared the threshold
+            if buy_weight >= sell_weight:
+                avg_conv = buy_conv_sum / buy_weight if buy_weight else 50.0
+                winning_direction = "STRONG_BUY" if avg_conv > 80 else "BUY"
+                conviction = avg_conv
+            else:
+                avg_conv = sell_conv_sum / sell_weight if sell_weight else 50.0
+                winning_direction = "STRONG_SELL" if avg_conv > 80 else "SELL"
+                conviction = avg_conv
         else:
+            # Neither directional family is strong enough → HOLD
+            avg_hold = hold_conv_sum / hold_count if hold_count else 50.0
             winning_direction = "HOLD"
-
-        # Conviction = already computed from winning family
-        conviction = avg_conv
+            conviction = avg_hold
 
         return (winning_direction, conviction)
 
@@ -540,6 +699,94 @@ class BacktestEngine:
             result[agent_name] = (
                 round(agent_correct[agent_name] / eligible, 4) if eligible > 0 else 0.0
             )
+        return result
+
+    # ------------------------------------------------------------------ #
+    # Phase 3 metric helpers                                               #
+    # ------------------------------------------------------------------ #
+
+    def _compute_max_drawdown(self, days: List[BacktestDayResult]) -> float:
+        """Max peak-to-trough drawdown on the cumulative P&L curve (percentage).
+
+        Returns 0.0 if no trades or no drawdown.
+        """
+        if not days:
+            return 0.0
+
+        cumulative = 0.0
+        peak = 0.0
+        max_dd = 0.0
+
+        for d in days:
+            cumulative += d.pnl_points
+            if cumulative > peak:
+                peak = cumulative
+            drawdown = peak - cumulative
+            if drawdown > max_dd:
+                max_dd = drawdown
+
+        # Express as % of peak (avoid div-by-zero)
+        if peak > 0:
+            return round((max_dd / peak) * 100, 2)
+        elif max_dd > 0:
+            # Started losing from day 1 — express absolute drawdown as negative %
+            return round(max_dd, 2)
+        return 0.0
+
+    def _compute_sharpe(self, days: List[BacktestDayResult]) -> float:
+        """Annualized Sharpe ratio: (mean daily P&L / std daily P&L) × √252.
+
+        Uses all days (including HOLD = 0 P&L) for a realistic daily return series.
+        Returns 0.0 if fewer than 2 days or zero variance.
+        """
+        if len(days) < 2:
+            return 0.0
+
+        pnls = [d.pnl_points for d in days]
+        mean_pnl = sum(pnls) / len(pnls)
+        variance = sum((p - mean_pnl) ** 2 for p in pnls) / (len(pnls) - 1)
+
+        if variance <= 0:
+            return 0.0
+
+        std_pnl = math.sqrt(variance)
+        return round((mean_pnl / std_pnl) * math.sqrt(252), 2)
+
+    def _compute_regime_accuracy(
+        self,
+        days: List[BacktestDayResult],
+        vix_map: Dict[str, float],
+    ) -> Dict[str, Dict[str, float]]:
+        """Per-agent accuracy grouped by VIX regime.
+
+        Regimes: low_vix (<15), normal_vix (15-20), elevated_vix (20-30), high_vix (>30).
+        Returns: {"low_vix": {"FII": 0.68, ...}, "normal_vix": {...}, ...}
+        """
+        regime_buckets: Dict[str, List[BacktestDayResult]] = {
+            "low_vix": [],
+            "normal_vix": [],
+            "elevated_vix": [],
+            "high_vix": [],
+        }
+
+        for d in days:
+            vix = vix_map.get(d.date, 16.0)
+            if vix < 15:
+                regime_buckets["low_vix"].append(d)
+            elif vix < 20:
+                regime_buckets["normal_vix"].append(d)
+            elif vix < 30:
+                regime_buckets["elevated_vix"].append(d)
+            else:
+                regime_buckets["high_vix"].append(d)
+
+        result: Dict[str, Dict[str, float]] = {}
+        for regime, regime_days in regime_buckets.items():
+            if not regime_days:
+                result[regime] = {}
+                continue
+            result[regime] = self._compute_per_agent_accuracy(regime_days)
+
         return result
 
     # ------------------------------------------------------------------ #

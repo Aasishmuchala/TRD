@@ -149,12 +149,14 @@ As an FII, you consider:
 6. **Geopolitics**: Global risk-off events affecting EM inflows
 
 DECISION REQUIREMENTS:
+You MUST take a directional stance — BUY or SELL. HOLD is only acceptable when bullish and bearish signals are perfectly balanced with equal weight. In real markets, there is almost always a lean. A derivatives trader needs a direction, not indecision.
+
 Respond ONLY with valid JSON (no markdown, no code blocks):
 {{
-  "direction": "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL",
+  "direction": "STRONG_BUY" | "BUY" | "SELL" | "STRONG_SELL" | "HOLD",
   "conviction": <0-100>,
   "key_triggers": ["trigger1", "trigger2", "trigger3"],
-  "reasoning": "Your analysis in 2-3 sentences.",
+  "reasoning": "Your analysis in 2-3 sentences. Explain WHY you lean this direction.",
   "view_intraday": "The short-term sentiment",
   "view_weekly": "The weekly trend",
   "interaction_notes": "How other agents' views affect this"
@@ -173,11 +175,14 @@ Focus on realistic FII decision-making. Consider that FIIs:
 Your assessment:"""
 
     async def _call_llm(self, prompt: str) -> str:
-        """Call LLM via OpenAI-compatible API."""
+        """Call LLM via Anthropic-compatible API."""
         client = get_llm_client()
         return await client.chat_completion(
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
+            messages=[
+                {"role": "system", "content": "You are a decisive quantitative trading analyst for Indian equity derivatives. You MUST respond with ONLY valid JSON — no markdown, no code fences, no explanation text. You MUST pick BUY or SELL. HOLD is a cop-out — only use it when signals are exactly 50/50. A trader paying for your analysis needs a direction."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=50000,
         )
 
     def _parse_response(self, response_text: str) -> Optional[Dict]:
@@ -220,9 +225,9 @@ Your assessment:"""
 
         if avg_score > 1.3:
             return "STRONG_BUY"
-        elif avg_score > 0.3:
+        elif avg_score > 0.17:
             return "BUY"
-        elif avg_score > -0.3:
+        elif avg_score > -0.17:
             return "HOLD"
         elif avg_score > -1.3:
             return "SELL"

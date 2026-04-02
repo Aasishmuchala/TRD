@@ -8,8 +8,9 @@ can adjust its conviction. This builds compounding intelligence over time.
 """
 
 import json
+import math
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
@@ -122,7 +123,7 @@ class AgentMemory:
                 (
                     simulation_id,
                     agent_key,
-                    datetime.now().isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                     context,
                     direction,
                     conviction,
@@ -168,16 +169,24 @@ class AgentMemory:
         finally:
             conn.close()
 
+    # Exponential decay: 90-day half-life → λ = ln(2) / 90
+    _DECAY_LAMBDA = math.log(2) / 90.0
+
     def get_agent_accuracy(
         self, agent_key: str, lookback_days: int = 90
     ) -> AgentAccuracyStats:
-        """Compute comprehensive accuracy stats for an agent."""
-        cutoff = (datetime.now() - timedelta(days=lookback_days)).isoformat()
+        """Compute comprehensive accuracy stats for an agent.
+
+        Uses exponential decay so recent predictions matter more:
+        weight = exp(-λ × days_old) where λ = ln(2)/90 (90-day half-life).
+        A prediction from 90 days ago has ~0.5× the weight of today's.
+        """
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
         conn = self._get_conn()
         try:
-            # Get all predictions with outcomes
+            # Get all predictions with outcomes (include timestamp for decay)
             rows = conn.execute(
-                """SELECT direction, conviction, context, was_correct
+                """SELECT direction, conviction, context, was_correct, timestamp
                    FROM agent_predictions
                    WHERE agent_key = ? AND timestamp > ? AND was_correct IS NOT NULL""",
                 (agent_key, cutoff),
@@ -198,11 +207,35 @@ class AgentMemory:
                     weakest_context="unknown",
                 )
 
-            total = len(rows)
-            correct = sum(1 for r in rows if r["was_correct"])
-            accuracy = correct / total if total > 0 else 0.0
+            now = datetime.now(timezone.utc)
 
-            # Conviction breakdown
+            # Compute decay weight per prediction
+            def _decay_weight(timestamp_str: str) -> float:
+                try:
+                    ts = datetime.fromisoformat(timestamp_str)
+                    # Handle naive timestamps from old data by assuming UTC
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    days_old = max(0, (now - ts).total_seconds() / 86400)
+                    return math.exp(-self._DECAY_LAMBDA * days_old)
+                except (ValueError, TypeError):
+                    return 1.0
+
+            total = len(rows)
+
+            # Weighted accuracy using exponential decay
+            weighted_correct = 0.0
+            weighted_total = 0.0
+            for r in rows:
+                w = _decay_weight(r["timestamp"])
+                weighted_total += w
+                if r["was_correct"]:
+                    weighted_correct += w
+
+            correct = sum(1 for r in rows if r["was_correct"])
+            accuracy = weighted_correct / weighted_total if weighted_total > 0 else 0.0
+
+            # Conviction breakdown (unweighted — used for calibration)
             correct_convictions = [r["conviction"] for r in rows if r["was_correct"]]
             wrong_convictions = [r["conviction"] for r in rows if not r["was_correct"]]
             avg_conv_correct = sum(correct_convictions) / len(correct_convictions) if correct_convictions else 0.0
@@ -248,6 +281,69 @@ class AgentMemory:
                 recent_streak=streak,
                 strongest_context=strongest,
                 weakest_context=weakest,
+            )
+        finally:
+            conn.close()
+
+    def get_agent_accuracy_by_regime(
+        self, agent_key: str, vix_regime: str, lookback_days: int = 90
+    ) -> AgentAccuracyStats:
+        """Compute accuracy stats for an agent filtered by VIX regime.
+
+        VIX regime is stored as part of the context field. This method
+        filters predictions where context matches the regime pattern.
+
+        Regime values: "low_vix", "normal_vix", "elevated_vix", "high_vix"
+        """
+        # Map regime to context patterns — the context field may contain
+        # regime info if stored, otherwise fall back to all-context accuracy
+        cutoff = (datetime.now() - timedelta(days=lookback_days)).isoformat()
+        conn = self._get_conn()
+        try:
+            # Try to find predictions with VIX-regime-annotated context
+            rows = conn.execute(
+                """SELECT direction, conviction, context, was_correct, timestamp
+                   FROM agent_predictions
+                   WHERE agent_key = ? AND timestamp > ? AND was_correct IS NOT NULL
+                   AND context LIKE ?""",
+                (agent_key, cutoff, f"%{vix_regime}%"),
+            ).fetchall()
+
+            # If no regime-specific data, return generic accuracy
+            if len(rows) < 5:
+                return self.get_agent_accuracy(agent_key, lookback_days)
+
+            now = datetime.now()
+            total = len(rows)
+
+            weighted_correct = 0.0
+            weighted_total = 0.0
+            for r in rows:
+                try:
+                    ts = datetime.fromisoformat(r["timestamp"])
+                    days_old = max(0, (now - ts).total_seconds() / 86400)
+                    w = math.exp(-self._DECAY_LAMBDA * days_old)
+                except (ValueError, TypeError):
+                    w = 1.0
+                weighted_total += w
+                if r["was_correct"]:
+                    weighted_correct += w
+
+            correct = sum(1 for r in rows if r["was_correct"])
+            accuracy = weighted_correct / weighted_total if weighted_total > 0 else 0.0
+
+            return AgentAccuracyStats(
+                agent_key=agent_key,
+                total_predictions=total,
+                correct_predictions=correct,
+                accuracy_pct=round(accuracy * 100, 1),
+                avg_conviction_correct=0.0,
+                avg_conviction_wrong=0.0,
+                calibration_score=0.0,
+                direction_breakdown={},
+                recent_streak=0,
+                strongest_context=vix_regime,
+                weakest_context="unknown",
             )
         finally:
             conn.close()

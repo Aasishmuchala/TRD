@@ -76,6 +76,13 @@ class Aggregator:
             # Conviction adjustment (0-1 scale)
             conviction_factor = (response.conviction / 100.0) ** 0.8
 
+            # Reproducibility bonus: deterministic quant agents get 1.2×,
+            # stochastic LLM agents get 0.9× (they vary across samples)
+            if response.reproducible:
+                conviction_factor *= 1.2
+            else:
+                conviction_factor *= 0.9
+
             weighted_score = score * agent_weight * conviction_factor
             total_score += weighted_score
             total_weight += agent_weight
@@ -205,14 +212,19 @@ class Aggregator:
 
     @staticmethod
     def _score_to_direction(score: float) -> str:
-        """Convert numeric score to direction."""
-        if score > 60:
+        """Convert numeric score to direction.
+
+        Narrowed HOLD band (-8 to +8) so mildly bullish/bearish signals
+        come through as BUY/SELL instead of being absorbed into HOLD.
+        A trading tool that always says HOLD is useless.
+        """
+        if score > 45:
             return "STRONG_BUY"
-        elif score > 20:
+        elif score > 8:
             return "BUY"
-        elif score > -20:
+        elif score > -8:
             return "HOLD"
-        elif score > -60:
+        elif score > -45:
             return "SELL"
         else:
             return "STRONG_SELL"

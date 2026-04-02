@@ -61,8 +61,11 @@ class Orchestrator:
                 agent_key, market_data, round_num=1
             )
 
+        # Determine current VIX regime for regime-stratified weight tuning
+        vix_regime = self._classify_vix_regime(market_data.india_vix)
+
         # Get accuracy-tuned weights (falls back to defaults if insufficient data)
-        tuned_weights = self.feedback_engine.get_tuned_weights()
+        tuned_weights = self.feedback_engine.get_tuned_weights(vix_regime=vix_regime)
 
         # Round 1: All agents analyze independently (with enriched context)
         round1_outputs = await self._run_round(
@@ -182,14 +185,41 @@ class Orchestrator:
         self.round_history.append(round_data)
         return outputs
 
+    @staticmethod
+    def _classify_vix_regime(india_vix: float) -> Optional[str]:
+        """Classify current VIX into a regime bucket for weight tuning.
+
+        Returns None if VIX data is missing/zero (falls back to non-regime tuning).
+        """
+        if not india_vix or india_vix <= 0:
+            return None
+        if india_vix < 15:
+            return "low_vix"
+        elif india_vix < 20:
+            return "normal_vix"
+        elif india_vix < 30:
+            return "elevated_vix"
+        else:
+            return "high_vix"
+
     def _check_direction_changes(
         self,
         round1: Dict[str, AgentResponse],
         round2: Dict[str, AgentResponse],
     ) -> bool:
-        """Check if any agent changed direction between rounds."""
+        """Check if any agent changed direction or had a large conviction swing.
+
+        Triggers Round 3 if:
+        - Any agent flipped direction between rounds, OR
+        - Any agent's conviction swung by >30 points (signals instability)
+        """
         for agent_name in round1:
             if agent_name in round2:
+                # Direction flip
                 if round1[agent_name].direction != round2[agent_name].direction:
+                    return True
+                # Conviction swing > 30 points
+                delta = abs(round1[agent_name].conviction - round2[agent_name].conviction)
+                if delta > 30:
                     return True
         return False

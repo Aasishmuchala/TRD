@@ -21,6 +21,11 @@ class MockResponseGenerator:
             "CORPORATE_SHOCK": {"direction": "SELL", "conviction": 70, "reasoning": "Governance concerns raise India discount risk. FIIs sensitive to corporate transparency issues. Reducing exposure to affected sectors.", "triggers": ["Governance red flag", "India risk premium widening", "Sector rotation out of conglomerates"]},
             "ELECTION_UNCERTAINTY": {"direction": "SELL", "conviction": 65, "reasoning": "Coalition uncertainty increases policy risk premium. FIIs prefer clarity on reform continuity before deploying fresh capital.", "triggers": ["Policy uncertainty", "Coalition dynamics unclear", "Reform continuity at risk"]},
             "normal": {"direction": "HOLD", "conviction": 50, "reasoning": "Stable macro backdrop. India allocation at benchmark weight. Monitoring DXY and FII flow trends for next rebalancing window.", "triggers": ["Benchmark weight", "DXY stable", "Quarterly rebalancing window"]},
+        # Momentum-based contexts (set by backtest_engine from price momentum)
+        "rally": {"direction": "BUY", "conviction": 65, "reasoning": "Positive price momentum drawing momentum FII flows. India outperforming EM peers. Adding to overweight position.", "triggers": ["Momentum inflow", "India outperformance", "EM allocation increase"]},
+        "strength": {"direction": "BUY", "conviction": 58, "reasoning": "Modest uptrend intact. India macro stable. FII positioning slightly overweight with constructive view.", "triggers": ["Trend intact", "Stable macro", "Marginal overweight"]},
+        "weakness": {"direction": "SELL", "conviction": 60, "reasoning": "Negative momentum triggering risk-off. Reducing India exposure on weakness. Watching for key support holds.", "triggers": ["Momentum deterioration", "Risk-off rotation", "Support test"]},
+        "correction": {"direction": "STRONG_SELL", "conviction": 78, "reasoning": "Sharp correction accelerating FII outflows. Reducing India overweight aggressively. EM risk premium widening.", "triggers": ["Correction accelerating", "Stop-loss triggers hit", "EM risk-off broadening"]},
         },
         "DII": {
             "RBI_DOVISH": {"direction": "STRONG_BUY", "conviction": 78, "reasoning": "Rate cut supports equity valuations. SIP inflows at record ₹21,000 Cr/month. Deploying into banking and rate-sensitive sectors.", "triggers": ["SIP inflow strength", "Rate cut boosts banks", "Valuation support from lower yields"]},
@@ -32,6 +37,11 @@ class MockResponseGenerator:
             "CORPORATE_SHOCK": {"direction": "HOLD", "conviction": 50, "reasoning": "Avoiding affected conglomerate. Redirecting flows to diversified, well-governed companies. SIP mandate unchanged.", "triggers": ["Governance filter applied", "Sector rotation within mandate", "SIP continuity"]},
             "ELECTION_UNCERTAINTY": {"direction": "HOLD", "conviction": 52, "reasoning": "Continuing SIP deployment. Election outcomes don't change India's structural growth story. Maintaining long-term equity allocation.", "triggers": ["Structural growth intact", "SIP auto-deploy", "Long-term mandate"]},
             "normal": {"direction": "BUY", "conviction": 62, "reasoning": "Steady SIP inflows at ₹21,000 Cr/month. Deploying into quality large-caps. Nifty PE reasonable at current levels.", "triggers": ["SIP inflows strong", "PE within range", "Quality accumulation"]},
+            # Momentum-based contexts
+            "rally": {"direction": "BUY", "conviction": 68, "reasoning": "Rising market accelerates SIP deployment. Deploying fresh inflows into leaders. Momentum validating long-term case.", "triggers": ["Accelerated SIP deployment", "Quality accumulation on strength", "Mandate fully deployed"]},
+            "strength": {"direction": "BUY", "conviction": 65, "reasoning": "Steady market strength supports continued SIP deployment. Maintaining equity allocation.", "triggers": ["SIP on schedule", "Steady deployment", "Trend supportive"]},
+            "weakness": {"direction": "BUY", "conviction": 70, "reasoning": "Weakness = opportunity for long-term DII mandate. Deploying surplus SIP inflows on dips. Contrarian accumulation.", "triggers": ["Dip buying", "SIP surplus deployment", "Value emerging"]},
+            "correction": {"direction": "STRONG_BUY", "conviction": 80, "reasoning": "Deep correction is prime accumulation window. SIP flows at maximum deployment rate. Averaging down into quality.", "triggers": ["Maximum SIP deployment", "Deep value", "Long-term mandate intact"]},
         },
         "RETAIL_FNO": {
             "RBI_DOVISH": {"direction": "BUY", "conviction": 72, "reasoning": "Rate cut = bullish setup. Buying calls on Nifty. Social sentiment extremely positive. Round number 20,500 likely to be tested.", "triggers": ["Bullish social sentiment", "Call buying surge", "Round level magnet 20,500"]},
@@ -43,6 +53,11 @@ class MockResponseGenerator:
             "CORPORATE_SHOCK": {"direction": "SELL", "conviction": 70, "reasoning": "Short-seller report vibes. Retail dumping related stocks. Buying puts on the sector. Social media bearish.", "triggers": ["Short-seller fear", "Sector sell-off", "Social media bearish"]},
             "ELECTION_UNCERTAINTY": {"direction": "SELL", "conviction": 65, "reasoning": "Election uncertainty killing confidence. Retail sitting on hands. Those still in are hedging with puts.", "triggers": ["Uncertainty = bearish retail", "Put hedging", "Low participation"]},
             "normal": {"direction": "HOLD", "conviction": 45, "reasoning": "No clear setup. Waiting for Nifty to break above/below key levels. Selling strangles to collect premium.", "triggers": ["Range-bound market", "Premium selling", "Waiting for breakout"]},
+            # Momentum-based contexts
+            "rally": {"direction": "STRONG_BUY", "conviction": 82, "reasoning": "FOMO in full swing! Nifty breaking out. Buying ATM calls aggressively. Social media bullish frenzy.", "triggers": ["Breakout FOMO", "Call buying frenzy", "Social media all-in"]},
+            "strength": {"direction": "BUY", "conviction": 68, "reasoning": "Uptrend continuing. Buying calls. Telegram buzzing with bullish setups. Momentum players adding longs.", "triggers": ["Trend following", "Call accumulation", "Momentum trading"]},
+            "weakness": {"direction": "SELL", "conviction": 65, "reasoning": "Market weak. Panic setting in on social media. Selling calls, buying puts. F&O PCR rising.", "triggers": ["Panic on dip", "Put buying", "Stop losses triggering"]},
+            "correction": {"direction": "STRONG_SELL", "conviction": 85, "reasoning": "Full panic mode! Nifty in deep correction. Everyone buying puts. Telegram screaming crash. VIX spiking.", "triggers": ["Crash fear", "Put buying panic", "Stop cascade ongoing"]},
         },
         "PROMOTER": {
             "RBI_DOVISH": {"direction": "HOLD", "conviction": 55, "reasoning": "Rate cut environment is positive. No need to adjust holdings. Promoter stake stable, pledge ratio comfortable.", "triggers": ["Stable control", "No pledge concern", "Positive macro"]},
@@ -54,6 +69,11 @@ class MockResponseGenerator:
             "CORPORATE_SHOCK": {"direction": "BUY", "conviction": 70, "reasoning": "Governance scrutiny requires confidence display. Increasing promoter stake to signal faith in company.", "triggers": ["Confidence signaling", "Stake increase", "Governance response"]},
             "ELECTION_UNCERTAINTY": {"direction": "HOLD", "conviction": 45, "reasoning": "Maintaining status quo. Election outcome doesn't affect company fundamentals directly.", "triggers": ["No change needed", "Business as usual", "Policy neutral"]},
             "normal": {"direction": "HOLD", "conviction": 48, "reasoning": "Promoter holding stable. No stake changes planned. Monitoring for opportunistic accumulation on dips.", "triggers": ["Stable holding", "Monitoring mode", "No SEBI action needed"]},
+            # Momentum-based contexts
+            "rally": {"direction": "HOLD", "conviction": 52, "reasoning": "Rising prices. No action needed — long-term holder. May consider selective stake trimming at new highs.", "triggers": ["Long-term holder", "No urgency", "Monitoring highs"]},
+            "strength": {"direction": "HOLD", "conviction": 50, "reasoning": "Market firm. Promoter stake unchanged. Business fundamentals driving long-term view.", "triggers": ["Stable control", "Business focus", "No near-term action"]},
+            "weakness": {"direction": "BUY", "conviction": 58, "reasoning": "Weakness allows opportunistic stake increase. Strengthening control at lower valuations.", "triggers": ["Opportunistic accumulation", "Control increase", "Attractive levels"]},
+            "correction": {"direction": "BUY", "conviction": 65, "reasoning": "Deep correction = strong buying signal for promoters. Increasing stake. Pledge ratios under watch but manageable.", "triggers": ["Pledge protection buy", "Control defence", "Floor buying at correction"]},
         },
         "RBI": {
             "RBI_DOVISH": {"direction": "BUY", "conviction": 75, "reasoning": "MPC signals accommodative stance. CPI trending down toward 4% target. Room for 25-50bps cut in next review.", "triggers": ["CPI below 5%", "Growth support needed", "Dovish forward guidance"]},
@@ -65,6 +85,11 @@ class MockResponseGenerator:
             "CORPORATE_SHOCK": {"direction": "HOLD", "conviction": 50, "reasoning": "Corporate governance issue is SEBI domain. RBI monitoring systemic risk. No policy change warranted.", "triggers": ["SEBI jurisdiction", "Systemic risk monitoring", "No RBI action needed"]},
             "ELECTION_UNCERTAINTY": {"direction": "HOLD", "conviction": 48, "reasoning": "RBI independent of political cycle. Policy based on inflation and growth data, not election outcomes.", "triggers": ["Institutional independence", "Data-dependent", "Above politics"]},
             "normal": {"direction": "HOLD", "conviction": 50, "reasoning": "CPI within 2-6% band. Growth stable. Maintaining current repo rate. Next action data-dependent.", "triggers": ["CPI in band", "Neutral stance", "Data-dependent approach"]},
+            # Momentum-based contexts
+            "rally": {"direction": "HOLD", "conviction": 50, "reasoning": "Market rally consistent with improving growth. No rate change warranted. Monitoring inflation trajectory.", "triggers": ["Growth positive", "Inflation in band", "Policy on hold"]},
+            "strength": {"direction": "HOLD", "conviction": 50, "reasoning": "Market strength reflects solid fundamentals. RBI comfortable with current stance.", "triggers": ["Solid fundamentals", "Policy stable", "Neutral outlook"]},
+            "weakness": {"direction": "HOLD", "conviction": 52, "reasoning": "Market weakness flagging growth concerns. RBI watching inflation-growth balance. Rate cut potential if weakness persists.", "triggers": ["Growth watch", "Possible easing bias", "Inflation softening"]},
+            "correction": {"direction": "BUY", "conviction": 62, "reasoning": "Sharp correction may warrant RBI response. Liquidity measures possible. Dovish pivot risk rising to support growth.", "triggers": ["Dovish pivot watch", "Liquidity support possible", "Growth mandate active"]},
         },
     }
 
