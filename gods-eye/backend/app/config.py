@@ -65,6 +65,12 @@ class Config:
     VIX_ELEVATED_THRESHOLD: float = float(os.getenv("GODS_EYE_VIX_ELEVATED_THRESHOLD", "20.0"))
     VIX_ELEVATED_CONVICTION_MULTIPLIER: float = float(os.getenv("GODS_EYE_VIX_ELEVATED_CONVICTION_MULTIPLIER", "0.6"))
 
+    # Conviction Filter Configuration
+    # Only trade when consensus score exceeds HOLD_BAND and conviction >= CONVICTION_FLOOR.
+    # Widening from ±8 → ±20 reduces selectivity from 100% to ~25-35%, improving R/R.
+    HOLD_BAND: float = float(os.getenv("GODS_EYE_HOLD_BAND", "20.0"))
+    CONVICTION_FLOOR: float = float(os.getenv("GODS_EYE_CONVICTION_FLOOR", "55.0"))
+
     # Stop Loss Configuration (Profitability Roadmap v2)
     # STOP_LOSS_ENABLED=false disables stop loss for backtests (lets you see baseline vs SL impact)
     STOP_LOSS_ENABLED: bool = os.getenv("GODS_EYE_STOP_LOSS_ENABLED", "true").lower() in ("true", "1", "yes")

@@ -7,6 +7,7 @@ import AccuracyPanel from '../components/AccuracyPanel'
 import FeedbackPanel from '../components/FeedbackPanel'
 import ScenarioModal from '../components/ScenarioModal'
 import SimulationStream from '../components/SimulationStream'
+import TradeAlert from '../components/TradeAlert'
 import { useStreamingSimulation } from '../hooks/useStreamingSimulation'
 
 export default function Dashboard() {
@@ -116,6 +117,11 @@ export default function Dashboard() {
             aggregation={aggregation}
             streamStatus={streamStatus}
           />
+        )}
+
+        {/* Trade Alert — surfaces when conviction filter passes */}
+        {result && (
+          <TradeAlert simulationResult={result} capital={10000} />
         )}
 
         {/* Bottom Row: Accuracy | Feedback Engine */}

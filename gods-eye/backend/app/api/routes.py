@@ -1381,3 +1381,98 @@ async def seed_nifty_yfinance(years: int = 3):
 
     date_range = f"{rows[0][1]} → {rows[-1][1]}" if rows else "none"
     return {"status": "ok", "seeded": len(rows), "date_range": date_range}
+
+
+# ─── Stock Screener Endpoints ────────────────────────────────────────────────────
+
+@protected_router.get("/screener/stocks")
+async def screen_stocks(direction: str = "BUY", capital: int = 10000, top_n: int = 3):
+    """Rank F&O stocks by micro-signal score for a given God's Eye direction.
+
+    Args:
+        direction: BUY | SELL | STRONG_BUY | STRONG_SELL
+        capital:   Available capital in INR (default 10,000)
+        top_n:     Number of results to return (default 3)
+
+    Returns ranked candidates with RS, volume, RSI and estimated lot cost.
+    """
+    from app.data.stock_screener import screen_stocks as _screen
+    if direction == "HOLD":
+        return {"direction": "HOLD", "message": "No trade — system is in HOLD", "candidates": []}
+    results = await _screen(direction=direction, capital=capital, top_n=top_n)
+    return {"direction": direction, "capital": capital, "candidates": results}
+
+
+@protected_router.get("/screener/options")
+async def get_option_suggestion(symbol: str, direction: str, capital: int = 10000):
+    """Suggest a specific option strike for a screened stock.
+
+    Args:
+        symbol:    Stock symbol (e.g. TATAMOTORS, ITC)
+        direction: BUY (→ CE) | SELL (→ PE)
+        capital:   Available capital in INR
+
+    Returns the suggested strike, premium, lot cost, stop and target levels.
+    """
+    from app.data.fno_universe import FNO_UNIVERSE
+    from app.data.stock_screener import _fetch_ohlcv, _estimate_premium
+    from datetime import date, timedelta
+
+    sym = symbol.upper()
+    if sym not in FNO_UNIVERSE:
+        raise HTTPException(status_code=404, detail=f"Symbol {sym} not in F&O universe")
+
+    meta = FNO_UNIVERSE[sym]
+    rows = await _fetch_ohlcv(meta["yf_ticker"])
+    if not rows:
+        raise HTTPException(status_code=503, detail=f"Could not fetch price data for {sym}")
+
+    ltp = rows[-1]["close"]
+    lot_size = meta["lot_size"]
+    option_type = "CE" if direction in ("BUY", "STRONG_BUY") else "PE"
+
+    strike_interval = 50
+    atm_strike = round(ltp / strike_interval) * strike_interval
+    if option_type == "CE":
+        suggested_strike = atm_strike + strike_interval
+    else:
+        suggested_strike = atm_strike - strike_interval
+
+    premium = _estimate_premium(ltp, direction)
+    lot_cost = int(lot_size * premium)
+
+    if lot_cost > capital * 0.80:
+        suggested_strike = atm_strike
+        premium = round(ltp * 0.015, 2)
+        lot_cost = int(lot_size * premium)
+
+    stop_premium = round(premium * 0.60, 2)
+    target_premium = round(premium * 1.80, 2)
+    max_loss = int(lot_size * (premium - stop_premium))
+    target_gain = int(lot_size * (target_premium - premium))
+    pts_needed = round((target_premium - premium) / 0.35, 0)
+
+    today = date.today()
+    days_to_thu = (3 - today.weekday()) % 7 or 7
+    expiry = today + timedelta(days=days_to_thu)
+
+    return {
+        "symbol": sym,
+        "sector": meta["sector"],
+        "ltp": round(ltp, 2),
+        "direction": direction,
+        "option_type": option_type,
+        "expiry": expiry.isoformat(),
+        "days_to_expiry": days_to_thu,
+        "atm_strike": atm_strike,
+        "suggested_strike": suggested_strike,
+        "premium": round(premium, 2),
+        "lot_size": lot_size,
+        "lot_cost": lot_cost,
+        "stop_loss_premium": stop_premium,
+        "target_premium": target_premium,
+        "max_loss_inr": max_loss,
+        "target_gain_inr": target_gain,
+        "pts_move_needed": pts_needed,
+        "note": "Premium is estimated (1% OTM heuristic). Verify live with your broker before trading.",
+    }

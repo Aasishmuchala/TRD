@@ -52,6 +52,11 @@ class Aggregator:
         if tuned_weights:
             config.AGENT_WEIGHTS = original_weights
 
+        # Conviction floor: if agents aren't confident enough, sit out.
+        if (result.final_direction != "HOLD"
+                and result.final_conviction < config.CONVICTION_FLOOR):
+            result.final_direction = "HOLD"
+
         return result
 
     @staticmethod
@@ -214,15 +219,15 @@ class Aggregator:
     def _score_to_direction(score: float) -> str:
         """Convert numeric score to direction.
 
-        Narrowed HOLD band (-8 to +8) so mildly bullish/bearish signals
-        come through as BUY/SELL instead of being absorbed into HOLD.
-        A trading tool that always says HOLD is useless.
+        HOLD band controlled by config.HOLD_BAND (default 20).
+        Only scores with |score| > HOLD_BAND produce a tradeable direction.
         """
+        band = config.HOLD_BAND
         if score > 45:
             return "STRONG_BUY"
-        elif score > 8:
+        elif score > band:
             return "BUY"
-        elif score > -8:
+        elif score > -band:
             return "HOLD"
         elif score > -45:
             return "SELL"

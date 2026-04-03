@@ -124,4 +124,12 @@ export const apiClient = {
     body: JSON.stringify(data),
   }, 0, 600000),
   getBacktestResult: (runId) => request(`${API_BASE}/backtest/results/${runId}`),
+
+  // Stock Screener
+  screenStocks: (direction, capital = 10000, topN = 3) =>
+    request(`${API_BASE}/screener/stocks?direction=${direction}&capital=${capital}&top_n=${topN}`),
+  getOptionSuggestion: (symbol, direction, capital = 10000) =>
+    request(`${API_BASE}/screener/options?symbol=${symbol}&direction=${direction}&capital=${capital}`),
 }
+
+// Patch: add screener methods (appended)
