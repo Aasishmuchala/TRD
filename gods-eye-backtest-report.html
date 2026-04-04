@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>God's Eye — QuantSignalEngine Backtest Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0e17; --card: #111827; --card-border: #1f2937;
+    --text: #e5e7eb; --text-dim: #9ca3af; --text-bright: #f9fafb;
+    --green: #10b981; --red: #ef4444; --amber: #f59e0b; --blue: #3b82f6;
+    --purple: #8b5cf6; --cyan: #06b6d4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'SF Pro', -apple-system, sans-serif; padding: 24px; }
+  .header { text-align: center; margin-bottom: 32px; }
+  .header h1 { font-size: 28px; color: var(--text-bright); font-weight: 700; }
+  .header .subtitle { color: var(--text-dim); margin-top: 8px; font-size: 14px; }
+  .header .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; margin: 4px; }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+  .grid { display: grid; gap: 16px; margin-bottom: 24px; }
+  .grid-4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+  .grid-1 { grid-template-columns: 1fr; }
+
+  .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; }
+  .card h3 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .stat { font-size: 32px; font-weight: 700; }
+  .stat-sub { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; color: var(--text-dim); border-bottom: 1px solid var(--card-border); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(31,41,55,0.5); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .text-green { color: var(--green); }
+  .text-red { color: var(--red); }
+  .text-amber { color: var(--amber); }
+  .text-blue { color: var(--blue); }
+  .text-dim { color: var(--text-dim); }
+
+  .verdict-box { background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02)); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .verdict-box h2 { color: var(--red); font-size: 20px; margin-bottom: 12px; }
+  .verdict-box p { line-height: 1.7; }
+  .verdict-box ul { margin: 12px 0 0 20px; line-height: 2; }
+
+  .insight-box { background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02)); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .insight-box h2 { color: var(--blue); font-size: 20px; margin-bottom: 12px; }
+
+  .chart-container { position: relative; height: 300px; }
+  .section-title { font-size: 18px; font-weight: 600; color: var(--text-bright); margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--card-border); }
+
+  .dhan-status { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-green { background: var(--green); }
+  .dot-red { background: var(--red); }
+  .dot-amber { background: var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>God's Eye — QuantSignalEngine Backtest</h1>
+  <div class="subtitle">
+    NIFTY 50 · 2 Apr 2024 → 30 Mar 2026 · 474 Trading Days · ₹10L Capital · 3x Option Leverage
+  </div>
+  <div style="margin-top: 12px;">
+    <span class="badge badge-red">QUANT-ONLY (No LLM)</span>
+    <span class="badge badge-amber">Proxy FII/DII (No Real Flow Data)</span>
+    <span class="badge badge-blue">PCR Fixed at 1.0 (No Live Options)</span>
+    <span class="badge badge-green">
+      <span class="dhan-status"><span class="dot dot-green"></span> Dhan API Connected</span>
+    </span>
+  </div>
+</div>
+
+<!-- Verdict -->
+<div class="verdict-box">
+  <h2>Verdict: QuantSignalEngine Alone Cannot Generate Alpha</h2>
+  <p>
+    Across all 5 threshold variants, the quant engine loses money. The best variant (V3, threshold >20)
+    lost 4.8% vs buy-and-hold's -1.4%. The worst (V5, any signal) lost 36%.
+  </p>
+  <ul>
+    <li><strong>V1 (Original, >50 threshold):</strong> Generated ZERO trades in 474 days — too restrictive</li>
+    <li><strong>V2-V5:</strong> Win rates cluster around 41-50% with negative expectancy across all variants</li>
+    <li><strong>Root cause:</strong> Proxy FII/DII from price momentum is circular — no predictive edge</li>
+    <li><strong>PCR locked at 1.0:</strong> Without real option chain data, 2 of 6 factors (PCR + DII absorption) never fire</li>
+    <li><strong>The 55% LLM layer is where potential alpha lives</strong> — the quant engine is a starting point, not a strategy</li>
+  </ul>
+</div>
+
+<!-- Key Stats -->
+<div class="grid grid-4">
+  <div class="card">
+    <h3>Best Variant Return</h3>
+    <div class="stat text-red">-4.8%</div>
+    <div class="stat-sub">V3 VeryRelaxed (threshold >20)</div>
+  </div>
+  <div class="card">
+    <h3>Buy & Hold (Benchmark)</h3>
+    <div class="stat text-amber">-1.4%</div>
+    <div class="stat-sub">Simple NIFTY 50 hold, no leverage</div>
+  </div>
+  <div class="card">
+    <h3>Best Win Rate</h3>
+    <div class="stat text-amber">50.5%</div>
+    <div class="stat-sub">V4 NetScore — barely coin flip</div>
+  </div>
+  <div class="card">
+    <h3>Best Profit Factor</h3>
+    <div class="stat text-red">0.93</div>
+    <div class="stat-sub">V3 — need >1.5 for viable strategy</div>
+  </div>
+</div>
+
+<!-- Variant Comparison Table -->
+<div class="section-title">Variant Comparison</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Variant</th>
+        <th>Threshold</th>
+        <th>Trades</th>
+        <th>Win Rate</th>
+        <th>Profit Factor</th>
+        <th>Return</th>
+        <th>Max DD</th>
+        <th>Sharpe</th>
+        <th>Expectancy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>V1 Original</td><td>>50</td><td class="text-dim">0</td>
+        <td class="text-dim">—</td><td class="text-dim">—</td>
+        <td class="text-dim">0%</td><td class="text-dim">0%</td>
+        <td class="text-dim">—</td><td class="text-dim">—</td>
+      </tr>
+      <tr>
+        <td>V2 Relaxed</td><td>>30</td><td>43</td>
+        <td class="text-amber">48.8%</td><td class="text-red">0.77</td>
+        <td class="text-red">-9.13%</td><td class="text-red">25.3%</td>
+        <td class="text-red">-0.25</td><td class="text-red">-₹2,123</td>
+      </tr>
+      <tr style="background: rgba(59,130,246,0.05);">
+        <td><strong>V3 VeryRelaxed</strong></td><td>>20</td><td>91</td>
+        <td class="text-amber">48.4%</td><td class="text-red">0.93</td>
+        <td class="text-red">-4.8%</td><td class="text-red">24.4%</td>
+        <td class="text-red">-0.05</td><td class="text-red">-₹528</td>
+      </tr>
+      <tr>
+        <td>V4 NetScore</td><td>net>10</td><td>95</td>
+        <td class="text-amber">50.5%</td><td class="text-red">0.73</td>
+        <td class="text-red">-20.6%</td><td class="text-red">32.0%</td>
+        <td class="text-red">-0.19</td><td class="text-red">-₹2,169</td>
+      </tr>
+      <tr>
+        <td>V5 AnySignal</td><td>>0</td><td>196</td>
+        <td class="text-red">41.3%</td><td class="text-red">0.64</td>
+        <td class="text-red">-36.1%</td><td class="text-red">47.8%</td>
+        <td class="text-red">-0.17</td><td class="text-red">-₹1,843</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Charts -->
+<div class="section-title">Performance Visualization</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Return by Variant</h3>
+    <div class="chart-container"><canvas id="returnChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Win Rate vs Profit Factor</h3>
+    <div class="chart-container"><canvas id="wrPfChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Signal Distribution (V3 Best Variant)</h3>
+    <div class="chart-container"><canvas id="signalChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Exit Reason Breakdown (V3)</h3>
+    <div class="chart-container"><canvas id="exitChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-1">
+  <div class="card">
+    <h3>Performance by VIX Regime</h3>
+    <div class="chart-container"><canvas id="regimeChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Regime Analysis Table -->
+<div class="section-title">VIX Regime Analysis</div>
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Variant</th><th colspan="2">Low VIX (&lt;14)</th><th colspan="2">Normal VIX (14-20)</th><th colspan="2">High VIX (&gt;20)</th></tr>
+      <tr><th></th><th>Trades / WR</th><th>Avg P&L</th><th>Trades / WR</th><th>Avg P&L</th><th>Trades / WR</th><th>Avg P&L</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>V2 Relaxed</td>
+        <td>19 / 36.8%</td><td class="text-red">-₹4,952</td>
+        <td>14 / <span class="text-green">64.3%</span></td><td class="text-green">₹3,829</td>
+        <td>10 / 50%</td><td class="text-red">-₹5,082</td>
+      </tr>
+      <tr>
+        <td>V3 VeryRelaxed</td>
+        <td>50 / 42%</td><td class="text-red">-₹316</td>
+        <td>28 / <span class="text-green">57.1%</span></td><td class="text-red">-₹761</td>
+        <td>13 / <span class="text-green">53.8%</span></td><td class="text-red">-₹838</td>
+      </tr>
+      <tr>
+        <td>V4 NetScore</td>
+        <td>50 / 48%</td><td class="text-red">-₹1,108</td>
+        <td>34 / <span class="text-green">61.8%</span></td><td class="text-green">₹2,708</td>
+        <td>11 / 27.3%</td><td class="text-red">-₹22,064</td>
+      </tr>
+      <tr>
+        <td>V5 AnySignal</td>
+        <td>87 / 40.2%</td><td class="text-red">-₹1,200</td>
+        <td>87 / 42.5%</td><td class="text-red">-₹918</td>
+        <td>22 / 40.9%</td><td class="text-red">-₹8,042</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="stat-sub" style="margin-top: 12px;">
+    Key insight: Normal VIX (14-20) is the only regime with consistently positive win rates across variants.
+    High VIX trades are the biggest P&L destroyers — the engine lacks volatility-regime awareness.
+  </div>
+</div>
+
+<!-- What's Missing -->
+<div class="section-title">Why It Doesn't Work (Yet)</div>
+<div class="insight-box">
+  <h2>Root Cause Analysis</h2>
+  <p style="margin-bottom: 16px;">The QuantSignalEngine is designed as a <strong>scoring scaffold</strong> for the 6-agent LLM system, not a standalone strategy. Here's what's missing:</p>
+  <table>
+    <thead><tr><th>Gap</th><th>Impact</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Proxy FII/DII</strong></td>
+        <td class="text-red">No predictive power — circular reasoning from price momentum</td>
+        <td>Real FII/DII daily flow data from NSE bulk downloads or data vendor</td>
+      </tr>
+      <tr>
+        <td><strong>PCR locked at 1.0</strong></td>
+        <td class="text-red">PCR factor (15 pts) and DII absorption (10 pts) never fire</td>
+        <td>Live option chain from Dhan API (connected but needs market hours)</td>
+      </tr>
+      <tr>
+        <td><strong>No LLM validation</strong></td>
+        <td class="text-amber">55% of signal weight comes from 5 LLM agents — untested</td>
+        <td>Hybrid backtest with real Claude/GPT calls on historical scenarios</td>
+      </tr>
+      <tr>
+        <td><strong>No OI change data</strong></td>
+        <td class="text-amber">Missing key leading indicator for F&O positioning</td>
+        <td>Dhan option chain + historical OI tracking</td>
+      </tr>
+      <tr>
+        <td><strong>No delivery %</strong></td>
+        <td class="text-amber">Can't distinguish genuine buying from intraday churn</td>
+        <td>NSE bhavcopy delivery data</td>
+      </tr>
+      <tr>
+        <td><strong>No SGX gap</strong></td>
+        <td class="text-dim">Missing pre-market sentiment signal</td>
+        <td>SGX Nifty feed or Gift Nifty data</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Dhan API Status -->
+<div class="section-title">Dhan API Status</div>
+<div class="card">
+  <table>
+    <thead><tr><th>Endpoint</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Authentication (Fund Limit)</td>
+        <td><span class="dhan-status"><span class="dot dot-green"></span> Connected</span></td>
+        <td>Client 1111059578, token auto-renewal every 20h</td>
+      </tr>
+      <tr>
+        <td>Equity Historical (/v2/charts/historical)</td>
+        <td><span class="dhan-status"><span class="dot dot-green"></span> Working</span></td>
+        <td>19 Reliance candles fetched, NSE_EQ segment</td>
+      </tr>
+      <tr>
+        <td>Index Historical (IDX_I)</td>
+        <td><span class="dhan-status"><span class="dot dot-red"></span> Not Supported</span></td>
+        <td>Dhan API doesn't support IDX_I for /charts/historical — using Yahoo Finance</td>
+      </tr>
+      <tr>
+        <td>Option Chain (/v2/optionchain)</td>
+        <td><span class="dhan-status"><span class="dot dot-amber"></span> Auth OK, Market Closed</span></td>
+        <td>Returns data during NSE market hours (9:15-15:30 IST)</td>
+      </tr>
+      <tr>
+        <td>Token Renewal (GET /v2/RenewToken)</td>
+        <td><span class="dhan-status"><span class="dot dot-green"></span> Verified</span></td>
+        <td>Strategy 2 active: auto-renewal every 20h, no TOTP needed</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Roadmap -->
+<div class="section-title">Roadmap to Profitability</div>
+<div class="card">
+  <table>
+    <thead><tr><th>Phase</th><th>Task</th><th>Expected Impact</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-red">P0</span></td>
+        <td>Add real FII/DII daily flow data (NSE bulk download)</td>
+        <td>Enable 35 pts of scoring (FII 25 + DII 10) with real signal</td>
+        <td>2 days</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">P0</span></td>
+        <td>Live PCR from Dhan option chain during market hours</td>
+        <td>Enable 15 pts PCR factor — contrarian signal has documented alpha</td>
+        <td>1 day</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-amber">P1</span></td>
+        <td>Hybrid backtest with real LLM calls (Claude API)</td>
+        <td>Test if 55% LLM weight adds predictive edge over quant-only</td>
+        <td>3 days</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-amber">P1</span></td>
+        <td>VIX regime filter (skip High VIX trades or reduce size)</td>
+        <td>V4 lost ₹22K avg in High VIX — filtering saves ~₹240K/yr</td>
+        <td>1 day</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">P2</span></td>
+        <td>Add OI change + delivery % as new factors</td>
+        <td>Leading indicators should improve timing beyond lagging RSI/ST</td>
+        <td>3 days</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blue">P2</span></td>
+        <td>Walk-forward optimization (train on 6mo, test on 2mo rolling)</td>
+        <td>Avoid overfitting to specific market regimes</td>
+        <td>2 days</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 32px; padding: 16px;">
+  God's Eye Backtest Report · Generated 1 Apr 2026 · Data: Yahoo Finance + Dhan API
+</div>
+
+<script>
+// Return by Variant
+new Chart(document.getElementById('returnChart'), {
+  type: 'bar',
+  data: {
+    labels: ['V1 Original', 'V2 Relaxed', 'V3 VeryRelaxed', 'V4 NetScore', 'V5 AnySignal', 'Buy & Hold'],
+    datasets: [{
+      label: 'Return %',
+      data: [0, -9.13, -4.8, -20.6, -36.12, -1.4],
+      backgroundColor: ['#374151', '#ef4444', '#f59e0b', '#ef4444', '#ef4444', '#3b82f6'],
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: '#1f2937' }, ticks: { color: '#9ca3af', callback: v => v + '%' } },
+      x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } }
+    }
+  }
+});
+
+// Win Rate vs Profit Factor
+new Chart(document.getElementById('wrPfChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: 'Variants',
+      data: [
+        { x: 48.8, y: 0.77, r: 43 },
+        { x: 48.4, y: 0.93, r: 91 },
+        { x: 50.5, y: 0.73, r: 95 },
+        { x: 41.3, y: 0.64, r: 196 },
+      ],
+      backgroundColor: ['#ef4444', '#f59e0b', '#ef4444', '#ef4444'],
+      pointRadius: [12, 16, 16, 20],
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const names = ['V2', 'V3', 'V4', 'V5'];
+            return `${names[ctx.dataIndex]}: WR ${ctx.parsed.x}%, PF ${ctx.parsed.y}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Win Rate %', color: '#9ca3af' }, grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' }, min: 35, max: 55 },
+      y: { title: { display: true, text: 'Profit Factor', color: '#9ca3af' }, grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' }, min: 0.5, max: 1.5 }
+    }
+  }
+});
+
+// Signal Distribution (V3)
+new Chart(document.getElementById('signalChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['BUY (19.6%)', 'SELL (14.3%)', 'HOLD (66.0%)'],
+    datasets: [{
+      data: [19.6, 14.3, 66.0],
+      backgroundColor: ['#10b981', '#ef4444', '#374151'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16 } } }
+  }
+});
+
+// Exit Reasons (V3)
+new Chart(document.getElementById('exitChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Stop Loss (21)', 'Max Hold 5d (33)', 'Opposite Signal (32)', 'Target Hit (5)'],
+    datasets: [{
+      data: [21, 33, 32, 5],
+      backgroundColor: ['#ef4444', '#6b7280', '#f59e0b', '#10b981'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 16 } } }
+  }
+});
+
+// Regime Performance
+new Chart(document.getElementById('regimeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['V2 Relaxed', 'V3 VeryRelaxed', 'V4 NetScore', 'V5 AnySignal'],
+    datasets: [
+      { label: 'Low VIX (<14)', data: [-4952, -316, -1108, -1200], backgroundColor: '#3b82f6' },
+      { label: 'Normal VIX (14-20)', data: [3829, -761, 2708, -918], backgroundColor: '#10b981' },
+      { label: 'High VIX (>20)', data: [-5082, -838, -22064, -8042], backgroundColor: '#ef4444' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#9ca3af' } } },
+    scales: {
+      y: { grid: { color: '#1f2937' }, ticks: { color: '#9ca3af', callback: v => '₹' + (v/1000).toFixed(0) + 'K' } },
+      x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+    }
+  }
+});
+</script>
+</body>
+</html>

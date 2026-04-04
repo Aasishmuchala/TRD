@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>God's Eye - Scenario Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: url('https://fonts.cdnfonts.com/s/15011/SFProDisplay-Bold.woff') format('woff');
+        }
+        @font-face {
+            font-family: 'SF Pro Text';
+            src: url('https://fonts.cdnfonts.com/s/15011/SFProText-Regular.woff') format('woff');
+        }
+        body {
+            font-family: 'SF Pro Text', 'Inter', sans-serif;
+            background-color: #131315;
+            color: #E4E2E4;
+            margin: 0;
+            overflow: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(42, 42, 44, 0.08);
+            backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1B1B1D;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #353437;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#353437",
+                        "tertiary-fixed-dim": "#5edac7",
+                        "outline-variant": "#55433d",
+                        "surface-container": "#1f1f21",
+                        "surface-dim": "#131315",
+                        "tertiary-fixed": "#7df7e3",
+                        "on-tertiary": "#003731",
+                        "surface-container-lowest": "#0e0e10",
+                        "on-background": "#e4e2e4",
+                        "surface-tint": "#ffb59e",
+                        "surface-container-highest": "#353437",
+                        "background": "#131315",
+                        "inverse-on-surface": "#303032",
+                        "secondary-container": "#6a3f0a",
+                        "tertiary-container": "#09a493",
+                        "outline": "#a38c85",
+                        "on-tertiary-fixed-variant": "#005047",
+                        "on-primary-fixed-variant": "#7a2f15",
+                        "on-tertiary-fixed": "#00201c",
+                        "on-secondary-fixed-variant": "#673d08",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e4e2e4",
+                        "on-primary-container": "#541400",
+                        "surface": "#131315",
+                        "primary": "#ffb59e",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#2c1600",
+                        "primary-container": "#d97757",
+                        "tertiary": "#5edac7",
+                        "on-primary-fixed": "#390b00",
+                        "surface-container-high": "#2a2a2c",
+                        "inverse-surface": "#e4e2e4",
+                        "inverse-primary": "#99462a",
+                        "secondary-fixed-dim": "#f8ba7c",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffdcbd",
+                        "on-secondary": "#492900",
+                        "primary-fixed-dim": "#ffb59e",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-bright": "#39393b",
+                        "on-primary": "#5c1902",
+                        "on-secondary-container": "#e9ac6f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#ffdbd0",
+                        "secondary": "#f8ba7c",
+                        "on-surface-variant": "#dbc1b9",
+                        "on-tertiary-container": "#00312b"
+                    },
+                    fontFamily: {
+                        "headline": ["SF Pro Display", "Inter", "sans-serif"],
+                        "body": ["SF Pro Text", "Inter", "sans-serif"],
+                        "label": ["SF Pro Text", "Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface">
+<!-- Background Dashboard (Dimmed) -->
+<div class="fixed inset-0 z-0 opacity-40 overflow-hidden pointer-events-none">
+<!-- TopAppBar (Simulated Background) -->
+<div class="flex justify-between items-center px-8 h-16 w-full bg-[#131315]/80 backdrop-blur-xl">
+<span class="text-2xl font-bold tracking-tighter text-[#E4E2E4] font-['SF_Pro_Display']">God's Eye</span>
+<div class="flex gap-8">
+<span class="text-[#FFB59E] border-b-2 border-[#D97757] pb-1 font-['SF_Pro_Display'] tracking-wide text-sm font-semibold">NIFTY 50</span>
+<span class="text-[#DBC1B9] font-['SF_Pro_Display'] tracking-wide text-sm font-semibold">SENSEX</span>
+<span class="text-[#DBC1B9] font-['SF_Pro_Display'] tracking-wide text-sm font-semibold">BANK NIFTY</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#DBC1B9]">notifications</span>
+<span class="material-symbols-outlined text-[#DBC1B9]">settings</span>
+</div>
+</div>
+<!-- Main Dashboard Content (Simulated Background) -->
+<div class="p-8 pt-24 grid grid-cols-12 gap-6 max-w-[1920px] mx-auto">
+<div class="col-span-8 space-y-6">
+<div class="h-64 bg-surface-container-low rounded-xl"></div>
+<div class="grid grid-cols-2 gap-6">
+<div class="h-48 bg-surface-container-low rounded-xl"></div>
+<div class="h-48 bg-surface-container-low rounded-xl"></div>
+</div>
+</div>
+<div class="col-span-4 space-y-6">
+<div class="h-[500px] bg-surface-container-low rounded-xl"></div>
+</div>
+</div>
+</div>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+<!-- Scenario Input Modal (880x680px) -->
+<div class="w-full max-w-[880px] h-[680px] bg-[#2C2C2E] rounded-[20px] shadow-[0px_24px_48px_rgba(217,119,87,0.08)] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
+<!-- Header -->
+<div class="px-8 py-6 flex justify-between items-center shrink-0">
+<h1 class="text-2xl font-bold tracking-tight text-on-surface font-headline">Configure Scenario</h1>
+<button class="w-8 h-8 rounded-full bg-surface-variant/30 flex items-center justify-center hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">close</span>
+</button>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-8 py-2 custom-scrollbar">
+<!-- Section 1: Market Data -->
+<section class="mb-10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary text-sm">analytics</span>
+<h2 class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant font-label">Market Data</h2>
+</div>
+<div class="grid grid-cols-2 gap-x-12 gap-y-6">
+<!-- Nifty Spot -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">Nifty Spot</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="22,453.15"/>
+</div>
+<!-- India VIX -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">India VIX</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="14.2"/>
+</div>
+<!-- Gift Nifty -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">Gift Nifty</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="22,510.50"/>
+</div>
+<!-- Advance/Decline -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">Advance/Decline</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="32 / 18"/>
+</div>
+<!-- USD/INR -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">USD/INR</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="83.24"/>
+</div>
+<!-- DXY Index -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">DXY Index</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="104.15"/>
+</div>
+<!-- Brent Crude -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">Brent Crude</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="85.12"/>
+</div>
+<!-- US 10Y Yield -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">US 10Y Yield</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="4.23%"/>
+</div>
+</div>
+</section>
+<!-- Section 2: Flow Data -->
+<section class="mb-10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-secondary text-sm">swap_horiz</span>
+<h2 class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant font-label">Flow Data</h2>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<!-- FII Net (Today) -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">FII Net (Today)</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-error font-medium text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="-₹3,200 Cr"/>
+</div>
+<!-- DII Net (Today) -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">DII Net (Today)</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-tertiary font-medium text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="+₹2,100 Cr"/>
+</div>
+<!-- FII 5-Day -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">FII 5-Day</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-error font-medium text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="-₹8,400 Cr"/>
+</div>
+<!-- DII 5-Day -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">DII 5-Day</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-tertiary font-medium text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="+₹6,200 Cr"/>
+</div>
+<!-- FII Futures OI Δ -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">FII Futures OI Δ</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-error font-medium text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="-12%"/>
+</div>
+<!-- SIP Inflow -->
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">SIP Inflow</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="₹21,000 Cr"/>
+</div>
+</div>
+</section>
+<!-- Section 3: Options -->
+<section class="mb-10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-tertiary text-sm">layers</span>
+<h2 class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant font-label">Options</h2>
+</div>
+<div class="grid grid-cols-3 gap-6">
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">PCR</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="0.92"/>
+</div>
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">Max Pain</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="22,400"/>
+</div>
+<div class="space-y-1.5">
+<label class="block text-xs font-medium text-on-surface-variant ml-1">Days to Expiry</label>
+<input class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all" type="text" value="4"/>
+</div>
+</div>
+</section>
+<!-- Section 4: Context -->
+<section class="mb-6">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-outline text-sm">notes</span>
+<h2 class="text-xs uppercase tracking-widest font-semibold text-on-surface-variant font-label">Context</h2>
+</div>
+<textarea class="w-full bg-[#3A3A3C] border-none rounded-xl px-4 py-3 text-on-surface text-sm placeholder:text-on-surface-variant/50 focus:ring-1 focus:ring-primary/40 focus:bg-surface-bright transition-all resize-none" placeholder="Add news, events, or context..." rows="3"></textarea>
+</section>
+</div>
+<!-- Footer Action Bar -->
+<div class="px-8 py-6 bg-surface-container-low border-t border-white/5 flex justify-between items-center shrink-0">
+<button class="flex items-center gap-2 text-primary font-medium text-sm hover:opacity-80 transition-opacity">
+                    Load Preset 
+                    <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+<div class="flex gap-4">
+<button class="px-6 py-2.5 rounded-xl border border-outline-variant/30 text-on-surface-variant font-medium text-sm hover:bg-white/5 transition-all">
+                        Cancel
+                    </button>
+<button class="px-8 py-2.5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed-variant font-bold text-sm shadow-[0px_4px_12px_rgba(217,119,87,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                        Run Simulation
+                    </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Hidden SideNavBar Placeholder for JSON Compliance -->
+<nav class="hidden">
+<div class="fixed left-0 top-0 h-full w-64 z-[60] bg-[#1B1B1D] flex flex-col h-full py-8 shadow-2xl space-y-4">
+<span class="font-['SF_Pro_Text'] text-xs uppercase tracking-widest font-medium text-[#D97757]">Intelligence</span>
+</div>
+</nav>
+</body></html>

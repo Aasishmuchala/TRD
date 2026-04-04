@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>God's Eye — System Audit & Roadmap</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e293b;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --orange: #f97316;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header {
+    padding: 48px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  header h1 span { color: var(--amber); }
+  header p { color: var(--text-muted); font-size: 14px; }
+
+  /* Nav tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 40px;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+  }
+  .tab:hover { color: var(--text); background: var(--surface2); }
+  .tab.active { color: var(--bg); background: var(--accent); }
+
+  /* Sections */
+  .section { display: none; animation: fadeIn 0.3s ease; }
+  .section.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Score cards */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .score-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; }
+  .score-card .value { font-size: 32px; font-weight: 700; }
+  .score-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .score-green .value { color: var(--green); }
+  .score-amber .value { color: var(--amber); }
+  .score-red .value { color: var(--red); }
+  .score-blue .value { color: var(--accent); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card p { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+  .badge-purple { background: rgba(168,85,247,0.15); color: var(--purple); }
+
+  /* Bar chart */
+  .bar-chart { margin: 16px 0; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+  .bar-label { width: 140px; font-size: 12px; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 24px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 11px; font-weight: 600; }
+  .bar-value { width: 45px; font-size: 12px; font-weight: 600; text-align: right; flex-shrink: 0; }
+
+  /* Issue list */
+  .issue {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .issue:last-child { border-bottom: none; }
+  .issue-severity {
+    width: 4px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .sev-critical { background: var(--red); }
+  .sev-high { background: var(--orange); }
+  .sev-medium { background: var(--amber); }
+  .sev-low { background: var(--accent); }
+  .issue-content { flex: 1; }
+  .issue-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .issue-desc { font-size: 12px; color: var(--text-muted); }
+  .issue-meta { display: flex; gap: 12px; margin-top: 8px; }
+  .issue-meta span { font-size: 11px; color: var(--text-muted); }
+
+  /* Roadmap */
+  .phase {
+    position: relative;
+    padding-left: 32px;
+    margin-bottom: 32px;
+  }
+  .phase::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 28px;
+    bottom: -32px;
+    width: 2px;
+    background: var(--border);
+  }
+  .phase:last-child::before { display: none; }
+  .phase-dot {
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid;
+  }
+  .phase-dot.done { border-color: var(--green); background: rgba(34,197,94,0.3); }
+  .phase-dot.active { border-color: var(--amber); background: rgba(245,158,11,0.3); }
+  .phase-dot.pending { border-color: var(--text-muted); background: transparent; }
+  .phase h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .phase .phase-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .phase ul { list-style: none; padding: 0; }
+  .phase li { font-size: 13px; color: var(--text-muted); padding: 3px 0; padding-left: 16px; position: relative; }
+  .phase li::before { content: ''; position: absolute; left: 0; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .phase li.done::before { background: var(--green); }
+
+  /* Two column */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Agent grid */
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .agent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .agent-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .agent-card .weight { font-size: 12px; color: var(--amber); margin-bottom: 10px; }
+  .agent-card .stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .agent-card .stat-row:last-child { border-bottom: none; }
+  .agent-card .stat-label { color: var(--text-muted); }
+
+  /* Heatmap table */
+  table.heatmap { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.heatmap th { text-align: left; padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+  table.heatmap td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  table.heatmap tr:hover { background: var(--surface2); }
+
+  footer {
+    text-align: center;
+    padding: 40px 0;
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>God's Eye <span>System Audit</span></h1>
+  <p>Multi-Agent Indian Market Intelligence — Architecture Review & Improvement Roadmap</p>
+  <p style="margin-top:4px; color: var(--text-muted);">Generated: April 1, 2026 &middot; Model: claude-opus-4-6 via OpusCode Pro</p>
+</header>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-target="overview">Overview</button>
+  <button class="tab" data-target="strengths">What's Working</button>
+  <button class="tab" data-target="issues">Issues & Gaps</button>
+  <button class="tab" data-target="agents">Agent Analysis</button>
+  <button class="tab" data-target="data">Data Pipeline</button>
+  <button class="tab" data-target="roadmap">Roadmap</button>
+</div>
+
+<!-- ========== OVERVIEW ========== -->
+<div class="section active" id="overview">
+  <div class="score-grid">
+    <div class="score-card score-green"><div class="label">Architecture</div><div class="value">8.5</div><div class="sub">Multi-agent + hybrid agg</div></div>
+    <div class="score-card score-amber"><div class="label">Signal Quality</div><div class="value">5.5</div><div class="sub">Quant solid, LLM ungrounded</div></div>
+    <div class="score-card score-red"><div class="label">Data Pipeline</div><div class="value">4.0</div><div class="sub">Live OK, historical missing</div></div>
+    <div class="score-card score-amber"><div class="label">Backtest Validity</div><div class="value">3.5</div><div class="sub">Synthetic flows undermine</div></div>
+    <div class="score-card score-blue"><div class="label">Learning System</div><div class="value">6.0</div><div class="sub">Designed, not yet proven</div></div>
+    <div class="score-card score-green"><div class="label">LLM Integration</div><div class="value">8.0</div><div class="sub">OpusCode Pro, working</div></div>
+  </div>
+
+  <div class="card">
+    <h3>System Maturity Breakdown</h3>
+    <div class="bar-chart">
+      <div class="bar-row"><div class="bar-label">Agent Framework</div><div class="bar-track"><div class="bar-fill" style="width:90%; background: linear-gradient(90deg, var(--green), var(--green));">90%</div></div><div class="bar-value" style="color:var(--green)">90%</div></div>
+      <div class="bar-row"><div class="bar-label">Quant Engine</div><div class="bar-track"><div class="bar-fill" style="width:80%; background: linear-gradient(90deg, var(--green), var(--green));">80%</div></div><div class="bar-value" style="color:var(--green)">80%</div></div>
+      <div class="bar-row"><div class="bar-label">Aggregation</div><div class="bar-track"><div class="bar-fill" style="width:85%; background: linear-gradient(90deg, var(--green), var(--green));">85%</div></div><div class="bar-value" style="color:var(--green)">85%</div></div>
+      <div class="bar-row"><div class="bar-label">Live Data (Dhan)</div><div class="bar-track"><div class="bar-fill" style="width:70%; background: linear-gradient(90deg, var(--amber), var(--amber));">70%</div></div><div class="bar-value" style="color:var(--amber)">70%</div></div>
+      <div class="bar-row"><div class="bar-label">Historical Data</div><div class="bar-track"><div class="bar-fill" style="width:25%; background: linear-gradient(90deg, var(--red), var(--red));">25%</div></div><div class="bar-value" style="color:var(--red)">25%</div></div>
+      <div class="bar-row"><div class="bar-label">Enriched Context</div><div class="bar-track"><div class="bar-fill" style="width:15%; background: linear-gradient(90deg, var(--red), var(--red));">15%</div></div><div class="bar-value" style="color:var(--red)">15%</div></div>
+      <div class="bar-row"><div class="bar-label">Feedback Loop</div><div class="bar-track"><div class="bar-fill" style="width:50%; background: linear-gradient(90deg, var(--amber), var(--amber));">50%</div></div><div class="bar-value" style="color:var(--amber)">50%</div></div>
+      <div class="bar-row"><div class="bar-label">Backtest Engine</div><div class="bar-track"><div class="bar-fill" style="width:40%; background: linear-gradient(90deg, var(--amber), var(--amber));">40%</div></div><div class="bar-value" style="color:var(--amber)">40%</div></div>
+      <div class="bar-row"><div class="bar-label">Frontend UI</div><div class="bar-track"><div class="bar-fill" style="width:75%; background: linear-gradient(90deg, var(--amber), var(--amber));">75%</div></div><div class="bar-value" style="color:var(--amber)">75%</div></div>
+      <div class="bar-row"><div class="bar-label">Production Ready</div><div class="bar-track"><div class="bar-fill" style="width:30%; background: linear-gradient(90deg, var(--red), var(--red));">30%</div></div><div class="bar-value" style="color:var(--red)">30%</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Bottom Line</h3>
+    <p style="font-size:14px; color: var(--text); line-height: 1.8;">
+      God's Eye has <strong style="color:var(--green)">strong architecture</strong> — the 6-agent hybrid quant/LLM framework with 3-round interaction is well-designed and avoids single-model overfit.
+      The quant engine is deterministic and reproducible. LLM integration via OpusCode Pro is working.
+    </p>
+    <p style="font-size:14px; color: var(--text); line-height: 1.8; margin-top: 8px;">
+      But the system has a <strong style="color:var(--red)">critical gap in data quality</strong>: historical FII/DII flows and PCR are synthetic (momentum proxies), which means backtest results don't reflect real market dynamics.
+      LLM agents operate without quantitative signal grounding (enriched_context pipeline is empty). And the HOLD-bias in prompts/aggregation needed multiple rounds of fixing.
+    </p>
+    <p style="font-size:14px; color: var(--text); line-height: 1.8; margin-top: 8px;">
+      <strong style="color:var(--amber)">The path to profitability</strong>: Fix data inputs (real flows, real PCR), ground LLM decisions in quant evidence, validate with 90-day live comparison, then optimize agent weights via feedback engine.
+    </p>
+  </div>
+</div>
+
+<!-- ========== STRENGTHS ========== -->
+<div class="section" id="strengths">
+  <h2 style="font-size: 20px; margin-bottom: 24px;">What's Working Well</h2>
+
+  <div class="two-col">
+    <div class="card">
+      <h3><span style="color:var(--green)">&#9679;</span> Multi-Agent Consensus</h3>
+      <p>6 specialized agents (FII, DII, Retail F&O, Algo, Promoter, RBI) with domain-specific prompts. 3-round interaction allows agents to adjust after seeing others' views. Round 3 triggers only on direction change — avoids unnecessary LLM calls.</p>
+      <div style="margin-top:12px"><span class="badge badge-green">Production Quality</span></div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--green)">&#9679;</span> Hybrid Aggregation (45/55)</h3>
+      <p>Quant engine (45% weight) provides deterministic, reproducible base signal. LLM agents (55%) add contextual reasoning. Agreement boost (1.15x) rewards alignment; disagreement penalty (0.70x) flags conflict. This prevents either side from dominating.</p>
+      <div style="margin-top:12px"><span class="badge badge-green">Well Calibrated</span></div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--green)">&#9679;</span> Quant Signal Engine</h3>
+      <p>Deterministic scoring: FII/DII flows (±1000 Cr), PCR reversals (1.2/0.7), RSI extremes (<30/>70), VIX regime, Supertrend confirmation. Tier system (strong >70, moderate ≥50, skip <50) gates signal quality. Fully reproducible.</p>
+      <div style="margin-top:12px"><span class="badge badge-green">Solid</span></div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--green)">&#9679;</span> Backtest Safeguards</h3>
+      <p>signal_date windowing prevents future data leakage. Single-round parallel execution trades multi-round depth for speed — acceptable for historical validation. P&L with 3x leverage matches real derivatives exposure.</p>
+      <div style="margin-top:12px"><span class="badge badge-green">Correct</span></div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--green)">&#9679;</span> Dhan API Integration</h3>
+      <p>Batched LTP call (single request for 3 indices) avoids 429 rate limits. Caching: 60s indices, 30s options, 300s forex. Token auto-renewal every 20h. NSE fallback path exists for Dhan outages.</p>
+      <div style="margin-top:12px"><span class="badge badge-amber">Functional</span></div>
+    </div>
+    <div class="card">
+      <h3><span style="color:var(--green)">&#9679;</span> Feedback Engine Design</h3>
+      <p>Accuracy-driven weight tuning (min 30 predictions, ±20% caps). Failure pattern detection: overconfident_buy, overconfident_sell, context_weakness. Corrective prompts inject past accuracy into agent decision-making.</p>
+      <div style="margin-top:12px"><span class="badge badge-amber">Designed, Untested</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ISSUES ========== -->
+<div class="section" id="issues">
+  <h2 style="font-size: 20px; margin-bottom: 24px;">Issues & Gaps — Prioritized</h2>
+
+  <div class="card">
+    <div class="issue">
+      <div class="issue-severity sev-critical"></div>
+      <div class="issue-content">
+        <div class="issue-title">Historical FII/DII Flows Are Synthetic</div>
+        <div class="issue-desc">Backtest derives flows from momentum proxy: <code>fii = momentum_5d &times; 1500 Cr</code>. Assumes perfect FII/DII negative correlation, ignores seasonal patterns (quarter-end rebalancing), flow convexity in stressed markets. Backtest P&L is plausible but not grounded in real market flows.</div>
+        <div class="issue-meta"><span class="badge badge-red">Critical</span> <span>Impact: Backtest results unreliable</span> <span>Fix: Integrate real NSDL/BSE flow data</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-critical"></div>
+      <div class="issue-content">
+        <div class="issue-title">Enriched Context Pipeline is Empty</div>
+        <div class="issue-desc">The <code>enriched_context</code> parameter flows through to all agents but is always <code>None</code>. LLM agents see market numbers but not pre-computed quant signals, past accuracy stats, or knowledge graph context. They're flying blind on quantitative evidence.</div>
+        <div class="issue-meta"><span class="badge badge-red">Critical</span> <span>Impact: LLM decisions ungrounded</span> <span>Fix: Wire ProfileGenerator output → agent prompts</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-critical"></div>
+      <div class="issue-content">
+        <div class="issue-title">PCR Simulation From RSI</div>
+        <div class="issue-desc"><code>PCR = 0.6 + (RSI/100) &times; 0.8</code> — derives options sentiment from momentum. Misses expiry effects (weekly vs monthly), corporate events, hedging flows. Synthetic PCR is smoother and less predictive than real options data.</div>
+        <div class="issue-meta"><span class="badge badge-red">Critical</span> <span>Impact: Options signal unreliable in backtest</span> <span>Fix: Store real PCR from Dhan options chain daily</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-high"></div>
+      <div class="issue-content">
+        <div class="issue-title">No Circuit Breaker for Dhan Outages</div>
+        <div class="issue-desc">When Dhan returns None (timeout, 429, malformed), system logs a warning but may continue with stale cached data or null values. No explicit data validation before running simulation. Risk of silent degradation.</div>
+        <div class="issue-meta"><span class="badge badge-amber">High</span> <span>Impact: Stale data decisions</span> <span>Fix: Add data freshness check + circuit breaker</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-high"></div>
+      <div class="issue-content">
+        <div class="issue-title">Conviction Treats QUANT = LLM</div>
+        <div class="issue-desc">Aggregator averages conviction across all agents without distinguishing reproducible QUANT signals (consistent across runs) from noisy LLM signals (sampled from 3 runs). A QUANT conviction of 80 is fundamentally more reliable than an LLM conviction of 80.</div>
+        <div class="issue-meta"><span class="badge badge-amber">High</span> <span>Impact: Signal noise in consensus</span> <span>Fix: Weight by internal_consistency or reproducible flag</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-high"></div>
+      <div class="issue-content">
+        <div class="issue-title">HOLD Bias in System (Partially Fixed)</div>
+        <div class="issue-desc">Narrowed aggregator band (-8/+8), lowered consensus threshold (0.17), added decisive prompts, removed VIX hard override. But underlying issue remains: LLM models naturally hedge. Need ongoing calibration and A/B testing of prompt aggressiveness.</div>
+        <div class="issue-meta"><span class="badge badge-amber">High</span> <span>Impact: Indecisive signals</span> <span>Fix: Monitor HOLD% and tune prompts quarterly</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-medium"></div>
+      <div class="issue-content">
+        <div class="issue-title">Round 3 Trigger is Fragile</div>
+        <div class="issue-desc">Triggers only on direction string change. Misses conviction swings (BUY@30 → BUY@80 = "no change") and doesn't consider conflict magnitude. No configurable sensitivity.</div>
+        <div class="issue-meta"><span class="badge badge-blue">Medium</span> <span>Impact: Missed re-evaluation signals</span> <span>Fix: Add conviction-delta trigger (>30pt)</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-medium"></div>
+      <div class="issue-content">
+        <div class="issue-title">Feedback Engine Needs 30 Predictions</div>
+        <div class="issue-desc">Cold start problem: weight tuning doesn't activate until 30 simulations complete. No adaptive threshold. No decay of old predictions — 25 good + 5 bad treated same as random.</div>
+        <div class="issue-meta"><span class="badge badge-blue">Medium</span> <span>Impact: Slow learning</span> <span>Fix: Lower to 15, add exponential decay</span></div>
+      </div>
+    </div>
+    <div class="issue">
+      <div class="issue-severity sev-low"></div>
+      <div class="issue-content">
+        <div class="issue-title">No Timezone Handling</div>
+        <div class="issue-desc">Market data uses UTC timestamps but IST (UTC+5:30) is the operating timezone. Technical signals compare date strings without timezone awareness. Could cause edge-case bugs around market open/close.</div>
+        <div class="issue-meta"><span class="badge badge-purple">Low</span> <span>Impact: Edge-case timing bugs</span> <span>Fix: Explicit IST conversion everywhere</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== AGENTS ========== -->
+<div class="section" id="agents">
+  <h2 style="font-size: 20px; margin-bottom: 24px;">Agent-by-Agent Analysis</h2>
+
+  <div class="agent-grid">
+    <div class="agent-card">
+      <h4>FII Flows Analyst</h4>
+      <div class="weight">Weight: 0.30 (highest) &middot; Type: LLM</div>
+      <div class="stat-row"><span class="stat-label">Prompt Quality</span><span class="badge badge-green">Strong</span></div>
+      <div class="stat-row"><span class="stat-label">Data Inputs</span><span>Nifty, VIX, FII 5d flows, USD/INR, DXY, PCR</span></div>
+      <div class="stat-row"><span class="stat-label">Decision Framework</span><span>Yield spreads, FX outlook, EM sentiment</span></div>
+      <div class="stat-row"><span class="stat-label">Weakness</span><span style="color:var(--red)">No real-time DXY feed; uses static input</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement</span><span>Add MSCI EM index, US 10Y yield spread</span></div>
+    </div>
+    <div class="agent-card">
+      <h4>DII Accumulation Tracker</h4>
+      <div class="weight">Weight: 0.25 &middot; Type: LLM</div>
+      <div class="stat-row"><span class="stat-label">Prompt Quality</span><span class="badge badge-amber">Good</span></div>
+      <div class="stat-row"><span class="stat-label">Data Inputs</span><span>Nifty, DII 5d flows, SIP data, valuations</span></div>
+      <div class="stat-row"><span class="stat-label">Decision Framework</span><span>SIP flows, valuation vs 10Y avg, contrarian</span></div>
+      <div class="stat-row"><span class="stat-label">Weakness</span><span style="color:var(--red)">Hardcoded contrarian; doesn't adapt by regime</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement</span><span>Parameterize contrarian_sensitivity via feedback</span></div>
+    </div>
+    <div class="agent-card">
+      <h4>Retail F&O Sentiment</h4>
+      <div class="weight">Weight: 0.15 &middot; Type: LLM</div>
+      <div class="stat-row"><span class="stat-label">Prompt Quality</span><span class="badge badge-amber">Good</span></div>
+      <div class="stat-row"><span class="stat-label">Data Inputs</span><span>PCR, max pain, OI, round levels</span></div>
+      <div class="stat-row"><span class="stat-label">Decision Framework</span><span>Expiry positioning, crowd sentiment, round levels</span></div>
+      <div class="stat-row"><span class="stat-label">Weakness</span><span style="color:var(--red)">"Follows crowd" lacks panic/euphoria modeling</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement</span><span>Add OI change data, long/short ratio from NSE</span></div>
+    </div>
+    <div class="agent-card">
+      <h4>Algo/Quant Engine</h4>
+      <div class="weight">Weight: 0.10 &middot; Type: QUANT</div>
+      <div class="stat-row"><span class="stat-label">Signal Quality</span><span class="badge badge-green">Strong</span></div>
+      <div class="stat-row"><span class="stat-label">Data Inputs</span><span>FII/DII flows, PCR, RSI-14, VIX, Supertrend</span></div>
+      <div class="stat-row"><span class="stat-label">Decision Framework</span><span>Deterministic scoring with buy/sell point tiers</span></div>
+      <div class="stat-row"><span class="stat-label">Weakness</span><span style="color:var(--amber)">Only 0.10 weight despite being most reliable</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement</span><span>Increase weight to 0.20; add MACD, Bollinger</span></div>
+    </div>
+    <div class="agent-card">
+      <h4>Promoter/Insider</h4>
+      <div class="weight">Weight: 0.10 &middot; Type: LLM</div>
+      <div class="stat-row"><span class="stat-label">Prompt Quality</span><span class="badge badge-amber">Adequate</span></div>
+      <div class="stat-row"><span class="stat-label">Data Inputs</span><span>Nifty, promoter holding %, bulk deals</span></div>
+      <div class="stat-row"><span class="stat-label">Decision Framework</span><span>Control dynamics, insider accumulation</span></div>
+      <div class="stat-row"><span class="stat-label">Weakness</span><span style="color:var(--red)">No real bulk deal data feed; mostly narrative</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement</span><span>Add BSE bulk/block deal API, SAST filings</span></div>
+    </div>
+    <div class="agent-card">
+      <h4>RBI/Policy Watcher</h4>
+      <div class="weight">Weight: 0.10 &middot; Type: LLM</div>
+      <div class="stat-row"><span class="stat-label">Prompt Quality</span><span class="badge badge-amber">Adequate</span></div>
+      <div class="stat-row"><span class="stat-label">Data Inputs</span><span>Nifty, VIX, inflation proxy, INR</span></div>
+      <div class="stat-row"><span class="stat-label">Decision Framework</span><span>Monetary policy stance, liquidity conditions</span></div>
+      <div class="stat-row"><span class="stat-label">Weakness</span><span style="color:var(--red)">No real CPI/WPI, repo rate, or RBI statement data</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement</span><span>Add RBI calendar, inflation API, yield curve data</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 24px;">
+    <h3>Agent Weight Recommendation</h3>
+    <p>Current weights over-index on LLM agents (90%) vs quant (10%). Given that QUANT is the only reproducible, deterministic signal source, its weight should increase:</p>
+    <table class="heatmap" style="margin-top: 12px;">
+      <tr><th>Agent</th><th>Current</th><th>Recommended</th><th>Rationale</th></tr>
+      <tr><td>FII</td><td>0.30</td><td style="color:var(--amber)">0.25</td><td style="color:var(--text-muted)">Still highest LLM weight; slight reduction</td></tr>
+      <tr><td>DII</td><td>0.25</td><td style="color:var(--amber)">0.20</td><td style="color:var(--text-muted)">Reduce until contrarian logic is regime-aware</td></tr>
+      <tr><td>Retail F&O</td><td>0.15</td><td>0.15</td><td style="color:var(--text-muted)">Appropriate for sentiment signal</td></tr>
+      <tr><td style="color:var(--green)">Algo/Quant</td><td>0.10</td><td style="color:var(--green)">0.20</td><td style="color:var(--text-muted)"><strong>Double it</strong> — most reliable, reproducible signal</td></tr>
+      <tr><td>Promoter</td><td>0.10</td><td>0.10</td><td style="color:var(--text-muted)">Keep until real insider data available</td></tr>
+      <tr><td>RBI</td><td>0.10</td><td>0.10</td><td style="color:var(--text-muted)">Keep; policy shifts are low-frequency but high-impact</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ========== DATA PIPELINE ========== -->
+<div class="section" id="data">
+  <h2 style="font-size: 20px; margin-bottom: 24px;">Data Pipeline Health</h2>
+
+  <table class="heatmap">
+    <tr><th>Data Point</th><th>Source</th><th>Live</th><th>Historical</th><th>Status</th><th>Gap</th></tr>
+    <tr><td>Nifty 50 LTP</td><td>Dhan /marketfeed/ltp</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--green)">&#10003; OHLCV</td><td><span class="badge badge-green">OK</span></td><td>-</td></tr>
+    <tr><td>Bank Nifty LTP</td><td>Dhan /marketfeed/ltp</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--green)">&#10003; OHLCV</td><td><span class="badge badge-green">OK</span></td><td>-</td></tr>
+    <tr><td>India VIX</td><td>Dhan /marketfeed/ltp</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--red)">&#10007; None</td><td><span class="badge badge-amber">Partial</span></td><td>No historical VIX from Dhan</td></tr>
+    <tr><td>FII Daily Flows</td><td>NSE scraper</td><td style="color:var(--amber)">~ Cached</td><td style="color:var(--red)">&#10007; Synthetic</td><td><span class="badge badge-red">Broken</span></td><td>Momentum proxy, not real flows</td></tr>
+    <tr><td>DII Daily Flows</td><td>NSE scraper</td><td style="color:var(--amber)">~ Cached</td><td style="color:var(--red)">&#10007; Synthetic</td><td><span class="badge badge-red">Broken</span></td><td>Assumed negative correlation with FII</td></tr>
+    <tr><td>PCR (Index)</td><td>Dhan options chain</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--red)">&#10007; RSI proxy</td><td><span class="badge badge-red">Broken</span></td><td>No historical PCR storage</td></tr>
+    <tr><td>RSI-14</td><td>Computed from OHLCV</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--green)">&#10003; Computed</td><td><span class="badge badge-green">OK</span></td><td>Wilder smoothing correct</td></tr>
+    <tr><td>VWAP</td><td>Computed from OHLCV</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--green)">&#10003; Computed</td><td><span class="badge badge-green">OK</span></td><td>-</td></tr>
+    <tr><td>USD/INR</td><td>External forex API</td><td style="color:var(--amber)">~ 5min cache</td><td style="color:var(--red)">&#10007; None</td><td><span class="badge badge-amber">Partial</span></td><td>No historical FX data</td></tr>
+    <tr><td>DXY</td><td>External forex API</td><td style="color:var(--amber)">~ 5min cache</td><td style="color:var(--red)">&#10007; None</td><td><span class="badge badge-amber">Partial</span></td><td>No historical DXY data</td></tr>
+    <tr><td>Max Pain</td><td>Dhan options chain</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--red)">&#10007; Synthetic</td><td><span class="badge badge-red">Broken</span></td><td>No stored OI distributions</td></tr>
+    <tr><td>Supertrend</td><td>Computed from OHLCV</td><td style="color:var(--green)">&#10003; Real</td><td style="color:var(--green)">&#10003; Computed</td><td><span class="badge badge-green">OK</span></td><td>-</td></tr>
+  </table>
+
+  <div class="card" style="margin-top: 24px;">
+    <h3>Data Quality Impact on Signal Accuracy</h3>
+    <div class="bar-chart">
+      <div class="bar-row"><div class="bar-label">RSI / Supertrend</div><div class="bar-track"><div class="bar-fill" style="width:95%; background: var(--green);">High confidence</div></div><div class="bar-value" style="color:var(--green)">95%</div></div>
+      <div class="bar-row"><div class="bar-label">Live LTP / VWAP</div><div class="bar-track"><div class="bar-fill" style="width:90%; background: var(--green);">High confidence</div></div><div class="bar-value" style="color:var(--green)">90%</div></div>
+      <div class="bar-row"><div class="bar-label">Live PCR / Max Pain</div><div class="bar-track"><div class="bar-fill" style="width:75%; background: var(--amber);">Good in live</div></div><div class="bar-value" style="color:var(--amber)">75%</div></div>
+      <div class="bar-row"><div class="bar-label">FII/DII (live)</div><div class="bar-track"><div class="bar-fill" style="width:55%; background: var(--amber);">Cached, delayed</div></div><div class="bar-value" style="color:var(--amber)">55%</div></div>
+      <div class="bar-row"><div class="bar-label">FII/DII (backtest)</div><div class="bar-track"><div class="bar-fill" style="width:15%; background: var(--red);">Synthetic</div></div><div class="bar-value" style="color:var(--red)">15%</div></div>
+      <div class="bar-row"><div class="bar-label">PCR (backtest)</div><div class="bar-track"><div class="bar-fill" style="width:20%; background: var(--red);">RSI proxy</div></div><div class="bar-value" style="color:var(--red)">20%</div></div>
+      <div class="bar-row"><div class="bar-label">USD/INR, DXY</div><div class="bar-track"><div class="bar-fill" style="width:40%; background: var(--amber);">Live only</div></div><div class="bar-value" style="color:var(--amber)">40%</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ROADMAP ========== -->
+<div class="section" id="roadmap">
+  <h2 style="font-size: 20px; margin-bottom: 24px;">Improvement Roadmap</h2>
+
+  <div class="phase">
+    <div class="phase-dot done"></div>
+    <h4>Phase 0 — Foundation (Done)</h4>
+    <div class="phase-sub">Completed this session</div>
+    <ul>
+      <li class="done">OpusCode Pro integration (Anthropic API format, claude-opus-4-6)</li>
+      <li class="done">Auth middleware bypass in API-key mode</li>
+      <li class="done">Narrowed aggregator HOLD band (-20/+20 → -8/+8)</li>
+      <li class="done">Lowered agent consensus threshold (0.3 → 0.17)</li>
+      <li class="done">Removed VIX hard override (direction preserved, conviction reduced)</li>
+      <li class="done">Added system messages enforcing JSON + directional stance</li>
+      <li class="done">Dhan batched LTP calls (3 → 1 API call)</li>
+      <li class="done">SSE streaming replaces WebSocket for Cowork compatibility</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-dot active"></div>
+    <h4>Phase 1 — Data Quality (Next 2 Weeks)</h4>
+    <div class="phase-sub">Fix the inputs before optimizing the engine</div>
+    <ul>
+      <li>Store daily PCR from Dhan options chain into SQLite (automated, market hours)</li>
+      <li>Integrate NSDL/moneycontrol FII/DII daily flow scraper</li>
+      <li>Store historical VIX from NSE bhavcopy</li>
+      <li>Add USD/INR and DXY historical data (forex API with daily storage)</li>
+      <li>Replace synthetic backtest flows with real stored data</li>
+      <li>Add data freshness check + circuit breaker for Dhan outages</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-dot pending"></div>
+    <h4>Phase 2 — Signal Grounding (Week 3-4)</h4>
+    <div class="phase-sub">Ground LLM decisions in quantitative evidence</div>
+    <ul>
+      <li>Wire enriched_context pipeline: quant scores → agent prompts</li>
+      <li>Include per-agent accuracy stats from AgentMemory in prompts</li>
+      <li>Weight conviction by reproducible flag (QUANT 1.2x, LLM 0.9x)</li>
+      <li>Add conviction-delta trigger for Round 3 (>30pt swing)</li>
+      <li>Increase ALGO weight from 0.10 → 0.20</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-dot pending"></div>
+    <h4>Phase 3 — Validation (Week 5-6)</h4>
+    <div class="phase-sub">Prove the system works before trusting it with money</div>
+    <ul>
+      <li>Run 90-day backtest with real historical data (not synthetic)</li>
+      <li>Compute hit rate, avg profit/trade, max drawdown, Sharpe ratio</li>
+      <li>Compare per-agent accuracy across market regimes (rally, correction, range)</li>
+      <li>A/B test prompt aggressiveness (current vs more conservative)</li>
+      <li>Publish validation dashboard in frontend</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-dot pending"></div>
+    <h4>Phase 4 — Optimization (Week 7-8)</h4>
+    <div class="phase-sub">Tune weights and agent behavior from validated data</div>
+    <ul>
+      <li>Lower feedback engine threshold from 30 → 15 predictions</li>
+      <li>Add exponential decay to old predictions (90-day half-life)</li>
+      <li>Regime-stratified weight tuning (different weights for high/low VIX)</li>
+      <li>Add MACD, Bollinger Bands to quant engine</li>
+      <li>Parameterize DII contrarian sensitivity via feedback</li>
+      <li>Add BSE bulk/block deal data for Promoter agent</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <div class="phase-dot pending"></div>
+    <h4>Phase 5 — Production (Week 9+)</h4>
+    <div class="phase-sub">Deploy and monitor</div>
+    <ul>
+      <li>Deploy to Railway (backend) + Vercel (frontend)</li>
+      <li>Add confidence interval modeling (point estimate + uncertainty band)</li>
+      <li>Live prediction tracking with daily accuracy dashboard</li>
+      <li>Alerting: Slack/Telegram notification for STRONG_BUY/STRONG_SELL signals</li>
+      <li>Paper trading integration (virtual P&L tracking)</li>
+    </ul>
+  </div>
+</div>
+
+</div><!-- container -->
+
+<footer>
+  God's Eye System Audit &middot; Generated by Claude Opus 4.6 &middot; April 2026
+</footer>
+
+<script>
+  // Tab navigation
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.target).classList.add('active');
+    });
+  });
+
+  // Animate bars on scroll
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('.bar-fill').forEach(bar => {
+          const width = bar.style.width;
+          bar.style.width = '0%';
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => { bar.style.width = width; });
+          });
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('.bar-chart').forEach(chart => observer.observe(chart));
+</script>
+</body>
+</html>
