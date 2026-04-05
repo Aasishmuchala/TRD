@@ -47,8 +47,8 @@ from typing import Optional
 sys.path.insert(0, ".")
 
 CAPITAL        = 20_000.0
-AGENT_STAGGER  = 1.5      # seconds between task creation
-MAX_RETRIES    = 1
+AGENT_STAGGER  = 3.0      # was 1.5 — breathing room for OpusCode 1req/s limit
+MAX_RETRIES    = 3         # was 1 — gives 2 real retry attempts per agent
 
 # ANSI colours
 BOLD  = "\033[1m"
@@ -73,7 +73,7 @@ def yel(t):   return C(YEL, t)
 async def call_agent(name, agent, market_input):
     for attempt in range(1, MAX_RETRIES + 2):
         try:
-            return await asyncio.wait_for(agent.analyze(market_input, round_num=1), timeout=70)
+            return await asyncio.wait_for(agent.analyze(market_input, round_num=1), timeout=160)
         except Exception as exc:
             if attempt <= MAX_RETRIES:
                 await asyncio.sleep(2 ** attempt)

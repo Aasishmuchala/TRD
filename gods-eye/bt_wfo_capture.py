@@ -36,8 +36,8 @@ sys.path.insert(0, ".")
 # ─── Config ───────────────────────────────────────────────────────────────────
 
 CAPITAL        = 20_000.0
-AGENT_STAGGER  = 1.5      # seconds between task creation
-MAX_RETRIES    = 1
+AGENT_STAGGER  = 3.0      # was 1.5 — more breathing room for OpusCode 1req/s limit
+MAX_RETRIES    = 3         # was 1 — gives 2 real retry attempts per agent
 CAPTURE_FILE   = Path(__file__).parent / "bt_wfo_signals.csv"
 
 # All trading days we want to capture (2023 from DB start, full 2024)
@@ -57,7 +57,7 @@ async def call_agent(name, agent, market_input):
     from app.engine.orchestrator import AgentResponse
     for attempt in range(1, MAX_RETRIES + 2):
         try:
-            return await asyncio.wait_for(agent.analyze(market_input, round_num=1), timeout=70)
+            return await asyncio.wait_for(agent.analyze(market_input, round_num=1), timeout=160)
         except Exception as exc:
             if attempt <= MAX_RETRIES:
                 await asyncio.sleep(2 ** attempt)

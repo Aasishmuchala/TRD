@@ -18,8 +18,11 @@ import time
 sys.path.insert(0, ".")
 
 CAPITAL = 20_000.0
-AGENT_STAGGER_S = 1.5
-MAX_RETRIES = 1
+# Root cause of STOCK_OPTIONS failures: OpusCode queues requests when 6+ Opus
+# calls are in-flight. More stagger gives the gateway breathing room.
+AGENT_STAGGER_S = 3.0   # was 1.5 — 8 agents × 3s = 24s ramp, well within 60/min limit
+# range(1, MAX_RETRIES+1) must be ≥2 for any retry to happen (1 = zero retries)
+MAX_RETRIES = 3          # was 1 — gives 2 real retry attempts per agent
 
 MONTHS_2025 = [
     ("2025-01-01", "2025-01-31", "Jan-2025", 0),
@@ -53,7 +56,7 @@ async def call_agent_with_retry(agent_name, agent, market_input, round_num=1):
         try:
             result = await asyncio.wait_for(
                 agent.analyze(market_input, round_num=round_num),
-                timeout=70,
+                timeout=160,  # was 70 — must exceed httpx read timeout (150s) + margin
             )
             return result
         except Exception as exc:
@@ -228,7 +231,7 @@ async def main():
 
     config.SAMPLES_PER_AGENT = 1
     config.INTERACTION_ROUNDS = 1
-    config.MODEL = os.getenv("GODS_EYE_BACKTEST_MODEL", "claude-opus-4-6")
+    config.MODEL = os.getenv("GODS_EYE_BACKTEST_MODEL", "claude-sonnet-4-6")
 
     print("=" * 100)
     print("  God's Eye — Full Year 2025 Backtest (Jan 2025 → Dec 2025)")

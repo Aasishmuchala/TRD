@@ -37,7 +37,11 @@ class LLMClient:
     ANTHROPIC_VERSION = "2023-06-01"
 
     def __init__(self):
-        self._http = httpx.AsyncClient(timeout=60.0)
+        # Opus + extended thinking routinely takes 60-90s per call.
+        # Short connect timeout, long read timeout so we don't cut off mid-generation.
+        self._http = httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=10.0, read=150.0, write=30.0, pool=10.0)
+        )
 
     def _get_api_format(self) -> str:
         """Determine API format based on provider config.
