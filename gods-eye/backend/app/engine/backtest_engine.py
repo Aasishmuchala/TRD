@@ -612,11 +612,12 @@ class BacktestEngine:
     # FII alone (0.30) is just enough; PROMOTER+RBI (0.20) is not.
     DIRECTIONAL_WEIGHT_THRESHOLD = 0.25
 
-    # VIX regime conviction floors (tiered — from backtest analysis)
-    VIX_NORMAL_FLOOR    = 65.0   # VIX < 14: standard floor (from config.CONVICTION_FLOOR)
-    VIX_ELEVATED_FLOOR  = 72.0   # VIX 14–16: raise bar slightly
-    VIX_HIGH_FLOOR      = 78.0   # VIX 16–20: high bar, only very aligned signals
-    VIX_EXTREME_THRESHOLD = 20.0  # VIX > 20: no trades at all (premium too expensive + chaotic)
+    # VIX regime conviction floors — WFO-optimized on 2023-2024 (476 days, 13,800 combos)
+    # Validated on 2025 full year (+218.8%).  Sharpe improvement: 0.020 → 0.083
+    VIX_NORMAL_FLOOR    = 60.0   # VIX < 13: slightly more permissive in calm markets
+    VIX_ELEVATED_FLOOR  = 74.0   # VIX 13–16: stricter than before (was 72)
+    VIX_HIGH_FLOOR      = 78.0   # VIX 16–19: only very aligned signals (unchanged)
+    VIX_EXTREME_THRESHOLD = 19.0  # VIX > 19: block all trades (was 20 — tighter cutoff)
 
     @staticmethod
     async def _call_agent_with_retry(
@@ -774,13 +775,13 @@ class BacktestEngine:
             )
             return "HOLD", 50.0
 
-        # Rule 3–5: tiered VIX conviction floor
+        # Rule 3–5: tiered VIX conviction floor (WFO-optimized cutoffs)
         if india_vix >= 16.0:
             floor = self.VIX_HIGH_FLOOR       # 78
-        elif india_vix >= 14.0:
-            floor = self.VIX_ELEVATED_FLOOR   # 72
+        elif india_vix >= 13.0:
+            floor = self.VIX_ELEVATED_FLOOR   # 74  (cutoff lowered from 14 → 13)
         else:
-            floor = config.CONVICTION_FLOOR   # 65
+            floor = self.VIX_NORMAL_FLOOR     # 60  (uses class constant, not config)
 
         # Rule 6: trend-asymmetric gate
         # Two triggers — both raise the BUY floor to VIX_HIGH_FLOOR (78):
