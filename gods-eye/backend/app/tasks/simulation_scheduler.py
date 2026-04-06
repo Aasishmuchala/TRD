@@ -172,7 +172,8 @@ class SimulationScheduler:
                 for run_time in ALL_RUN_TIMES:
                     time_key = run_time.strftime("%H:%M")
                     if time_key not in self._today_runs:
-                        if _time_diff_seconds(current_time, run_time) <= SCHEDULE_TOLERANCE_SECONDS:                            logger.info("Scheduler: time for %s run", time_key)
+                        if _time_diff_seconds(current_time, run_time) <= SCHEDULE_TOLERANCE_SECONDS:
+                            logger.info("Scheduler: time for %s run", time_key)
                             try:
                                 result = await self._run_simulation(time_key)
                                 if result.get("prediction_id"):
