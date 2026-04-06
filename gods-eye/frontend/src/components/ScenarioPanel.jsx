@@ -32,7 +32,8 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
   const [scenarios, setScenarios] = useState(fallbackScenarios)
   const [selected, setSelected] = useState(null)
   const [liveAvailable, setLiveAvailable] = useState(false)
-  const [marketClosed, setMarketClosed] = useState(false)
+  const [marketOpen, setMarketOpen] = useState(null)
+  const [dataError, setDataError] = useState(null)
   const [showCustom, setShowCustom] = useState(false)
 
   useEffect(() => {
@@ -44,14 +45,16 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
     const checkLive = () => {
       apiClient.getMarketLive()
         .then((data) => {
+          setMarketOpen(data?.market_open ?? false)
           if (data?.nifty_spot > 0 && data?.data_source !== 'error') {
             setLiveAvailable(true)
-            setMarketClosed(false)
+            setDataError(null)
           } else {
-            setMarketClosed(true)
+            setLiveAvailable(false)
+            setDataError(data?.data_error || (data?.market_open ? 'Live data unavailable' : null))
           }
         })
-        .catch(() => setMarketClosed(true))
+        .catch(() => { setLiveAvailable(false); setMarketOpen(null); setDataError('Backend unreachable') })
     }
     checkLive()
     const interval = setInterval(checkLive, 15000)
@@ -122,22 +125,30 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
       {/* Live Market Button */}
       <button
         onClick={handleSimulateLive}
-        disabled={isLoading || !liveAvailable}
+        disabled={isLoading || (!liveAvailable && !marketOpen)}
         aria-label="Simulate live market with real-time NSE data"
         className={`w-full mb-3 px-3 py-3 rounded-lg text-left transition-all duration-150 border ${
           liveAvailable
             ? 'border-bull/25 bg-bull/5 hover:bg-bull/10'
-            : 'border-[rgba(255,255,255,0.06)] bg-surface-2 opacity-50'
+            : marketOpen
+              ? 'border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10'
+              : 'border-[rgba(255,255,255,0.06)] bg-surface-2 opacity-50'
         }`}
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-md flex items-center justify-center text-[10px] font-mono font-bold flex-shrink-0 bg-bull/10 text-bull border border-bull/20">
-            <span className={`w-2 h-2 rounded-full bg-bull ${liveAvailable ? 'animate-pulse' : ''}`} aria-hidden="true" />
+            <span className={`w-2 h-2 rounded-full ${liveAvailable ? 'bg-bull animate-pulse' : marketOpen ? 'bg-amber-500 animate-pulse' : 'bg-gray-500'}`} aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-onSurface">Simulate Live Market</p>
             <p className="text-[10px] text-onSurfaceDim" aria-live="polite">
-              {liveAvailable ? 'Real-time Dhan data available' : marketClosed ? 'Market closed — use presets below' : 'Checking market data...'}
+              {liveAvailable
+                ? 'Real-time Dhan data available'
+                : marketOpen === null
+                  ? 'Checking market data...'
+                  : marketOpen
+                    ? `Market open — ${dataError || 'data feed connecting...'}`
+                    : 'Market closed — use presets below'}
             </p>
           </div>
           <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-bull bg-bull/10 border border-bull/20" aria-label="Live market data mode">
