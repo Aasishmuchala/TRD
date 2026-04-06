@@ -73,7 +73,10 @@ class DhanTokenManager:
 
     GENERATE_URL = "https://auth.dhan.co/app/generateAccessToken"
     RENEW_URL = "https://api.dhan.co/v2/RenewToken"
-    RENEWAL_INTERVAL_HOURS = 20  # Renew 4 hours before 24h expiry
+    RENEWAL_INTERVAL_HOURS = 20  # Legacy fallback interval
+    # IST times to renew token (HH:MM).  Twice daily keeps the 24h token
+    # alive: once before market open, once after close.
+    RENEWAL_SCHEDULE_IST = ["08:30", "16:00"]
 
     def __init__(self):
         self.client_id: str = os.getenv("DHAN_CLIENT_ID", "")
@@ -240,18 +243,69 @@ class DhanTokenManager:
 
     # ─── Background renewal loop ──────────────────────────────────────────
 
+    @staticmethod
+    def _utc_now_ist() -> datetime:
+        """Current time in IST (UTC+5:30) as a naive datetime."""
+        return datetime.utcnow() + timedelta(hours=5, minutes=30)
+
+    def _seconds_until_next_slot(self) -> float:
+        """Return seconds until the next scheduled renewal slot (IST).
+
+        If all today's slots have passed, target the first slot tomorrow.
+        Adds a 30-second jitter to avoid thundering-herd on restart.
+        """
+        now_ist = self._utc_now_ist()
+        slots = []
+        for t_str in self.RENEWAL_SCHEDULE_IST:
+            h, m = map(int, t_str.split(":"))
+            slot = now_ist.replace(hour=h, minute=m, second=0, microsecond=0)
+            if slot <= now_ist:
+                slot += timedelta(days=1)
+            slots.append(slot)
+        next_slot = min(slots)
+        delta = (next_slot - now_ist).total_seconds()
+        return max(delta, 60)  # at least 60s
+
     async def _renewal_loop(self):
-        """Background task that renews the token every 20 hours."""
+        """Background task that renews the token at scheduled IST times.
+
+        Schedule: 08:30 IST (before market open) and 16:00 IST (after close).
+        Also renews immediately on startup, then sleeps until next slot.
+        """
+        # ── Immediate renewal on startup ──
+        try:
+            logger.info("Dhan token: startup renewal attempt...")
+            success = await self.ensure_valid_token()
+            if success:
+                logger.info("Dhan token: startup renewal succeeded")
+            else:
+                logger.warning("Dhan token: startup renewal failed — will retry at next slot")
+        except Exception as e:
+            logger.error(f"Dhan token: startup renewal error: {e}")
+
+        # ── Scheduled loop ──
         while True:
             try:
-                await asyncio.sleep(self.RENEWAL_INTERVAL_HOURS * 3600)
-                logger.info("Scheduled Dhan token renewal...")
+                wait_secs = self._seconds_until_next_slot()
+                next_ist = self._utc_now_ist() + timedelta(seconds=wait_secs)
+                logger.info(
+                    "Dhan token: next renewal at ~%s IST (in %.0f min)",
+                    next_ist.strftime("%H:%M"), wait_secs / 60,
+                )
+                await asyncio.sleep(wait_secs)
+
+                logger.info("Scheduled Dhan token renewal (%s IST)...",
+                            self._utc_now_ist().strftime("%H:%M"))
                 success = await self.ensure_valid_token()
                 if not success:
-                    # Retry in 30 min
-                    logger.warning("Token renewal failed, retrying in 30 minutes...")
-                    await asyncio.sleep(1800)
-                    await self.ensure_valid_token()
+                    # Retry every 15 min up to 3 times
+                    for attempt in range(1, 4):
+                        logger.warning(
+                            "Token renewal failed, retry %d/3 in 15 min...", attempt
+                        )
+                        await asyncio.sleep(900)
+                        if await self.ensure_valid_token():
+                            break
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -262,7 +316,8 @@ class DhanTokenManager:
         """Start the background token renewal task."""
         if self._renewal_task is None or self._renewal_task.done():
             self._renewal_task = asyncio.create_task(self._renewal_loop())
-            logger.info(f"Dhan token auto-renewal started (every {self.RENEWAL_INTERVAL_HOURS}h)")
+            schedule_str = ", ".join(self.RENEWAL_SCHEDULE_IST)
+            logger.info(f"Dhan token auto-renewal started (schedule: {schedule_str} IST + startup)")
 
     def stop_auto_renewal(self):
         """Stop the background token renewal task."""
