@@ -265,11 +265,22 @@ async def startup_event():
     from app.tasks.fii_dii_collector import fii_dii_collector
     fii_dii_collector.start()
 
+    # Start automated paper trading scheduler
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    simulation_scheduler.start()
+    if config.SCHEDULER_ENABLED:
+        print("Paper trading scheduler ENABLED — will run simulations during market hours")
+    else:
+        print("Paper trading scheduler loaded (disabled — set GODS_EYE_SCHEDULER_ENABLED=true to enable)")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Shutdown event handler."""
     print("Shutting down God's Eye")
+    # Stop paper trading scheduler
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    await simulation_scheduler.shutdown()
     # Stop PCR collection (uses dhan_client, so stop before token manager)
     from app.tasks.pcr_collector import pcr_collector
     await pcr_collector.shutdown()

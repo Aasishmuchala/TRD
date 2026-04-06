@@ -1441,3 +1441,45 @@ async def get_option_suggestion(symbol: str, direction: str, capital: int = 1000
         "pts_move_needed": pts_needed,
         "note": "Premium is estimated (1% OTM heuristic). Verify live with your broker before trading.",
     }
+
+
+
+# ── Phase: Automated Paper Trading Scheduler ─────────────────────────────────
+
+
+@router.get("/scheduler/status")
+async def scheduler_status():
+    """Get automated paper trading scheduler status."""
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    return simulation_scheduler.status
+
+
+@protected_router.post("/scheduler/enable")
+async def scheduler_enable():
+    """Enable automated paper trading scheduler."""
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    simulation_scheduler.enable()
+    return {"status": "enabled", **simulation_scheduler.status}
+
+
+@protected_router.post("/scheduler/disable")
+async def scheduler_disable():
+    """Disable automated paper trading scheduler."""
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    simulation_scheduler.disable()
+    return {"status": "disabled", **simulation_scheduler.status}
+
+@protected_router.post("/scheduler/trigger")
+async def scheduler_trigger():
+    """Manually trigger a simulation run right now."""
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    result = await simulation_scheduler.trigger_now()
+    return result
+
+
+@protected_router.post("/scheduler/record-outcomes")
+async def scheduler_record_outcomes():
+    """Manually trigger outcome recording for today's predictions."""
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    result = await simulation_scheduler.record_outcomes_now()
+    return result

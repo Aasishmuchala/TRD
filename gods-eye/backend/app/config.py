@@ -73,6 +73,9 @@ class Config:
     HOLD_BAND: float = float(os.getenv("GODS_EYE_HOLD_BAND", "20.0"))          # half-width of HOLD zone (was 8)
     CONVICTION_FLOOR: float = float(os.getenv("GODS_EYE_CONVICTION_FLOOR", "55.0"))  # min conviction to trade
 
+    # Automated Paper Trading Scheduler
+    SCHEDULER_ENABLED: bool = os.getenv("GODS_EYE_SCHEDULER_ENABLED", "false").lower() in ("true", "1", "yes")
+
     # Stop Loss Configuration (Profitability Roadmap v2)
     # STOP_LOSS_ENABLED=false disables stop loss for backtests (lets you see baseline vs SL impact)
     STOP_LOSS_ENABLED: bool = os.getenv("GODS_EYE_STOP_LOSS_ENABLED", "true").lower() in ("true", "1", "yes")
