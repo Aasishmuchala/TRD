@@ -495,29 +495,76 @@ class DhanClient:
         return self._parse_vix_ltp(item)
 
     async def fetch_options_summary(self) -> Optional[Dict[str, Any]]:
-        """Fetch Nifty options chain and compute PCR, max pain."""
+        """Fetch Nifty options chain and compute PCR, max pain.
+
+        Handles multiple Dhan response formats:
+          - {"data": [{"strike_price": ..., "oi": ..., "option_type": "CE"}, ...]}  (list of dicts)
+          - {"data": {"22500": {"ce_oi": ..., "pe_oi": ...}, ...}}  (dict keyed by strike)
+        """
         data = await self.get_option_chain(NIFTY_50_SECURITY_ID)
-        if not data or "data" not in data:
+        if not data:
             return None
 
-        chain = data["data"]
+        # Extract chain data — handle different response structures
+        chain = data.get("data")
+        if chain is None:
+            logger.warning("Option chain response has no 'data' key. Keys: %s", list(data.keys()))
+            return None
+
         total_call_oi = 0
         total_put_oi = 0
         strike_pain = {}
 
-        for row in chain:
-            strike = row.get("strike_price", 0)
-            oi = row.get("oi", 0) or 0
-            opt_type = row.get("option_type", "").upper()
+        try:
+            if isinstance(chain, list):
+                # Format: list of option row dicts
+                for row in chain:
+                    if not isinstance(row, dict):
+                        continue
+                    strike = row.get("strike_price", 0) or row.get("strikePrice", 0)
+                    oi = row.get("oi", 0) or row.get("openInterest", 0) or 0
+                    opt_type = str(row.get("option_type", "") or row.get("optionType", "")).upper()
 
-            if opt_type == "CE":
-                total_call_oi += oi
-                strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
-                strike_pain[strike]["ce_oi"] = oi
-            elif opt_type == "PE":
-                total_put_oi += oi
-                strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
-                strike_pain[strike]["pe_oi"] = oi
+                    if opt_type == "CE":
+                        total_call_oi += oi
+                        strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
+                        strike_pain[strike]["ce_oi"] = oi
+                    elif opt_type == "PE":
+                        total_put_oi += oi
+                        strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
+                        strike_pain[strike]["pe_oi"] = oi
+
+            elif isinstance(chain, dict):
+                # Format: dict keyed by strike or other structure
+                # Log first key for debugging, then try to parse
+                sample_key = next(iter(chain), None)
+                sample_val = chain.get(sample_key) if sample_key else None
+                logger.info("Option chain dict format — sample key: %s, sample val type: %s",
+                            sample_key, type(sample_val).__name__)
+
+                for key, val in chain.items():
+                    if isinstance(val, dict):
+                        # Might be {"22500": {"ce_oi": 100, "pe_oi": 200}} format
+                        try:
+                            strike = float(key)
+                        except (ValueError, TypeError):
+                            continue
+                        ce_oi = val.get("ce_oi", 0) or val.get("call_oi", 0) or 0
+                        pe_oi = val.get("pe_oi", 0) or val.get("put_oi", 0) or 0
+                        total_call_oi += ce_oi
+                        total_put_oi += pe_oi
+                        strike_pain[strike] = {"ce_oi": ce_oi, "pe_oi": pe_oi}
+            else:
+                logger.warning("Unexpected option chain data type: %s", type(chain).__name__)
+                return None
+
+        except Exception as e:
+            logger.error("Error parsing option chain: %s", e)
+            return None
+
+        if total_call_oi == 0 and total_put_oi == 0:
+            logger.warning("Option chain returned zero OI — market may be closed or data unavailable")
+            return None
 
         pcr = total_put_oi / total_call_oi if total_call_oi > 0 else 1.0
 
@@ -534,6 +581,9 @@ class DhanClient:
             if total < min_pain_val:
                 min_pain_val = total
                 max_pain = settle
+
+        logger.info("PCR computed: %.3f (call_oi=%d, put_oi=%d, max_pain=%.0f)",
+                     pcr, total_call_oi, total_put_oi, max_pain)
 
         return {
             "pcr": round(pcr, 3),
