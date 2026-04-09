@@ -2,16 +2,22 @@
 
 No LLM calls. Delegates entirely to QuantSignalEngine from Phase 10.
 Includes VIX regime filter from Phase 3 profitability plan.
+Computes RSI, Supertrend, MACD, and Bollinger Bands from live Dhan OHLCV.
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from app.agents.base_agent import BaseAgent
 from app.api.schemas import AgentResponse, MarketInput
 from app.engine.quant_signal_engine import QuantSignalEngine, QuantInputs
 from app.data.technical_signals import TechnicalSignals
+from app.data.signal_engine import SignalEngine
+from app.data.historical_store import historical_store
 from app.data.vix_store import vix_store as _vix_store
 from app.config import config
+
+logger = logging.getLogger("gods_eye.algo_agent")
 
 
 class AlgoQuantAgent(BaseAgent):
@@ -40,19 +46,56 @@ class AlgoQuantAgent(BaseAgent):
     ) -> AgentResponse:
         """Compute signal via QuantSignalEngine — no LLM, no custom math."""
 
-        # Build QuantInputs from MarketInput
-        # fii_flow_5d / dii_flow_5d are already in INR crores throughout the system:
-        #   - Live path:    market_data.py delivers crores from NSE FII/DII API
-        #   - Backtest path: backtest_engine.py calls get_fii_dii_for_quant() (crores)
-        # No unit conversion needed here.
+        # Build QuantInputs from MarketInput + live OHLCV technicals
+        # fii_flow_5d / dii_flow_5d are already in INR crores throughout the system.
         fii_net_cr = market_data.fii_flow_5d or 0.0
         dii_net_cr = market_data.dii_flow_5d or 0.0
-
-        rsi = market_data.rsi_14 if market_data.rsi_14 is not None else 50.0
-
-        # Real 5-day VIX average from vix_store (Profitability Roadmap v2)
-        # Fixes the bug where vix_5d_avg = spot VIX, which made VIX buy condition impossible.
         vix = market_data.india_vix
+
+        # ── Compute real technicals from Dhan OHLCV ──────────────────────
+        # Fetch historical NIFTY closes for RSI, MACD, Bollinger, Supertrend.
+        # Falls back to MarketInput values / safe defaults on any error.
+        rsi = market_data.rsi_14 if market_data.rsi_14 is not None else 50.0
+        supertrend = "bullish"
+        macd_histogram = None
+        macd_signal_cross = None
+        bb_position = None
+
+        try:
+            ohlcv_rows = await historical_store.get_ohlcv("NIFTY")
+            if ohlcv_rows and len(ohlcv_rows) >= 30:
+                closes = [r["close"] for r in ohlcv_rows]
+
+                # RSI-14 (Wilder smoothed)
+                rsi = TechnicalSignals.compute_rsi(closes, period=14)
+                logger.info("ALGO: live RSI(14) = %.2f from %d OHLCV rows", rsi, len(closes))
+
+                # Supertrend (ATR-10, multiplier 3.0) — real computation
+                supertrend = TechnicalSignals.compute_supertrend(ohlcv_rows, period=10, multiplier=3.0)
+                logger.info("ALGO: live Supertrend = %s", supertrend)
+
+                # MACD(12,26,9) — needs 26+9=35 bars minimum
+                if len(closes) >= 35:
+                    macd_result = SignalEngine.compute_macd(closes, fast=12, slow=26, signal=9)
+                    macd_histogram = macd_result.get("histogram")
+                    interpretation = macd_result.get("interpretation", "")
+                    if "bullish_crossover" in interpretation:
+                        macd_signal_cross = "bullish_cross"
+                    elif "bearish_crossover" in interpretation:
+                        macd_signal_cross = "bearish_cross"
+                    logger.info("ALGO: live MACD histogram=%.4f, cross=%s", macd_histogram or 0, macd_signal_cross)
+
+                # Bollinger Bands(20,2) — needs 20 bars
+                if len(closes) >= 20:
+                    bb_result = SignalEngine.compute_bollinger_bands(closes, period=20)
+                    bb_position = bb_result.get("position")
+                    logger.info("ALGO: live BB position=%.3f", bb_position or 0)
+            else:
+                logger.warning("ALGO: insufficient OHLCV rows (%d), using defaults", len(ohlcv_rows) if ohlcv_rows else 0)
+        except Exception as e:
+            logger.warning("ALGO: failed to compute live technicals: %s — using defaults", e)
+
+        # ── Real 5-day VIX average from vix_store ─────────────────────────
         try:
             end_date = datetime.now().strftime("%Y-%m-%d")
             start_date = (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d")
@@ -61,13 +104,9 @@ class AlgoQuantAgent(BaseAgent):
             if len(vix_closes) >= 3:
                 vix_5d_avg = sum(vix_closes) / len(vix_closes)
             else:
-                # Fallback: weighted estimate prevents vix == vix_5d_avg bug
                 vix_5d_avg = vix * 0.8 + 17.0 * 0.2
         except Exception:
             vix_5d_avg = vix * 0.8 + 17.0 * 0.2
-
-        # supertrend not in MarketInput — infer from RSI direction
-        supertrend = "bearish" if rsi > 50 else "bullish"
 
         inputs = QuantInputs(
             fii_net_cr=fii_net_cr,
@@ -77,6 +116,9 @@ class AlgoQuantAgent(BaseAgent):
             vix=vix,
             vix_5d_avg=vix_5d_avg,
             supertrend=supertrend,
+            macd_histogram=macd_histogram,
+            macd_signal_cross=macd_signal_cross,
+            bb_position=bb_position,
         )
 
         result = QuantSignalEngine.compute_quant_score(inputs, instrument="NIFTY")
