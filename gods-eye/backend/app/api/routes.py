@@ -1483,3 +1483,55 @@ async def scheduler_record_outcomes():
     from app.tasks.simulation_scheduler import simulation_scheduler
     result = await simulation_scheduler.record_outcomes_now()
     return result
+
+
+# ── Paper Trades Endpoints ─────────────────────────────────────────────────
+
+@protected_router.get("/paper-trades")
+async def get_paper_trades(status: str = "all", limit: int = 50, offset: int = 0):
+    """Get paper trade history.
+
+    Args:
+        status: "all", "open", "closed", or "today"
+        limit: max trades to return
+        offset: pagination offset
+    """
+    from app.engine.paper_trader import paper_trader
+
+    if status == "open":
+        trades = paper_trader.get_open_trades()
+    elif status == "today":
+        trades = paper_trader.get_today_trades()
+    else:
+        trades = paper_trader.get_trade_history(limit=limit, offset=offset)
+
+    from dataclasses import asdict
+    return {
+        "count": len(trades),
+        "status_filter": status,
+        "trades": [asdict(t) for t in trades],
+    }
+
+
+@protected_router.get("/paper-trades/summary")
+async def paper_trades_summary():
+    """Get paper trading summary — total P&L, win rate, trade count."""
+    from app.engine.paper_trader import paper_trader
+
+    all_trades = paper_trader.get_trade_history(limit=500)
+    open_trades = [t for t in all_trades if t.status == "OPEN"]
+    closed_trades = [t for t in all_trades if t.status != "OPEN"]
+
+    total_pnl = sum(t.net_pnl or 0 for t in closed_trades)
+    winners = [t for t in closed_trades if (t.net_pnl or 0) > 0]
+    win_rate = (len(winners) / len(closed_trades) * 100) if closed_trades else 0.0
+
+    return {
+        "total_trades": len(all_trades),
+        "open_trades": len(open_trades),
+        "closed_trades": len(closed_trades),
+        "total_pnl_inr": round(total_pnl, 2),
+        "win_rate_pct": round(win_rate, 1),
+        "winners": len(winners),
+        "losers": len(closed_trades) - len(winners),
+    }
