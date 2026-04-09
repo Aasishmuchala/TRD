@@ -18,6 +18,7 @@ from app.engine.orchestrator import Orchestrator
 from app.engine.aggregator import Aggregator
 from app.data.market_data import market_data_service
 from app.memory.prediction_tracker import PredictionTracker
+from app.engine.paper_trader import paper_trader
 
 logger = logging.getLogger("gods_eye.scheduler")
 
@@ -26,7 +27,8 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 # ── Schedule Configuration ──────────────────────────────────────────────────
 # Pre-market: run once at 8:45 AM to establish opening thesis
-# Hourly: runs at :15 past each hour during market (10:15, 11:15, 12:15, 13:15, 14:15)# This gives 6 total simulation points per day
+# Hourly: runs at :15 past each hour during market (10:15, 11:15, 12:15, 13:15, 14:15)
+# This gives 6 total simulation points per day
 
 PRE_MARKET_TIME = time(8, 45)
 HOURLY_RUN_TIMES = [
@@ -40,6 +42,13 @@ ALL_RUN_TIMES = [PRE_MARKET_TIME] + HOURLY_RUN_TIMES
 
 # Outcome recording: 15 minutes after market close
 OUTCOME_RECORD_TIME = time(15, 45)
+
+# Paper trade EOD settlement: close all open positions at 15:25 IST (5 min before close)
+EOD_SETTLEMENT_TIME = time(15, 25)
+
+# Position monitoring window: check open trades every poll cycle during market hours
+MARKET_OPEN_TIME = time(9, 15)
+MARKET_CLOSE_TIME = time(15, 30)
 
 # How close we need to be to a scheduled time to trigger (seconds)
 SCHEDULE_TOLERANCE_SECONDS = 120  # 2-minute window
@@ -56,6 +65,7 @@ def _get_ist_now() -> datetime:
 def _is_weekday() -> bool:
     """Return True if today is a weekday (Mon-Fri)."""
     return _get_ist_now().weekday() < 5
+
 
 def _time_diff_seconds(t1: time, t2: time) -> float:
     """Return absolute difference in seconds between two times."""
@@ -78,6 +88,7 @@ class SimulationScheduler:
     def __init__(self):
         self._task: Optional[asyncio.Task] = None
         self._enabled: bool = config.SCHEDULER_ENABLED
+        self._eod_settled_today: bool = False
         self._today_runs: Dict[str, str] = {}  # time_key → prediction_id
         self._today_date: Optional[str] = None
         self._outcome_recorded_today: bool = False
@@ -85,6 +96,7 @@ class SimulationScheduler:
         self._last_status: str = "idle"
         self._total_runs: int = 0
         self._total_outcomes: int = 0
+
     # ── Public API ───────────────────────────────────────────────────────
 
     def start(self):
@@ -116,6 +128,7 @@ class SimulationScheduler:
         """Disable automated scheduling (loop keeps running but skips runs)."""
         self._enabled = False
         logger.info("Scheduler disabled")
+
     @property
     def status(self) -> Dict[str, Any]:
         """Return current scheduler status."""
@@ -145,6 +158,7 @@ class SimulationScheduler:
         """Manually trigger outcome recording right now."""
         logger.info("Manual outcome recording trigger")
         return await self._record_outcomes()
+
     # ── Background Loop ──────────────────────────────────────────────────
 
     async def _scheduler_loop(self):
@@ -159,6 +173,7 @@ class SimulationScheduler:
                     self._today_runs = {}
                     self._today_date = today
                     self._outcome_recorded_today = False
+                    self._eod_settled_today = False
                     logger.info("Scheduler: new day %s — resetting daily state", today)
 
                 if not self._enabled or not _is_weekday():
@@ -184,6 +199,41 @@ class SimulationScheduler:
                                 logger.error("Scheduler: simulation at %s failed: %s", time_key, e)
                                 self._last_status = f"error:{time_key}"
 
+                # ── Paper Trade Position Monitoring ────────────────────────
+                # During market hours, check open trades for stop/target hits
+                if MARKET_OPEN_TIME <= current_time <= MARKET_CLOSE_TIME:
+                    try:
+                        open_trades = paper_trader.get_open_trades()
+                        if open_trades:
+                            live_data = await market_data_service.build_market_input()
+                            current_spot = live_data.get("nifty_spot", 0)
+                            if current_spot > 0:
+                                closed = paper_trader.check_open_trades(current_spot)
+                                for t in closed:
+                                    logger.info(
+                                        "Scheduler: trade %s %s at spot=%.0f → ₹%.0f P&L",
+                                        t.trade_id, t.status, current_spot, t.net_pnl or 0,
+                                    )
+                    except Exception as e:
+                        logger.error("Scheduler: position monitor error: %s", e)
+
+                # ── EOD Settlement ────────────────────────────────────────
+                # Close PREVIOUS-DAY trades at 15:25 IST (T+1 close exit)
+                # Today's trades survive overnight — matches backtest close-to-close
+                if not self._eod_settled_today:
+                    if _time_diff_seconds(current_time, EOD_SETTLEMENT_TIME) <= SCHEDULE_TOLERANCE_SECONDS:
+                        logger.info("Scheduler: EOD settlement time")
+                        try:
+                            live_data = await market_data_service.build_market_input()
+                            closing_spot = live_data.get("nifty_spot", 0)
+                            closing_vix = live_data.get("india_vix", 15.0)
+                            if closing_spot > 0:
+                                closed = paper_trader.close_all_eod(closing_spot, closing_vix)
+                                logger.info("Scheduler: EOD settled %d trades at spot=%.0f", len(closed), closing_spot)
+                            self._eod_settled_today = True
+                        except Exception as e:
+                            logger.error("Scheduler: EOD settlement failed: %s", e)
+
                 # Check outcome recording
                 if not self._outcome_recorded_today:
                     if _time_diff_seconds(current_time, OUTCOME_RECORD_TIME) <= SCHEDULE_TOLERANCE_SECONDS:
@@ -203,6 +253,7 @@ class SimulationScheduler:
                 logger.error("Scheduler loop error: %s", e)
                 self._last_status = f"loop_error:{e}"
                 await asyncio.sleep(60)
+
     # ── Core Logic ───────────────────────────────────────────────────────
 
     async def _run_simulation(self, trigger_label: str) -> Dict[str, Any]:
@@ -231,6 +282,7 @@ class SimulationScheduler:
         if nifty_spot <= 0:
             logger.warning("Scheduler: nifty_spot=%s, skipping run", nifty_spot)
             return {"error": "invalid_nifty_spot"}
+
         # Step 2: Run full orchestrator simulation
         try:
             orchestrator = Orchestrator()
@@ -258,7 +310,8 @@ class SimulationScheduler:
             data_warnings = []
 
         result = SimulationResult(
-            simulation_id=simulation_id,            timestamp=datetime.now(),
+            simulation_id=simulation_id,
+            timestamp=datetime.now(),
             market_input=market_input,
             agents_output=sim_result["final_outputs"],
             round_history=sim_result["round_history"],
@@ -283,13 +336,38 @@ class SimulationScheduler:
             trigger_label, direction, conviction, nifty_spot, elapsed, prediction_id,
         )
 
+        # ── Paper Trade Execution ─────────────────────────────────────
+        # If signal is BUY/SELL with sufficient conviction, open a paper trade
+        trade_id = None
+        try:
+            vix = market_input.india_vix or 15.0
+            trade = paper_trader.open_trade(
+                simulation_id=simulation_id,
+                prediction_id=prediction_id,
+                direction=direction,
+                conviction=conviction,
+                nifty_spot=nifty_spot,
+                vix=vix,
+            )
+            if trade:
+                trade_id = trade.trade_id
+                logger.info(
+                    "Scheduler: paper trade %s opened: %s %s×%d @ ₹%.1f (stop=%.0f, target=%.0f)",
+                    trade.trade_id, trade.option_type, trade.instrument,
+                    trade.lots, trade.entry_premium, trade.stop_nifty, trade.target_nifty,
+                )
+        except Exception as e:
+            logger.error("Scheduler: paper trade execution failed: %s", e)
+
         return {
             "simulation_id": simulation_id,
             "prediction_id": prediction_id,
             "direction": direction,
-            "conviction": conviction,            "nifty_spot": nifty_spot,
+            "conviction": conviction,
+            "nifty_spot": nifty_spot,
             "trigger": trigger_label,
             "elapsed_seconds": round(elapsed, 1),
+            "trade_id": trade_id,
         }
 
     async def _record_outcomes(self) -> Dict[str, Any]:
@@ -316,6 +394,7 @@ class SimulationScheduler:
 
         # Classify actual direction
         move_pct = ((nifty_close - nifty_prev_close) / nifty_prev_close) * 100
+
         if move_pct > 0.3:
             actual_direction = "BUY"  # Up day
         elif move_pct < -0.3:
@@ -344,7 +423,8 @@ class SimulationScheduler:
                 logger.error("Scheduler: outcome recording failed for %s: %s", prediction_id, e)
 
         logger.info(
-            "Scheduler outcomes: %d recorded, %d failed. NIFTY close=%.0f move=%+.2f%% → %s",            recorded, failed, nifty_close, move_pct, actual_direction,
+            "Scheduler outcomes: %d recorded, %d failed. NIFTY close=%.0f move=%+.2f%% → %s",
+            recorded, failed, nifty_close, move_pct, actual_direction,
         )
 
         return {
