@@ -37,11 +37,15 @@ logger = logging.getLogger("gods_eye.dhan_token")
 # ─── TOTP Generator (RFC 6238) ──────────────────────────────────────────────
 # Pure Python — no pyotp dependency needed.
 
-def _generate_totp(secret_base32: str, time_step: int = 30, digits: int = 6) -> str:
+def _generate_totp(secret_base32: str, time_step: int = 30, digits: int = 6, counter_offset: int = 0) -> str:
     """Generate a TOTP code from a base32-encoded secret.
 
     Implements RFC 6238 (TOTP) with RFC 4226 (HOTP) underneath.
     Compatible with Google Authenticator, Authy, etc.
+
+    Args:
+        counter_offset: Adjust the time counter by ±N steps.
+                        0 = current, -1 = previous step, +1 = next step.
     """
     import base64
 
@@ -52,8 +56,8 @@ def _generate_totp(secret_base32: str, time_step: int = 30, digits: int = 6) -> 
         secret_base32 += "=" * padding
     key = base64.b32decode(secret_base32)
 
-    # Time counter
-    counter = int(time.time()) // time_step
+    # Time counter (with optional offset for clock-skew tolerance)
+    counter = int(time.time()) // time_step + counter_offset
     counter_bytes = struct.pack(">Q", counter)
 
     # HMAC-SHA1
@@ -113,56 +117,84 @@ class DhanTokenManager:
     async def generate_token_via_totp(self) -> bool:
         """Generate a fresh 24h access token using PIN + TOTP.
 
+        Tries 3 TOTP codes to handle clock skew:
+          1. Current time step (offset 0)
+          2. Previous time step (offset -1) — covers server clock ahead
+          3. Wait 35s + next time step (offset 0 recalculated) — covers
+             boundary conditions where current code just expired
+
         Returns True on success, False on failure.
         """
         if not self.is_totp_configured:
             logger.warning("TOTP not configured: need DHAN_CLIENT_ID, DHAN_PIN, DHAN_TOTP_SECRET")
             return False
 
-        totp_code = _generate_totp(self.totp_secret)
-        logger.info(f"Generating Dhan token via TOTP for client {self.client_id}...")
-
         client = await self._ensure_client()
-        try:
-            resp = await client.post(
-                self.GENERATE_URL,
-                params={
-                    "dhanClientId": self.client_id,
-                    "pin": self.pin,
-                    "totp": totp_code,
-                },
-            )
 
-            if resp.status_code != 200:
-                logger.error(f"Dhan TOTP token generation failed: HTTP {resp.status_code} — {resp.text[:200]}")
-                return False
+        # Try current TOTP, then previous step, then wait for fresh step
+        attempts = [
+            ("current", 0, False),
+            ("previous", -1, False),
+            ("fresh (after 35s wait)", 0, True),
+        ]
 
-            data = resp.json()
-            new_token = data.get("accessToken")
-            if not new_token:
-                logger.error(f"Dhan response missing accessToken: {data}")
-                return False
+        for label, offset, should_wait in attempts:
+            if should_wait:
+                # Wait for the next TOTP window to open (max 35s)
+                import asyncio as _aio
+                wait_secs = 35 - (int(time.time()) % 30)
+                if wait_secs < 5:
+                    wait_secs += 30
+                logger.info(f"TOTP {label}: waiting {wait_secs}s for fresh window...")
+                await _aio.sleep(wait_secs)
 
-            self._access_token = new_token
-            # Parse expiry or default to 24h from now
-            expiry_str = data.get("expiryTime")
-            if expiry_str:
-                try:
-                    self._token_expiry = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
-                except Exception:
-                    self._token_expiry = datetime.utcnow() + timedelta(hours=24)
-            else:
-                self._token_expiry = datetime.utcnow() + timedelta(hours=24)
+            totp_code = _generate_totp(self.totp_secret, counter_offset=offset)
+            logger.info(f"Generating Dhan token via TOTP ({label}) for client {self.client_id}...")
 
-            # Update env var so DhanClient picks it up
-            os.environ["DHAN_ACCESS_TOKEN"] = new_token
+            try:
+                resp = await client.post(
+                    self.GENERATE_URL,
+                    params={
+                        "dhanClientId": self.client_id,
+                        "pin": self.pin,
+                        "totp": totp_code,
+                    },
+                )
 
-            logger.info(f"Dhan token generated successfully. Expires: {self._token_expiry}")
-            return True
+                if resp.status_code == 200:
+                    data = resp.json()
+                    new_token = data.get("accessToken")
+                    if new_token:
+                        self._access_token = new_token
+                        expiry_str = data.get("expiryTime")
+                        if expiry_str:
+                            try:
+                                self._token_expiry = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
+                            except Exception:
+                                self._token_expiry = datetime.utcnow() + timedelta(hours=24)
+                        else:
+                            self._token_expiry = datetime.utcnow() + timedelta(hours=24)
 
-        except Exception as e:
-            logger.error(f"Dhan TOTP token generation error: {e}")
-            return False
+                        os.environ["DHAN_ACCESS_TOKEN"] = new_token
+                        logger.info(f"Dhan token generated successfully ({label}). Expires: {self._token_expiry}")
+                        return True
+                    else:
+                        logger.warning(f"Dhan TOTP ({label}) response missing accessToken: {data}")
+                else:
+                    body = resp.text[:200]
+                    logger.warning(f"Dhan TOTP ({label}) failed: HTTP {resp.status_code} — {body}")
+
+                    # Rate limit: "Token can be generated once every 2 minutes"
+                    if "once every" in body.lower() or resp.status_code == 429:
+                        import asyncio as _aio
+                        logger.info("Dhan rate-limited — waiting 130s before retry...")
+                        await _aio.sleep(130)
+
+            except Exception as e:
+                logger.error(f"Dhan TOTP ({label}) error: {e}")
+
+        logger.error("Dhan TOTP: all 3 attempts failed")
+        return False
 
     # ─── Strategy 2: Renew existing token ─────────────────────────────────
 
