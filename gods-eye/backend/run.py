@@ -48,10 +48,14 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Add SlowAPI middleware
 app.add_middleware(SlowAPIMiddleware)
 
-# Add CORS middleware to allow frontend dev server
+# Add CORS middleware to allow frontend dev server + all Vercel preview URLs
+# allow_origin_regex matches ANY *.vercel.app subdomain so per-deployment URLs
+# (e.g. frontend-t4he387ry-aasish-muchalas-projects.vercel.app) always work
+# without needing to update CORS env var on every deploy.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
