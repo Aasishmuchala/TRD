@@ -344,18 +344,70 @@ class DhanTokenManager:
                 logger.error(f"Token renewal loop error: {e}")
                 await asyncio.sleep(300)  # Wait 5 min on error
 
+    # ─── Proactive Health Check ─────────────────────────────────────────
+
+    HEALTH_CHECK_INTERVAL = 300  # 5 minutes during market hours
+    HEALTH_CHECK_INTERVAL_OFF = 900  # 15 minutes outside market hours
+
+    async def _health_check_loop(self):
+        """Background task that proactively verifies token health.
+
+        Every 5 minutes during market hours (9:00-16:00 IST), pings Dhan
+        with a lightweight LTP call. If it returns 401, immediately refreshes.
+        This catches token expiry BEFORE a real simulation hits it.
+        """
+        await asyncio.sleep(60)  # Wait 1 min after startup before first check
+        while True:
+            try:
+                now_ist = self._utc_now_ist()
+                hour = now_ist.hour
+                # More frequent checks during/around market hours (8:30-16:30)
+                is_market_time = 8 <= hour <= 16 and now_ist.weekday() < 5
+                interval = self.HEALTH_CHECK_INTERVAL if is_market_time else self.HEALTH_CHECK_INTERVAL_OFF
+
+                from app.data.dhan_client import dhan_client
+                result = await dhan_client.health_check()
+
+                if result.get("healthy"):
+                    logger.debug("Dhan health check OK")
+                elif result.get("reason") == "token_expired":
+                    logger.warning("Dhan health check: token expired — refreshing proactively")
+                    await self.ensure_valid_token()
+                elif result.get("reason") == "circuit_breaker_open":
+                    logger.warning("Dhan health check: circuit breaker open (%d failures)",
+                                   result.get("consecutive_failures", 0))
+                elif result.get("reason") == "not_configured":
+                    pass  # Nothing to do
+                else:
+                    logger.warning("Dhan health check failed: %s", result.get("reason", "unknown"))
+
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error("Health check loop error: %s", e)
+                await asyncio.sleep(300)
+
     def start_auto_renewal(self):
-        """Start the background token renewal task."""
+        """Start the background token renewal + health check tasks."""
         if self._renewal_task is None or self._renewal_task.done():
             self._renewal_task = asyncio.create_task(self._renewal_loop())
             schedule_str = ", ".join(self.RENEWAL_SCHEDULE_IST)
             logger.info(f"Dhan token auto-renewal started (schedule: {schedule_str} IST + startup)")
 
+        # Start health check as a separate task
+        if not hasattr(self, '_health_task') or self._health_task is None or self._health_task.done():
+            self._health_task = asyncio.create_task(self._health_check_loop())
+            logger.info("Dhan proactive health-check started (every 5 min during market hours)")
+
     def stop_auto_renewal(self):
-        """Stop the background token renewal task."""
+        """Stop the background token renewal + health check tasks."""
         if self._renewal_task and not self._renewal_task.done():
             self._renewal_task.cancel()
             logger.info("Dhan token auto-renewal stopped")
+        if hasattr(self, '_health_task') and self._health_task and not self._health_task.done():
+            self._health_task.cancel()
+            logger.info("Dhan health-check stopped")
 
     async def shutdown(self):
         """Clean up resources."""

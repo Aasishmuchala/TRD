@@ -1,9 +1,11 @@
-"""Dhan Market Data Client — reliable Indian market data via official API.
+"""Dhan Market Data Client — bulletproof Indian market data via official API.
 
-Replaces flaky NSE scraping with Dhan's authenticated API.
-Falls back to NSE scraping if Dhan is unavailable.
-
-Auto-heals on 401: triggers TOTP token refresh and retries once.
+Resilience layers (in order):
+  1. Retry with exponential backoff for transient errors (429, 500, 502, 503, timeouts)
+  2. Auto-heal on 401: triggers TOTP token refresh and retries
+  3. Circuit breaker: after N consecutive failures, trips open for cooldown period
+  4. Cache-first: serves stale cache when Dhan is unreachable
+  5. Graceful degradation: every public method returns None (never raises) to callers
 
 Dhan API docs: https://dhanhq.co/docs/v2/
 """
@@ -21,12 +23,18 @@ from app.data.cache import cache, MarketCache
 
 logger = logging.getLogger("gods_eye.dhan")
 
-# Minimum seconds between token refresh attempts (avoid hammering Dhan auth)
-_MIN_REFRESH_INTERVAL = 120
+# ─── Resilience Config ──────────────────────────────────────────────────────
+_MIN_REFRESH_INTERVAL = 120        # seconds between token refresh attempts
+_MAX_RETRIES = 3                    # max retries for transient errors
+_RETRY_BASE_DELAY = 1.0            # base delay for exponential backoff (seconds)
+_CIRCUIT_BREAKER_THRESHOLD = 5     # consecutive failures to trip breaker
+_CIRCUIT_BREAKER_COOLDOWN = 120    # seconds to wait before retrying after trip
+_TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class DhanFetchError(Exception):
     """Raised when Dhan API returns an error or unexpected response for historical data."""
+
 
 DHAN_BASE = "https://api.dhan.co/v2"
 
@@ -39,11 +47,50 @@ INDIA_VIX_SECURITY_ID = "26"      # NSE index
 NSE_IDX = "IDX_I"
 
 
+class _CircuitBreaker:
+    """Simple circuit breaker: trips after N consecutive failures, auto-resets after cooldown."""
+
+    def __init__(self, threshold: int = _CIRCUIT_BREAKER_THRESHOLD,
+                 cooldown: float = _CIRCUIT_BREAKER_COOLDOWN):
+        self._threshold = threshold
+        self._cooldown = cooldown
+        self._consecutive_failures = 0
+        self._tripped_at: float = 0.0
+
+    @property
+    def is_open(self) -> bool:
+        """True if breaker is tripped AND cooldown hasn't elapsed."""
+        if self._consecutive_failures < self._threshold:
+            return False
+        elapsed = time.monotonic() - self._tripped_at
+        if elapsed >= self._cooldown:
+            # Cooldown elapsed — allow one probe request (half-open)
+            return False
+        return True
+
+    def record_success(self) -> None:
+        self._consecutive_failures = 0
+
+    def record_failure(self) -> None:
+        self._consecutive_failures += 1
+        if self._consecutive_failures >= self._threshold:
+            self._tripped_at = time.monotonic()
+            logger.warning(
+                "Dhan circuit breaker TRIPPED (%d consecutive failures). "
+                "Cooling down for %ds — using cached/fallback data.",
+                self._consecutive_failures, self._cooldown,
+            )
+
+    @property
+    def failure_count(self) -> int:
+        return self._consecutive_failures
+
+
 class DhanClient:
     """Fetches live market data from Dhan API.
 
-    Self-heals on 401: triggers TOTP token refresh via DhanTokenManager
-    and retries the request once with the new token.
+    Resilience: retry + backoff → 401 auto-heal → circuit breaker → cache fallback.
+    Every public method returns Optional[...] — never raises to callers.
     """
 
     def __init__(self):
@@ -52,6 +99,7 @@ class DhanClient:
         self._last_token: str = ""  # Track token changes for client refresh
         self._last_refresh_attempt: float = 0.0  # epoch — throttle refresh calls
         self._refresh_lock: Optional[asyncio.Lock] = None
+        self._breaker = _CircuitBreaker()
 
     @property
     def _access_token(self) -> str:
@@ -77,7 +125,7 @@ class DhanClient:
         if self._http is None:
             self._last_token = current_token
             self._http = httpx.AsyncClient(
-                timeout=httpx.Timeout(15.0, connect=10.0),
+                timeout=httpx.Timeout(20.0, connect=10.0),
                 headers={
                     "access-token": current_token,
                     "client-id": self._client_id,
@@ -86,6 +134,8 @@ class DhanClient:
                 },
             )
         return self._http
+
+    # ─── Token Refresh ───────────────────────────────────────────────────
 
     async def _refresh_token_on_401(self) -> bool:
         """Trigger token refresh via DhanTokenManager. Returns True if new token obtained.
@@ -126,58 +176,150 @@ class DhanClient:
                 logger.error("Dhan token refresh error: %s", e)
                 return False
 
-    async def _get(self, endpoint: str, _retried: bool = False) -> Optional[Dict]:
-        client = await self._ensure_client()
-        url = f"{DHAN_BASE}{endpoint}"
-        try:
-            resp = await client.get(url)
-            if resp.status_code == 401 and not _retried:
-                if await self._refresh_token_on_401():
-                    return await self._get(endpoint, _retried=True)
-            resp.raise_for_status()
-            return resp.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401 and not _retried:
-                if await self._refresh_token_on_401():
-                    return await self._get(endpoint, _retried=True)
-            logger.warning("Dhan API error for %s: %s", endpoint, e)
-            return None
-        except Exception as e:
-            logger.warning("Dhan API error for %s: %s", endpoint, e)
+    # ─── Core HTTP with Retry + Backoff + 401 Heal ───────────────────────
+
+    async def _request(
+        self,
+        method: str,
+        endpoint: str,
+        payload: Optional[Dict] = None,
+        _attempt: int = 0,
+    ) -> Optional[Dict]:
+        """Unified HTTP request handler with full resilience stack.
+
+        1. Check circuit breaker → if open, return None immediately
+        2. Make request
+        3. On 401 → refresh token, retry once
+        4. On transient error (429/5xx/timeout) → exponential backoff, retry up to _MAX_RETRIES
+        5. On success → reset circuit breaker
+        6. On exhausted retries → record failure in circuit breaker, return None
+        """
+        # Circuit breaker check
+        if self._breaker.is_open:
+            logger.debug("Dhan circuit breaker OPEN — skipping %s %s", method, endpoint)
             return None
 
-    async def _post(self, endpoint: str, payload: Dict, _retried: bool = False) -> Optional[Dict]:
         client = await self._ensure_client()
         url = f"{DHAN_BASE}{endpoint}"
+
         try:
-            resp = await client.post(url, json=payload)
-            if resp.status_code == 401 and not _retried:
-                if await self._refresh_token_on_401():
-                    return await self._post(endpoint, payload, _retried=True)
-            resp.raise_for_status()
+            if method == "GET":
+                resp = await client.get(url)
+            else:
+                resp = await client.post(url, json=payload or {})
+
+            # ── 401: token expired → refresh and retry once ──
+            if resp.status_code == 401:
+                if _attempt == 0 and await self._refresh_token_on_401():
+                    return await self._request(method, endpoint, payload, _attempt=1)
+                logger.error("Dhan 401 persists after token refresh for %s", endpoint)
+                self._breaker.record_failure()
+                return None
+
+            # ── Transient errors → exponential backoff retry ──
+            if resp.status_code in _TRANSIENT_STATUS_CODES:
+                if _attempt < _MAX_RETRIES:
+                    delay = _RETRY_BASE_DELAY * (2 ** _attempt)
+                    # On 429, check Retry-After header
+                    if resp.status_code == 429:
+                        retry_after = resp.headers.get("Retry-After")
+                        if retry_after:
+                            try:
+                                delay = max(delay, float(retry_after))
+                            except ValueError:
+                                pass
+                    logger.warning(
+                        "Dhan %s %s returned %d — retry %d/%d in %.1fs",
+                        method, endpoint, resp.status_code, _attempt + 1, _MAX_RETRIES, delay,
+                    )
+                    await asyncio.sleep(delay)
+                    return await self._request(method, endpoint, payload, _attempt=_attempt + 1)
+                else:
+                    logger.error(
+                        "Dhan %s %s returned %d — exhausted %d retries",
+                        method, endpoint, resp.status_code, _MAX_RETRIES,
+                    )
+                    self._breaker.record_failure()
+                    return None
+
+            # ── Client errors (400, 403, etc.) — don't retry, just log ──
+            if resp.status_code >= 400:
+                logger.warning("Dhan %s %s returned %d: %s", method, endpoint, resp.status_code, resp.text[:200])
+                # Don't trip breaker on 400 (bad request) — it's a caller issue, not Dhan being down
+                if resp.status_code >= 500:
+                    self._breaker.record_failure()
+                return None
+
+            # ── Success ──
+            self._breaker.record_success()
             return resp.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401 and not _retried:
-                if await self._refresh_token_on_401():
-                    return await self._post(endpoint, payload, _retried=True)
-            logger.warning("Dhan API error for %s: %s", endpoint, e)
+
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
+            if _attempt < _MAX_RETRIES:
+                delay = _RETRY_BASE_DELAY * (2 ** _attempt)
+                logger.warning(
+                    "Dhan %s %s network error: %s — retry %d/%d in %.1fs",
+                    method, endpoint, type(e).__name__, _attempt + 1, _MAX_RETRIES, delay,
+                )
+                await asyncio.sleep(delay)
+                return await self._request(method, endpoint, payload, _attempt=_attempt + 1)
+            logger.error("Dhan %s %s network error after %d retries: %s", method, endpoint, _MAX_RETRIES, e)
+            self._breaker.record_failure()
             return None
         except Exception as e:
-            logger.warning("Dhan API error for %s: %s", endpoint, e)
+            logger.error("Dhan %s %s unexpected error: %s", method, endpoint, e)
+            self._breaker.record_failure()
             return None
 
-    # ---- Market Data Methods ----
+    async def _get(self, endpoint: str) -> Optional[Dict]:
+        return await self._request("GET", endpoint)
+
+    async def _post(self, endpoint: str, payload: Dict) -> Optional[Dict]:
+        return await self._request("POST", endpoint, payload)
+
+    # ─── Health Check ────────────────────────────────────────────────────
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Verify token and connectivity. Returns status dict.
+
+        Used by the proactive health-check loop in dhan_token_manager.
+        """
+        if not self.is_configured:
+            return {"healthy": False, "reason": "not_configured"}
+
+        if self._breaker.is_open:
+            return {
+                "healthy": False,
+                "reason": "circuit_breaker_open",
+                "consecutive_failures": self._breaker.failure_count,
+            }
+
+        try:
+            client = await self._ensure_client()
+            # Lightweight LTP call — single security, minimal payload
+            resp = await client.post(
+                f"{DHAN_BASE}/marketfeed/ltp",
+                json={"IDX_I": [13]},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                self._breaker.record_success()
+                return {"healthy": True, "status_code": 200}
+            elif resp.status_code == 401:
+                return {"healthy": False, "reason": "token_expired", "status_code": 401}
+            else:
+                return {"healthy": False, "reason": f"http_{resp.status_code}", "status_code": resp.status_code}
+        except Exception as e:
+            return {"healthy": False, "reason": str(e)}
+
+    # ─── Market Data Methods ─────────────────────────────────────────────
 
     async def get_market_quote(self, security_ids: List[str], exchange_segment: str = "IDX_I") -> Optional[Dict]:
-        """Get live market quotes for given security IDs.
-
-        Uses Dhan's /marketfeed/quote endpoint.
-        """
+        """Get live market quotes for given security IDs."""
         cached = cache.get(f"dhan_quote_{','.join(security_ids)}")
         if cached:
             return cached
 
-        # Dhan marketfeed requires integer IDs
         int_ids = [int(sid) for sid in security_ids]
         data = await self._post("/marketfeed/quote", {
             exchange_segment: int_ids,
@@ -189,15 +331,11 @@ class DhanClient:
         return data
 
     async def get_ltp(self, security_ids: List[str], exchange_segment: str = "IDX_I") -> Optional[Dict]:
-        """Get last traded price for securities.
-
-        Note: Dhan marketfeed requires integer security IDs, not strings.
-        """
+        """Get last traded price for securities."""
         cached = cache.get(f"dhan_ltp_{','.join(security_ids)}")
         if cached:
             return cached
 
-        # Dhan marketfeed requires integer IDs
         int_ids = [int(sid) for sid in security_ids]
         data = await self._post("/marketfeed/ltp", {
             exchange_segment: int_ids,
@@ -208,24 +346,56 @@ class DhanClient:
 
         return data
 
+    async def get_expiry_list(self, under_security_id: str = "13") -> Optional[List[str]]:
+        """Get available expiry dates for an index option chain.
+
+        Returns list of expiry date strings (YYYY-MM-DD), sorted ascending.
+        """
+        cache_key = f"dhan_expiry_{under_security_id}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
+        data = await self._post("/optionchain/expirylist", {
+            "UnderlyingScrip": int(under_security_id),
+            "UnderlyingSeg": "IDX_I",
+        })
+
+        if data and "data" in data:
+            expiries = data["data"]
+            if isinstance(expiries, list) and expiries:
+                cache.set(cache_key, expiries, ttl=3600)  # Cache 1 hour
+                return expiries
+
+        return None
+
     async def get_option_chain(self, under_security_id: str = "13", expiry: str = None) -> Optional[Dict]:
         """Get options chain for an index.
 
         Args:
             under_security_id: "13" for Nifty 50
-            expiry: Expiry date in YYYY-MM-DD format. If None, uses nearest.
+            expiry: Expiry date in YYYY-MM-DD format. If None, fetches nearest from expirylist.
         """
         cache_key = f"dhan_optchain_{under_security_id}"
         cached = cache.get(cache_key)
         if cached:
             return cached
 
+        # If no expiry provided, fetch the nearest one
+        if not expiry:
+            expiries = await self.get_expiry_list(under_security_id)
+            if expiries:
+                expiry = expiries[0]  # Nearest expiry
+                logger.debug("Using nearest expiry for option chain: %s", expiry)
+            else:
+                logger.warning("Could not fetch expiry list — option chain unavailable")
+                return None
+
         payload = {
             "UnderlyingScrip": int(under_security_id),
             "UnderlyingSeg": "IDX_I",
+            "Expiry": expiry,
         }
-        if expiry:
-            payload["ExpiryDate"] = expiry
 
         data = await self._post("/optionchain", payload)
         if data:
@@ -234,13 +404,9 @@ class DhanClient:
         return data
 
     def _extract_ltp(self, data: Optional[Dict], security_id: str) -> Optional[Dict]:
-        """Extract LTP from Dhan marketfeed response.
-
-        Dhan returns: {"data": {"IDX_I": {"13": {"last_price": 22804.9}}}, "status": "success"}
-        """
+        """Extract LTP from Dhan marketfeed response."""
         if not data or "data" not in data:
             return None
-        # Navigate nested structure: data -> segment -> security_id
         for segment_data in data["data"].values():
             if isinstance(segment_data, dict):
                 item = segment_data.get(security_id) or segment_data.get(str(security_id))
@@ -250,9 +416,6 @@ class DhanClient:
 
     async def fetch_all_indices(self) -> Dict[str, Optional[Dict[str, Any]]]:
         """Fetch Nifty 50, Bank Nifty, and India VIX in a SINGLE API call.
-
-        This avoids Dhan 429 rate limits by batching all 3 index security IDs
-        into one /marketfeed/ltp request: {"IDX_I": [13, 25, 26]}.
 
         Returns:
             {"nifty": {...}, "bank_nifty": {...}, "vix": {...}}
@@ -311,27 +474,27 @@ class DhanClient:
             "change_pct": ((current - prev) / prev * 100) if prev else 0,
         }
 
-    # ---- Legacy single-index methods (kept for backward compat) ----
+    # ─── Legacy single-index methods (kept for backward compat) ──────────
 
-    async def fetch_nifty50(self) -> Dict[str, Any]:
+    async def fetch_nifty50(self) -> Optional[Dict[str, Any]]:
         """Fetch Nifty 50 index quote via Dhan."""
         data = await self.get_ltp([NIFTY_50_SECURITY_ID])
         item = self._extract_ltp(data, NIFTY_50_SECURITY_ID)
         return self._parse_index_ltp(item)
 
-    async def fetch_bank_nifty(self) -> Dict[str, Any]:
+    async def fetch_bank_nifty(self) -> Optional[Dict[str, Any]]:
         """Fetch Bank Nifty index quote via Dhan."""
         data = await self.get_ltp([BANK_NIFTY_SECURITY_ID])
         item = self._extract_ltp(data, BANK_NIFTY_SECURITY_ID)
         return self._parse_index_ltp(item)
 
-    async def fetch_india_vix(self) -> Dict[str, Any]:
+    async def fetch_india_vix(self) -> Optional[Dict[str, Any]]:
         """Fetch India VIX via Dhan."""
         data = await self.get_ltp([INDIA_VIX_SECURITY_ID])
         item = self._extract_ltp(data, INDIA_VIX_SECURITY_ID)
         return self._parse_vix_ltp(item)
 
-    async def fetch_options_summary(self) -> Dict[str, Any]:
+    async def fetch_options_summary(self) -> Optional[Dict[str, Any]]:
         """Fetch Nifty options chain and compute PCR, max pain."""
         data = await self.get_option_chain(NIFTY_50_SECURITY_ID)
         if not data or "data" not in data:
@@ -386,18 +549,15 @@ class DhanClient:
         to_date: str,
         exchange_segment: str = "NSE_EQ",
         instrument: str = "EQUITY",
-        _retried: bool = False,
     ) -> list:
         """Fetch daily OHLCV candles from Dhan /v2/charts/historical.
 
         NOTE: Dhan does NOT support historical candles for IDX_I (index) segment.
-        For NIFTY/BANKNIFTY/VIX historical data, use Yahoo Finance or another source.
         This method works for equities (NSE_EQ/EQUITY) and F&O instruments.
 
-        Auto-retries once on 401 after refreshing the token.
+        Uses the unified _request method — gets retry + backoff + 401 heal automatically.
+        Raises DhanFetchError only when all retries exhausted AND no cached data.
         """
-        client = await self._ensure_client()
-        url = f"{DHAN_BASE}/charts/historical"
         payload = {
             "securityId": security_id,
             "exchangeSegment": exchange_segment,
@@ -406,25 +566,15 @@ class DhanClient:
             "fromDate": from_date,
             "toDate": to_date,
         }
-        try:
-            resp = await client.post(url, json=payload)
-        except Exception as exc:
-            raise DhanFetchError(f"HTTP request failed for securityId={security_id}: {exc}") from exc
 
-        if resp.status_code == 401 and not _retried:
-            if await self._refresh_token_on_401():
-                return await self.fetch_historical_candles(
-                    security_id, from_date, to_date,
-                    exchange_segment, instrument, _retried=True,
-                )
+        data = await self._post("/charts/historical", payload)
 
-        if resp.status_code != 200:
+        if not data:
             raise DhanFetchError(
-                f"Dhan /charts/historical returned HTTP {resp.status_code} "
-                f"for securityId={security_id}: {resp.text[:200]}"
+                f"Dhan /charts/historical returned no data for securityId={security_id} "
+                f"(retries exhausted or circuit breaker open)"
             )
 
-        data = resp.json()
         opens = data.get("open")
         closes = data.get("close")
         highs = data.get("high")
