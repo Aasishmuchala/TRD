@@ -3,12 +3,15 @@
 Replaces flaky NSE scraping with Dhan's authenticated API.
 Falls back to NSE scraping if Dhan is unavailable.
 
+Auto-heals on 401: triggers TOTP token refresh and retries once.
+
 Dhan API docs: https://dhanhq.co/docs/v2/
 """
 
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -17,6 +20,9 @@ import httpx
 from app.data.cache import cache, MarketCache
 
 logger = logging.getLogger("gods_eye.dhan")
+
+# Minimum seconds between token refresh attempts (avoid hammering Dhan auth)
+_MIN_REFRESH_INTERVAL = 120
 
 
 class DhanFetchError(Exception):
@@ -34,12 +40,18 @@ NSE_IDX = "IDX_I"
 
 
 class DhanClient:
-    """Fetches live market data from Dhan API."""
+    """Fetches live market data from Dhan API.
+
+    Self-heals on 401: triggers TOTP token refresh via DhanTokenManager
+    and retries the request once with the new token.
+    """
 
     def __init__(self):
         self._client_id = os.getenv("DHAN_CLIENT_ID", "")
         self._http: Optional[httpx.AsyncClient] = None
         self._last_token: str = ""  # Track token changes for client refresh
+        self._last_refresh_attempt: float = 0.0  # epoch — throttle refresh calls
+        self._refresh_lock: Optional[asyncio.Lock] = None
 
     @property
     def _access_token(self) -> str:
@@ -49,6 +61,12 @@ class DhanClient:
     @property
     def is_configured(self) -> bool:
         return bool(self._access_token and self._client_id)
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Lazy-init asyncio.Lock (must be created inside a running loop)."""
+        if self._refresh_lock is None:
+            self._refresh_lock = asyncio.Lock()
+        return self._refresh_lock
 
     async def _ensure_client(self) -> httpx.AsyncClient:
         current_token = self._access_token
@@ -69,26 +87,83 @@ class DhanClient:
             )
         return self._http
 
-    async def _get(self, endpoint: str) -> Optional[Dict]:
+    async def _refresh_token_on_401(self) -> bool:
+        """Trigger token refresh via DhanTokenManager. Returns True if new token obtained.
+
+        Throttled: at most once per _MIN_REFRESH_INTERVAL seconds.
+        Serialized: only one refresh at a time (asyncio.Lock).
+        """
+        now = time.monotonic()
+        if now - self._last_refresh_attempt < _MIN_REFRESH_INTERVAL:
+            logger.debug("Dhan 401 refresh throttled (last attempt %.0fs ago)", now - self._last_refresh_attempt)
+            return False
+
+        lock = self._get_lock()
+        if lock.locked():
+            # Another coroutine is already refreshing — wait for it
+            async with lock:
+                return bool(self._access_token)
+
+        async with lock:
+            self._last_refresh_attempt = time.monotonic()
+            try:
+                from app.auth.dhan_token_manager import dhan_token_manager
+                old_token = self._access_token[:20] if self._access_token else "(empty)"
+                logger.warning("Dhan 401 detected — triggering token refresh (old token starts: %s...)", old_token)
+                success = await dhan_token_manager.ensure_valid_token()
+                if success:
+                    new_token = self._access_token
+                    logger.info("Dhan token refreshed successfully (new token starts: %s...)", new_token[:20])
+                    # Force httpx client rebuild on next call
+                    if self._http is not None:
+                        await self._http.aclose()
+                        self._http = None
+                    return True
+                else:
+                    logger.error("Dhan token refresh failed — all strategies exhausted")
+                    return False
+            except Exception as e:
+                logger.error("Dhan token refresh error: %s", e)
+                return False
+
+    async def _get(self, endpoint: str, _retried: bool = False) -> Optional[Dict]:
         client = await self._ensure_client()
         url = f"{DHAN_BASE}{endpoint}"
         try:
             resp = await client.get(url)
+            if resp.status_code == 401 and not _retried:
+                if await self._refresh_token_on_401():
+                    return await self._get(endpoint, _retried=True)
             resp.raise_for_status()
             return resp.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401 and not _retried:
+                if await self._refresh_token_on_401():
+                    return await self._get(endpoint, _retried=True)
+            logger.warning("Dhan API error for %s: %s", endpoint, e)
+            return None
         except Exception as e:
-            logger.warning(f"Dhan API error for {endpoint}: {e}")
+            logger.warning("Dhan API error for %s: %s", endpoint, e)
             return None
 
-    async def _post(self, endpoint: str, payload: Dict) -> Optional[Dict]:
+    async def _post(self, endpoint: str, payload: Dict, _retried: bool = False) -> Optional[Dict]:
         client = await self._ensure_client()
         url = f"{DHAN_BASE}{endpoint}"
         try:
             resp = await client.post(url, json=payload)
+            if resp.status_code == 401 and not _retried:
+                if await self._refresh_token_on_401():
+                    return await self._post(endpoint, payload, _retried=True)
             resp.raise_for_status()
             return resp.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401 and not _retried:
+                if await self._refresh_token_on_401():
+                    return await self._post(endpoint, payload, _retried=True)
+            logger.warning("Dhan API error for %s: %s", endpoint, e)
+            return None
         except Exception as e:
-            logger.warning(f"Dhan API error for {endpoint}: {e}")
+            logger.warning("Dhan API error for %s: %s", endpoint, e)
             return None
 
     # ---- Market Data Methods ----
@@ -311,6 +386,7 @@ class DhanClient:
         to_date: str,
         exchange_segment: str = "NSE_EQ",
         instrument: str = "EQUITY",
+        _retried: bool = False,
     ) -> list:
         """Fetch daily OHLCV candles from Dhan /v2/charts/historical.
 
@@ -318,19 +394,7 @@ class DhanClient:
         For NIFTY/BANKNIFTY/VIX historical data, use Yahoo Finance or another source.
         This method works for equities (NSE_EQ/EQUITY) and F&O instruments.
 
-        Args:
-            security_id: Dhan security ID (e.g., "2885" for Reliance)
-            from_date: "YYYY-MM-DD" (max 90-day range per request)
-            to_date: "YYYY-MM-DD"
-            exchange_segment: "NSE_EQ", "BSE_EQ", "NSE_FNO", etc. (NOT "IDX_I")
-            instrument: "EQUITY", "FUTSTK", "FUTIDX", etc. (NOT "INDEX")
-
-        Returns:
-            List of {"date": "YYYY-MM-DD", "open": float, "high": float,
-                     "low": float, "close": float, "volume": int}
-
-        Raises:
-            DhanFetchError: If Dhan returns non-200 or response is missing OHLCV arrays.
+        Auto-retries once on 401 after refreshing the token.
         """
         client = await self._ensure_client()
         url = f"{DHAN_BASE}/charts/historical"
@@ -346,6 +410,13 @@ class DhanClient:
             resp = await client.post(url, json=payload)
         except Exception as exc:
             raise DhanFetchError(f"HTTP request failed for securityId={security_id}: {exc}") from exc
+
+        if resp.status_code == 401 and not _retried:
+            if await self._refresh_token_on_401():
+                return await self.fetch_historical_candles(
+                    security_id, from_date, to_date,
+                    exchange_segment, instrument, _retried=True,
+                )
 
         if resp.status_code != 200:
             raise DhanFetchError(
