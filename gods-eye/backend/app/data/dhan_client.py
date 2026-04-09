@@ -497,66 +497,62 @@ class DhanClient:
     async def fetch_options_summary(self) -> Optional[Dict[str, Any]]:
         """Fetch Nifty options chain and compute PCR, max pain.
 
-        Handles multiple Dhan response formats:
-          - {"data": [{"strike_price": ..., "oi": ..., "option_type": "CE"}, ...]}  (list of dicts)
-          - {"data": {"22500": {"ce_oi": ..., "pe_oi": ...}, ...}}  (dict keyed by strike)
+        Dhan /optionchain response structure varies. This method logs the
+        top-level keys on first call and adapts to the actual format.
         """
         data = await self.get_option_chain(NIFTY_50_SECURITY_ID)
         if not data:
             return None
 
-        # Extract chain data — handle different response structures
-        chain = data.get("data")
+        # Log full response keys for debugging (only top-level)
+        logger.info("Option chain response keys: %s", list(data.keys()))
+
+        # Try multiple possible locations for chain rows
+        chain = None
+        for key in ("data", "optionChain", "option_chain", "oc", "options"):
+            candidate = data.get(key)
+            if isinstance(candidate, list) and candidate:
+                chain = candidate
+                logger.info("Option chain rows found under key '%s' (%d items)", key, len(chain))
+                break
+
         if chain is None:
-            logger.warning("Option chain response has no 'data' key. Keys: %s", list(data.keys()))
-            return None
+            # Maybe the entire response IS the list
+            if isinstance(data, list):
+                chain = data
+            else:
+                logger.warning(
+                    "Option chain: no list of rows found. Top-level keys: %s, "
+                    "data type: %s, sample: %s",
+                    list(data.keys()),
+                    type(data.get("data")).__name__ if "data" in data else "N/A",
+                    str(data)[:300],
+                )
+                return None
 
         total_call_oi = 0
         total_put_oi = 0
         strike_pain = {}
 
         try:
-            if isinstance(chain, list):
-                # Format: list of option row dicts
-                for row in chain:
-                    if not isinstance(row, dict):
-                        continue
-                    strike = row.get("strike_price", 0) or row.get("strikePrice", 0)
-                    oi = row.get("oi", 0) or row.get("openInterest", 0) or 0
-                    opt_type = str(row.get("option_type", "") or row.get("optionType", "")).upper()
+            for row in chain:
+                if not isinstance(row, dict):
+                    continue
+                # Dhan uses various key names across API versions
+                strike = row.get("strike_price", 0) or row.get("strikePrice", 0) or row.get("StrikePrice", 0)
+                oi = row.get("oi", 0) or row.get("openInterest", 0) or row.get("OI", 0) or 0
+                opt_type = str(
+                    row.get("option_type", "") or row.get("optionType", "") or row.get("OptionType", "")
+                ).upper()
 
-                    if opt_type == "CE":
-                        total_call_oi += oi
-                        strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
-                        strike_pain[strike]["ce_oi"] = oi
-                    elif opt_type == "PE":
-                        total_put_oi += oi
-                        strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
-                        strike_pain[strike]["pe_oi"] = oi
-
-            elif isinstance(chain, dict):
-                # Format: dict keyed by strike or other structure
-                # Log first key for debugging, then try to parse
-                sample_key = next(iter(chain), None)
-                sample_val = chain.get(sample_key) if sample_key else None
-                logger.info("Option chain dict format — sample key: %s, sample val type: %s",
-                            sample_key, type(sample_val).__name__)
-
-                for key, val in chain.items():
-                    if isinstance(val, dict):
-                        # Might be {"22500": {"ce_oi": 100, "pe_oi": 200}} format
-                        try:
-                            strike = float(key)
-                        except (ValueError, TypeError):
-                            continue
-                        ce_oi = val.get("ce_oi", 0) or val.get("call_oi", 0) or 0
-                        pe_oi = val.get("pe_oi", 0) or val.get("put_oi", 0) or 0
-                        total_call_oi += ce_oi
-                        total_put_oi += pe_oi
-                        strike_pain[strike] = {"ce_oi": ce_oi, "pe_oi": pe_oi}
-            else:
-                logger.warning("Unexpected option chain data type: %s", type(chain).__name__)
-                return None
+                if opt_type == "CE" or opt_type == "CALL":
+                    total_call_oi += oi
+                    strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
+                    strike_pain[strike]["ce_oi"] = oi
+                elif opt_type == "PE" or opt_type == "PUT":
+                    total_put_oi += oi
+                    strike_pain.setdefault(strike, {"ce_oi": 0, "pe_oi": 0})
+                    strike_pain[strike]["pe_oi"] = oi
 
         except Exception as e:
             logger.error("Error parsing option chain: %s", e)
