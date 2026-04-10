@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-// Layout provided by App.jsx
+import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 
 export default function PaperTrading() {
@@ -85,11 +85,11 @@ export default function PaperTrading() {
 
   if (loading) {
     return (
-      <>
+      <Layout>
         <div className="flex items-center justify-center h-[calc(100vh-2.5rem)]">
           <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING PAPER TRADING...</span>
         </div>
-      </>
+      </Layout>
     )
   }
 
@@ -106,7 +106,7 @@ export default function PaperTrading() {
   const totalPnl = realizedPnl + unrealizedPnl
 
   return (
-    <>
+    <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
         {fetchError && (
           <div className="terminal-card p-3 border-l-2 border-bear mb-4">
@@ -351,6 +351,6 @@ export default function PaperTrading() {
           </div>
         </div>
       </div>
-    </>
+    </Layout>
   )
 }
