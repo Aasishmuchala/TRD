@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Layout from '../components/Layout'
+// Layout provided by App.jsx
 import { apiClient } from '../api/client'
 
 export default function PaperTrading() {
@@ -8,17 +8,37 @@ export default function PaperTrading() {
   const [openTrades, setOpenTrades] = useState([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(null)
+  const [liveSpot, setLiveSpot] = useState(null)
+
+  // Estimate current option premium from spot move (delta ≈ 0.5 for ATM)
+  const estimatePremium = (trade, currentSpot) => {
+    if (!currentSpot || !trade.entry_spot || !trade.entry_premium) return null
+    const spotDelta = currentSpot - trade.entry_spot
+    const direction = trade.option_type === 'CE' ? 1 : -1
+    const delta = 0.5  // ATM approximation
+    const estimated = trade.entry_premium + (spotDelta * direction * delta)
+    return Math.max(estimated, 0) // Premium can't go below 0
+  }
+
+  const getUnrealizedPnl = (trade, currentSpot) => {
+    const currentPremium = estimatePremium(trade, currentSpot)
+    if (currentPremium == null) return null
+    const qty = (trade.lots || 1) * (trade.lot_size || 25)
+    return (currentPremium - trade.entry_premium) * qty
+  }
 
   const fetchData = async () => {
     try {
-      const [tradesData, summaryData] = await Promise.all([
+      const [tradesData, summaryData, marketData] = await Promise.all([
         apiClient.getPaperTrades({ limit: 50 }),
         apiClient.getPaperSummary().catch(() => null),
+        apiClient.getMarketLive().catch(() => null),
       ])
       const allTrades = tradesData.trades || tradesData || []
       setTrades(allTrades)
       if (summaryData) setPnl(summaryData)
       setOpenTrades(allTrades.filter(t => t.status === 'OPEN'))
+      if (marketData?.nifty_spot) setLiveSpot(marketData.nifty_spot)
     } catch (err) {
       setFetchError(err.message || 'Failed to load paper trades')
     } finally {
@@ -27,7 +47,7 @@ export default function PaperTrading() {
   }
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 30000) // Refresh every 30s
+    const interval = setInterval(fetchData, 15000) // Refresh every 15s for live P&L
     return () => clearInterval(interval)
   }, [])
 
@@ -40,11 +60,11 @@ export default function PaperTrading() {
 
   const statusColor = (status) => {
     switch (status) {
-      case 'OPEN': return '#00D4E0'
+      case 'OPEN': return '#A89AFF'
       case 'TARGET_HIT': return '#00E676'
       case 'STOPPED': return '#FF1744'
       case 'CLOSED_EOD': return '#FFC107'
-      default: return '#8B95A5'
+      default: return '#928F9F'
     }
   }
 
@@ -65,21 +85,28 @@ export default function PaperTrading() {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div className="flex items-center justify-center h-[calc(100vh-2.5rem)]">
           <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING PAPER TRADING...</span>
         </div>
-      </Layout>
+      </>
     )
   }
 
   const totalTrades = pnl?.total_trades || 0
   const winRate = pnl?.win_rate_pct || 0
-  const totalPnl = pnl?.total_pnl_inr || 0
+  const realizedPnl = pnl?.total_pnl_inr || 0
   const capital = pnl?.capital || 20000
 
+  // Calculate total unrealized P&L across open positions
+  const unrealizedPnl = openTrades.reduce((sum, t) => {
+    const pnl = getUnrealizedPnl(t, liveSpot)
+    return sum + (pnl || 0)
+  }, 0)
+  const totalPnl = realizedPnl + unrealizedPnl
+
   return (
-    <Layout>
+    <>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
         {fetchError && (
           <div className="terminal-card p-3 border-l-2 border-bear mb-4">
@@ -99,9 +126,16 @@ export default function PaperTrading() {
             <span className={`text-lg font-bold font-mono ${totalPnl >= 0 ? 'text-bull' : 'text-bear'}`}>
               {formatINR(totalPnl)}
             </span>
-            <span className={`text-[10px] font-mono block ${totalPnl >= 0 ? 'text-bull' : 'text-bear'}`}>
-              {pnl?.total_return_pct || 0}%
-            </span>
+            {unrealizedPnl !== 0 && (
+              <span className={`text-[9px] font-mono block ${unrealizedPnl >= 0 ? 'text-bull/70' : 'text-bear/70'}`}>
+                Unrealized: {formatINR(unrealizedPnl)}
+              </span>
+            )}
+            {liveSpot && (
+              <span className="text-[9px] font-mono text-onSurfaceDim block">
+                Spot: {liveSpot.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+              </span>
+            )}
           </div>
           <div className="terminal-card p-4 text-center">
             <span className="text-[10px] font-mono text-onSurfaceDim block">TRADES</span>
@@ -171,6 +205,23 @@ export default function PaperTrading() {
                       <p className="text-bull">{trade.target_nifty?.toFixed(0)}</p>
                     </div>
                   </div>
+                  {/* Live P&L estimation */}
+                  {liveSpot && (() => {
+                    const curPrem = estimatePremium(trade, liveSpot)
+                    const uPnl = getUnrealizedPnl(trade, liveSpot)
+                    return curPrem != null ? (
+                      <div className="mt-2 pt-2 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between text-[10px] font-mono">
+                        <div>
+                          <span className="text-onSurfaceDim">Current: </span>
+                          <span className="text-primary font-bold">₹{curPrem.toFixed(1)}</span>
+                          <span className="text-onSurfaceDim ml-1">@{liveSpot.toFixed(0)}</span>
+                        </div>
+                        <span className={`font-bold ${uPnl >= 0 ? 'text-bull' : 'text-bear'}`}>
+                          {formatINR(uPnl)}
+                        </span>
+                      </div>
+                    ) : null
+                  })()}
                   <div className="mt-2 text-[9px] font-mono text-onSurfaceDim">
                     Cost: ₹{trade.entry_cost?.toLocaleString('en-IN')} · Conv: {trade.conviction?.toFixed(0)}%
                   </div>
@@ -300,6 +351,6 @@ export default function PaperTrading() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   )
 }
