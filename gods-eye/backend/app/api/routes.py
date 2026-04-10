@@ -46,6 +46,7 @@ from app.data.historical_store import historical_store
 from app.data.dhan_client import DhanFetchError
 from app.data.technical_signals import technical_signals, TechnicalSignals
 from app.config import config
+from app.engine.paper_trader import paper_trader, PaperTrade
 
 # Public router for health checks and auth endpoints
 router = APIRouter(prefix="/api", tags=["health", "auth"])
@@ -1485,53 +1486,118 @@ async def scheduler_record_outcomes():
     return result
 
 
-# ── Paper Trades Endpoints ─────────────────────────────────────────────────
+# ─── Paper Trading endpoints ────────────────────────────────────────────────
+
+def _trade_to_dict(trade: PaperTrade) -> dict:
+    """Convert PaperTrade dataclass to JSON-serializable dict."""
+    return {
+        "trade_id": trade.trade_id,
+        "simulation_id": trade.simulation_id,
+        "prediction_id": trade.prediction_id,
+        "timestamp": trade.timestamp,
+        "date_ist": trade.date_ist,
+        "direction": trade.direction,
+        "conviction": trade.conviction,
+        "instrument": trade.instrument,
+        "option_type": trade.option_type,
+        "lot_size": trade.lot_size,
+        "lots": trade.lots,
+        "dte": trade.dte,
+        "entry_spot": trade.entry_spot,
+        "entry_premium": trade.entry_premium,
+        "stop_price": trade.stop_price,
+        "target_price": trade.target_price,
+        "stop_nifty": trade.stop_nifty,
+        "target_nifty": trade.target_nifty,
+        "entry_cost": trade.entry_cost,
+        "status": trade.status,
+        "exit_premium": trade.exit_premium,
+        "exit_spot": trade.exit_spot,        "exit_timestamp": trade.exit_timestamp,
+        "exit_reason": trade.exit_reason,
+        "exit_value": trade.exit_value,
+        "gross_pnl": trade.gross_pnl,
+        "brokerage": trade.brokerage,
+        "net_pnl": trade.net_pnl,
+        "return_pct": trade.return_pct,
+    }
+
 
 @protected_router.get("/paper-trades")
-async def get_paper_trades(status: str = "all", limit: int = 50, offset: int = 0):
-    """Get paper trade history.
-
-    Args:
-        status: "all", "open", "closed", or "today"
-        limit: max trades to return
-        offset: pagination offset
-    """
-    from app.engine.paper_trader import paper_trader
-
-    if status == "open":
-        trades = paper_trader.get_open_trades()
-    elif status == "today":
-        trades = paper_trader.get_today_trades()
-    else:
+async def get_paper_trades(limit: int = 50, offset: int = 0):
+    """Get paper trade history with pagination."""
+    try:
         trades = paper_trader.get_trade_history(limit=limit, offset=offset)
+        return {
+            "trades": [_trade_to_dict(t) for t in trades],
+            "count": len(trades),
+        }
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
-    from dataclasses import asdict
-    return {
-        "count": len(trades),
-        "status_filter": status,
-        "trades": [asdict(t) for t in trades],
-    }
+
+@protected_router.get("/paper-trades/open")
+async def get_open_paper_trades():
+    """Get all currently open paper trades."""
+    try:
+        trades = paper_trader.get_open_trades()
+        return {
+            "trades": [_trade_to_dict(t) for t in trades],            "count": len(trades),
+        }
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
 
-@protected_router.get("/paper-trades/summary")
-async def paper_trades_summary():
-    """Get paper trading summary — total P&L, win rate, trade count."""
-    from app.engine.paper_trader import paper_trader
+@protected_router.get("/paper-trades/today")
+async def get_today_paper_trades():
+    """Get all paper trades for today (IST)."""
+    try:
+        trades = paper_trader.get_today_trades()
+        return {
+            "trades": [_trade_to_dict(t) for t in trades],
+            "count": len(trades),
+        }
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
-    all_trades = paper_trader.get_trade_history(limit=500)
-    open_trades = [t for t in all_trades if t.status == "OPEN"]
-    closed_trades = [t for t in all_trades if t.status != "OPEN"]
 
-    total_pnl = sum(t.net_pnl or 0 for t in closed_trades)
-    winners = [t for t in closed_trades if (t.net_pnl or 0) > 0]
-    win_rate = (len(winners) / len(closed_trades) * 100) if closed_trades else 0.0
+@protected_router.get("/paper-trades/pnl")
+async def get_paper_trade_pnl(days: int = 30):
+    """Get P&L summary for paper trades over the last N days."""
+    try:
+        summary = paper_trader.get_pnl_summary(days=days)
+        return summary
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
-    return {
-        "total_trades": len(all_trades),
-        "open_trades": len(open_trades),
-        "closed_trades": len(closed_trades),
-        "total_pnl_inr": round(total_pnl, 2),
-        "win_rate_pct": round(win_rate, 1),
-        "winners": len(winners),
-        "losers": len(closed_trades) - len(winners),
-    }
+@protected_router.get("/paper-trades/{trade_id}")
+async def get_paper_trade(trade_id: str):
+    """Get a specific paper trade by ID."""
+    try:
+        trade = paper_trader.get_trade_by_id(trade_id)
+        if not trade:
+            raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found")
+        return _trade_to_dict(trade)
+    except HTTPException:
+        raise
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
+
+
+@protected_router.post("/paper-trades/close-all")
+async def close_all_paper_trades():
+    """Close all open paper trades at current market price (manual EOD)."""
+    try:
+        live_data = await market_data_service.build_market_input()
+        closing_spot = live_data.get("nifty_spot", 0)
+        closing_vix = live_data.get("india_vix", 15.0)
+        if closing_spot <= 0:
+            raise HTTPException(status_code=400, detail="Cannot get current NIFTY spot")
+        closed = paper_trader.close_all_eod(closing_spot, closing_vix)
+        return {
+            "closed": len(closed),
+            "trades": [_trade_to_dict(t) for t in closed],
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")

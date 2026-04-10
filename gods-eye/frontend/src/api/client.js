@@ -114,6 +114,18 @@ export const apiClient = {
   getAgentSkills: (agentId) => request(`${API_BASE}/learning/skills/${agentId}`),
   toggleLearning: (enabled) => request(`${API_BASE}/learning/toggle?enabled=${enabled}`, { method: 'POST' }),
 
+  // Paper Trading
+  getPaperSummary: () => request(`${API_BASE}/paper-trades/summary`),
+  getPaperTrades: (params = {}) => {
+    const query = new URLSearchParams(params)
+    return request(`${API_BASE}/paper-trades?${query}`)
+  },
+  getOpenTrades: () => request(`${API_BASE}/paper-trades/open`),
+  getTodayTrades: () => request(`${API_BASE}/paper-trades/today`),
+  getPaperPnl: (days = 30) => request(`${API_BASE}/paper-trades/pnl?days=${days}`),
+  getPaperTrade: (tradeId) => request(`${API_BASE}/paper-trades/${tradeId}`),
+  closeAllTrades: () => request(`${API_BASE}/paper-trades/close-all`, { method: 'POST' }),
+
   // Health
   getHealth: () => request(`${API_BASE}/health`),
 

@@ -24,7 +24,6 @@ logger = logging.getLogger("gods_eye.scheduler")
 
 # IST timezone offset: UTC+5:30
 IST = timezone(timedelta(hours=5, minutes=30))
-
 # ── Schedule Configuration ──────────────────────────────────────────────────
 # Pre-market: run once at 8:45 AM to establish opening thesis
 # Hourly: runs at :15 past each hour during market (10:15, 11:15, 12:15, 13:15, 14:15)
@@ -56,7 +55,6 @@ SCHEDULE_TOLERANCE_SECONDS = 120  # 2-minute window
 # Main loop poll interval
 POLL_INTERVAL_SECONDS = 30
 
-
 def _get_ist_now() -> datetime:
     """Get current time in IST."""
     return datetime.now(IST)
@@ -84,7 +82,6 @@ class SimulationScheduler:
 
     Follows the same pattern as PCRCollector.
     """
-
     def __init__(self):
         self._task: Optional[asyncio.Task] = None
         self._enabled: bool = config.SCHEDULER_ENABLED
@@ -114,7 +111,6 @@ class SimulationScheduler:
         if self._task and not self._task.done():
             self._task.cancel()
             logger.info("Simulation scheduler stopped")
-
     async def shutdown(self):
         """Clean shutdown."""
         self.stop()
@@ -143,8 +139,7 @@ class SimulationScheduler:
             "total_outcomes_recorded": self._total_outcomes,
             "today_predictions": list(self._today_runs.values()),
             "outcome_recorded_today": self._outcome_recorded_today,
-            "next_run": next_run.strftime("%H:%M") if next_run else None,
-            "current_time_ist": now.strftime("%H:%M:%S"),
+            "next_run": next_run.strftime("%H:%M") if next_run else None,            "current_time_ist": now.strftime("%H:%M:%S"),
             "is_weekday": _is_weekday(),
             "schedule": [t.strftime("%H:%M") for t in ALL_RUN_TIMES],
         }
@@ -175,7 +170,6 @@ class SimulationScheduler:
                     self._outcome_recorded_today = False
                     self._eod_settled_today = False
                     logger.info("Scheduler: new day %s — resetting daily state", today)
-
                 if not self._enabled or not _is_weekday():
                     self._last_status = "waiting" if not _is_weekday() else "disabled"
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
@@ -233,7 +227,6 @@ class SimulationScheduler:
                             self._eod_settled_today = True
                         except Exception as e:
                             logger.error("Scheduler: EOD settlement failed: %s", e)
-
                 # Check outcome recording
                 if not self._outcome_recorded_today:
                     if _time_diff_seconds(current_time, OUTCOME_RECORD_TIME) <= SCHEDULE_TOLERANCE_SECONDS:
@@ -263,7 +256,6 @@ class SimulationScheduler:
         2. Run Orchestrator.run_simulation()
         3. Aggregate with Aggregator
         4. Log prediction via PredictionTracker
-
         Returns dict with simulation_id, prediction_id, direction, conviction.
         """
         self._last_status = f"running:{trigger_label}"
@@ -292,8 +284,7 @@ class SimulationScheduler:
             return {"error": f"orchestrator_failed: {e}"}
 
         # Step 3: Aggregate
-        aggregator_result = Aggregator.aggregate(
-            sim_result["final_outputs"],
+        aggregator_result = Aggregator.aggregate(            sim_result["final_outputs"],
             hybrid=True,
             tuned_weights=sim_result.get("tuned_weights"),
         )
@@ -322,7 +313,6 @@ class SimulationScheduler:
             tuned_weights=sim_result.get("tuned_weights"),
             data_warnings=data_warnings,
         )
-
         # Log simulation + prediction
         self._tracker.log_simulation(result)
         prediction_id = self._tracker.log_prediction(result)
@@ -351,8 +341,7 @@ class SimulationScheduler:
             )
             if trade:
                 trade_id = trade.trade_id
-                logger.info(
-                    "Scheduler: paper trade %s opened: %s %s×%d @ ₹%.1f (stop=%.0f, target=%.0f)",
+                logger.info(                    "Scheduler: paper trade %s opened: %s %s×%d @ ₹%.1f (stop=%.0f, target=%.0f)",
                     trade.trade_id, trade.option_type, trade.instrument,
                     trade.lots, trade.entry_premium, trade.stop_nifty, trade.target_nifty,
                 )
@@ -441,8 +430,7 @@ class SimulationScheduler:
         """Return the next scheduled run time after current_time, or None if done for day."""
         for t in ALL_RUN_TIMES:
             if t > current_time:
-                return t
-        # Check outcome time
+                return t        # Check outcome time
         if not self._outcome_recorded_today and OUTCOME_RECORD_TIME > current_time:
             return OUTCOME_RECORD_TIME
         return None

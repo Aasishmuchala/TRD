@@ -124,7 +124,7 @@ export default function Settings() {
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: AGENT_COLORS[agentId] || '#8B95A5' }}
+                          style={{ backgroundColor: AGENT_COLORS[agentId] || '#928F9F' }}
                         />
                         <span className="text-[11px] font-mono text-onSurface">
                           {AGENT_DISPLAY_NAMES[agentId] || agentId}

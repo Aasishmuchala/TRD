@@ -208,7 +208,7 @@ export default function SimulationHistory() {
                           {typeof conv === 'number' ? conv.toFixed(0) : '--'}%
                         </td>
                         <td className="px-3 py-2.5 text-center font-mono text-onSurfaceDim text-[10px]">
-                          {item.execution_time_ms ? `${item.execution_time_ms.toFixed(0)}ms` : '--'}
+                          {item.execution_time_ms ? `${(item.execution_time_ms / 1000).toFixed(1)}s` : '--'}
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           {isRecording ? (
