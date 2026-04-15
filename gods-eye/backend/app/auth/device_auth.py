@@ -128,7 +128,7 @@ PROVIDERS = {
         "auth_base": "",
         "device_code_endpoint": "",
         "token_endpoint": "",
-        "inference_base": "https://claude.opuscode.pro/api",
+        "inference_base": "https://api.anthropic.com",
         "client_id": "",
         "scope": "",
         "audience": "",
