@@ -138,7 +138,19 @@ class LLMClient:
 
         try:
             logger.info(f"Anthropic API call: model={model}, url={url}, msgs={len(user_messages)}")
-            response = await self._http.post(url, json=payload, headers=headers)
+
+            # Retry on transient 5xx errors (502/503/520 from proxy)
+            max_retries = 3
+            response = None
+            for attempt in range(max_retries):
+                response = await self._http.post(url, json=payload, headers=headers)
+                if response.status_code not in (502, 503, 520, 529):
+                    break
+                if attempt < max_retries - 1:
+                    wait = 2 ** attempt  # 1s, 2s
+                    logger.warning(f"Anthropic API returned {response.status_code}, retry {attempt+1}/{max_retries} in {wait}s")
+                    import asyncio
+                    await asyncio.sleep(wait)
 
             if response.status_code == 401:
                 error_body = response.text
