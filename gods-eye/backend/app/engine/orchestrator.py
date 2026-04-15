@@ -160,29 +160,23 @@ class Orchestrator:
                     "type": "QUANT",
                 }
 
-        # Run LLM agents in parallel
-        llm_tasks = []
-        llm_agent_names = []
+        # Run LLM agents sequentially to avoid overwhelming the proxy
+        # (parallel calls cause 502 errors on rate-limited proxies)
         for agent_name, agent in self.agents.items():
             if agent.agent_type == "LLM":
-                llm_agent_names.append(agent_name)
-                task = agent.analyze(
-                    market_data, round_num, other_agents,
-                    enriched_context=agent_contexts.get(agent_name, "") if agent_contexts else None,
-                )
-                llm_tasks.append(task)
-
-        if llm_tasks:
-            llm_responses = await asyncio.gather(*llm_tasks, return_exceptions=True)
-            for agent_name, response in zip(llm_agent_names, llm_responses):
-                if isinstance(response, AgentResponse):
-                    outputs[agent_name] = response
-                    round_data["agents"][agent_name] = {
-                        "direction": response.direction,
-                        "conviction": response.conviction,
-                        "type": "LLM",
-                    }
-                else:
+                try:
+                    response = await agent.analyze(
+                        market_data, round_num, other_agents,
+                        enriched_context=agent_contexts.get(agent_name, "") if agent_contexts else None,
+                    )
+                    if isinstance(response, AgentResponse):
+                        outputs[agent_name] = response
+                        round_data["agents"][agent_name] = {
+                            "direction": response.direction,
+                            "conviction": response.conviction,
+                            "type": "LLM",
+                        }
+                except Exception:
                     # Handle error in LLM response
                     pass
 

@@ -140,7 +140,7 @@ class LLMClient:
             logger.info(f"Anthropic API call: model={model}, url={url}, msgs={len(user_messages)}")
 
             # Retry on transient 5xx errors (502/503/520 from proxy)
-            max_retries = 3
+            max_retries = 5
             response = None
             for attempt in range(max_retries):
                 response = await self._http.post(url, json=payload, headers=headers)

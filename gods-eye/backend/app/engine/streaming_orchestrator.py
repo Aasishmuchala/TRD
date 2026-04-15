@@ -304,40 +304,26 @@ class StreamingOrchestrator:
         if not llm_items:
             return
 
-        # Create tasks with name tracking
-        tasks = {}
+        # Run LLM agents sequentially to avoid overwhelming the proxy
+        # (parallel calls cause 502 errors on rate-limited proxies)
         for agent_name, agent in llm_items:
-            task = asyncio.create_task(
-                agent.analyze(
+            try:
+                response = await agent.analyze(
                     market_data, round_num, other_agents,
                     enriched_context=agent_contexts.get(agent_name, ""),
                 )
-            )
-            tasks[task] = agent_name
-
-        # Yield as each completes (not in submission order)
-        pending = set(tasks.keys())
-        while pending:
-            done, pending = await asyncio.wait(
-                pending, return_when=asyncio.FIRST_COMPLETED
-            )
-            for task in done:
-                agent_name = tasks[task]
-                try:
-                    response = task.result()
-                    if isinstance(response, AgentResponse):
-                        yield agent_name, response
-                except Exception as e:
-                    # Yield a fallback for failed agents
-                    yield agent_name, AgentResponse(
-                        agent_name=agent_name,
-                        agent_type="LLM",
-                        direction="HOLD",
-                        conviction=25.0,
-                        reasoning=f"Agent error: {str(e)}",
-                        key_triggers=["error"],
-                        time_horizon="Unknown",
-                    )
+                if isinstance(response, AgentResponse):
+                    yield agent_name, response
+            except Exception as e:
+                yield agent_name, AgentResponse(
+                    agent_name=agent_name,
+                    agent_type="LLM",
+                    direction="HOLD",
+                    conviction=25.0,
+                    reasoning=f"Agent error: {str(e)}",
+                    key_triggers=["error"],
+                    time_horizon="Unknown",
+                )
 
     @staticmethod
     def _check_direction_changes(
