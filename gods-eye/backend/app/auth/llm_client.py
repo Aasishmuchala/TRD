@@ -146,6 +146,7 @@ class LLMClient:
             "messages": user_messages,
             "temperature": temperature,
             "max_tokens": effective_max_tokens,
+            "stream": True,
             "thinking": {"type": "enabled", "budget_tokens": THINKING_BUDGET},
         }
 
@@ -165,45 +166,88 @@ class LLMClient:
             for attempt in range(max_retries + 1):
                 try:
                     logger.info(
-                        f"Anthropic API call: model={model}, url={url}, "
+                        f"Anthropic API call (stream): model={model}, url={url}, "
                         f"msgs={len(user_messages)}, attempt={attempt + 1}/{max_retries + 1}"
                     )
-                    response = await self._http.post(url, json=payload, headers=headers)
 
-                    if response.status_code == 401:
-                        error_body = response.text
-                        logger.error(f"Anthropic API auth error 401: {error_body}")
-                        raise RuntimeError(f"Anthropic API auth error: {error_body}")
+                    # Use streaming to keep the connection alive through
+                    # OpusMax's nginx proxy (which has a ~20s idle timeout).
+                    # SSE chunks arrive every few seconds, preventing the
+                    # proxy from killing the connection before the model
+                    # finishes generating.
+                    text_parts: List[str] = []
+                    current_text = ""
+                    got_error = False
+                    error_status = 0
 
-                    if response.status_code in _RETRY_STATUSES and attempt < max_retries:
-                        delay = base_delay * (2 ** attempt)
-                        delay *= 0.75 + random.random() * 0.5
-                        logger.warning(
-                            f"Anthropic API {response.status_code}, retrying in "
-                            f"{delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})"
-                        )
+                    async with self._http.stream(
+                        "POST", url, json=payload, headers=headers
+                    ) as stream:
+                        # Check for non-2xx before consuming body
+                        if stream.status_code == 401:
+                            await stream.aread()
+                            error_body = stream.text
+                            logger.error(f"Anthropic API auth error 401: {error_body}")
+                            raise RuntimeError(f"Anthropic API auth error: {error_body}")
+
+                        if stream.status_code in _RETRY_STATUSES and attempt < max_retries:
+                            delay = base_delay * (2 ** attempt)
+                            delay *= 0.75 + random.random() * 0.5
+                            logger.warning(
+                                f"Anthropic API {stream.status_code}, retrying in "
+                                f"{delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})"
+                            )
+                            got_error = True
+                            error_status = stream.status_code
+
+                        if stream.status_code >= 400 and not got_error:
+                            await stream.aread()
+                            error_body = stream.text
+                            logger.error(f"Anthropic API error {stream.status_code}: {error_body}")
+                            raise RuntimeError(f"Anthropic API error {stream.status_code}: {error_body}")
+
+                        if not got_error:
+                            # Consume SSE stream, extracting text deltas
+                            async for raw_line in stream.aiter_lines():
+                                line = raw_line.strip()
+                                if not line or not line.startswith("data: "):
+                                    continue
+                                data_str = line[6:]
+                                if data_str == "[DONE]":
+                                    break
+                                try:
+                                    evt = json.loads(data_str)
+                                except json.JSONDecodeError:
+                                    continue
+                                evt_type = evt.get("type", "")
+                                if evt_type == "content_block_start":
+                                    block = evt.get("content_block", {})
+                                    if block.get("type") == "text":
+                                        current_text = block.get("text", "")
+                                elif evt_type == "content_block_delta":
+                                    delta = evt.get("delta", {})
+                                    if delta.get("type") == "text_delta":
+                                        current_text += delta.get("text", "")
+                                elif evt_type == "content_block_stop":
+                                    if current_text:
+                                        text_parts.append(current_text)
+                                        current_text = ""
+
+                    if got_error:
                         await asyncio.sleep(delay)
                         continue
 
-                    response.raise_for_status()
-                    data = response.json()
-
-                    content_blocks = data.get("content", [])
-                    if not content_blocks:
-                        raise RuntimeError(f"Empty response from Anthropic API: {data}")
-
-                    text_parts = []
-                    for block in content_blocks:
-                        if block.get("type") == "text":
-                            text_parts.append(block["text"])
+                    # Flush any remaining text
+                    if current_text:
+                        text_parts.append(current_text)
 
                     if not text_parts:
-                        raise RuntimeError(f"No text content in Anthropic response: {data}")
+                        raise RuntimeError(f"No text content in Anthropic streaming response")
 
                     result = "\n".join(text_parts)
                     logger.info(
-                        f"Anthropic API success: {len(result)} chars, "
-                        f"model={data.get('model', model)}, attempt={attempt + 1}"
+                        f"Anthropic API success (stream): {len(result)} chars, "
+                        f"model={model}, attempt={attempt + 1}"
                     )
                     return result
 
