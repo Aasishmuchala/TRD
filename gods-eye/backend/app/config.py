@@ -22,6 +22,11 @@ class Config:
     MODEL: str = os.getenv("GODS_EYE_MODEL", "claude-sonnet-4-6")
     MOCK_MODE: bool = os.getenv("GODS_EYE_MOCK", "false").lower() in ("true", "1", "yes")
 
+    # LLM Resilience (prevents OpusMax proxy 502 bursts)
+    LLM_MAX_CONCURRENT: int = int(os.getenv("GODS_EYE_LLM_MAX_CONCURRENT", "2"))
+    LLM_MAX_RETRIES: int = int(os.getenv("GODS_EYE_LLM_MAX_RETRIES", "5"))
+    LLM_RETRY_BASE_DELAY: float = float(os.getenv("GODS_EYE_LLM_RETRY_BASE_DELAY", "1.0"))
+
     # Legacy Claude support (backward compat — maps to LLM_API_KEY)
     CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
     # Agent Configuration

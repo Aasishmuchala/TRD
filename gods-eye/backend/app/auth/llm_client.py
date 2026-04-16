@@ -9,8 +9,10 @@ Auth modes:
   2. Device auth (OAuth tokens from Codex login) — for OpenAI/Nous
 """
 
+import asyncio
 import json
 import logging
+import random
 from typing import Optional, Dict, Any, List
 
 import httpx
@@ -19,6 +21,22 @@ from app.config import config
 from app.auth.device_auth import get_auth_manager, PROVIDERS
 
 logger = logging.getLogger(__name__)
+
+# Retryable upstream HTTP status codes. OpusMax's nginx returns 502 under burst
+# load; 503/504 indicate transient upstream unavailability or timeouts.
+_RETRY_STATUSES = {429, 502, 503, 504}
+
+# Module-level singleton so ALL LLMClient instances share the same concurrency
+# budget. Lazily created on first use so event-loop binding happens inside
+# running tasks (avoids "attached to a different loop" in test contexts).
+_concurrency_sem: Optional[asyncio.Semaphore] = None
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    global _concurrency_sem
+    if _concurrency_sem is None:
+        _concurrency_sem = asyncio.Semaphore(max(1, config.LLM_MAX_CONCURRENT))
+    return _concurrency_sem
 
 
 class LLMClient:
@@ -136,55 +154,84 @@ class LLMClient:
 
         url = f"{base_url}/v1/messages"
 
-        try:
-            logger.info(f"Anthropic API call: model={model}, url={url}, msgs={len(user_messages)}")
+        # Throttle + retry. Semaphore caps simultaneous requests so OpusMax/nginx
+        # doesn't see burst traffic; retry handles transient 502/503/504.
+        sem = _get_semaphore()
+        max_retries = max(0, config.LLM_MAX_RETRIES)
+        base_delay = config.LLM_RETRY_BASE_DELAY
+        last_error: Optional[Exception] = None
 
-            # Retry on transient 5xx errors (502/503/520 from proxy)
-            max_retries = 5
-            response = None
-            for attempt in range(max_retries):
-                response = await self._http.post(url, json=payload, headers=headers)
-                if response.status_code not in (502, 503, 520, 529):
-                    break
-                if attempt < max_retries - 1:
-                    wait = 2 ** attempt  # 1s, 2s
-                    logger.warning(f"Anthropic API returned {response.status_code}, retry {attempt+1}/{max_retries} in {wait}s")
-                    import asyncio
-                    await asyncio.sleep(wait)
+        async with sem:
+            for attempt in range(max_retries + 1):
+                try:
+                    logger.info(
+                        f"Anthropic API call: model={model}, url={url}, "
+                        f"msgs={len(user_messages)}, attempt={attempt + 1}/{max_retries + 1}"
+                    )
+                    response = await self._http.post(url, json=payload, headers=headers)
 
-            if response.status_code == 401:
-                error_body = response.text
-                logger.error(f"Anthropic API auth error 401: {error_body}")
-                raise RuntimeError(f"Anthropic API auth error: {error_body}")
+                    if response.status_code == 401:
+                        error_body = response.text
+                        logger.error(f"Anthropic API auth error 401: {error_body}")
+                        raise RuntimeError(f"Anthropic API auth error: {error_body}")
 
-            response.raise_for_status()
-            data = response.json()
+                    if response.status_code in _RETRY_STATUSES and attempt < max_retries:
+                        delay = base_delay * (2 ** attempt)
+                        delay *= 0.75 + random.random() * 0.5
+                        logger.warning(
+                            f"Anthropic API {response.status_code}, retrying in "
+                            f"{delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})"
+                        )
+                        await asyncio.sleep(delay)
+                        continue
 
-            # Anthropic response format: {"content": [{"type": "text", "text": "..."}]}
-            content_blocks = data.get("content", [])
-            if not content_blocks:
-                raise RuntimeError(f"Empty response from Anthropic API: {data}")
+                    response.raise_for_status()
+                    data = response.json()
 
-            # Concatenate all text blocks
-            text_parts = []
-            for block in content_blocks:
-                if block.get("type") == "text":
-                    text_parts.append(block["text"])
+                    content_blocks = data.get("content", [])
+                    if not content_blocks:
+                        raise RuntimeError(f"Empty response from Anthropic API: {data}")
 
-            if not text_parts:
-                raise RuntimeError(f"No text content in Anthropic response: {data}")
+                    text_parts = []
+                    for block in content_blocks:
+                        if block.get("type") == "text":
+                            text_parts.append(block["text"])
 
-            result = "\n".join(text_parts)
-            logger.info(f"Anthropic API success: {len(result)} chars, model={data.get('model', model)}")
-            return result
+                    if not text_parts:
+                        raise RuntimeError(f"No text content in Anthropic response: {data}")
 
-        except httpx.HTTPStatusError as e:
-            error_body = e.response.text
-            logger.error(f"Anthropic API error {e.response.status_code}: {error_body}")
-            raise RuntimeError(f"Anthropic API error: {error_body}")
-        except httpx.HTTPError as e:
-            logger.error(f"Network error calling Anthropic API: {e}")
-            raise RuntimeError(f"Network error: {e}")
+                    result = "\n".join(text_parts)
+                    logger.info(
+                        f"Anthropic API success: {len(result)} chars, "
+                        f"model={data.get('model', model)}, attempt={attempt + 1}"
+                    )
+                    return result
+
+                except httpx.HTTPStatusError as e:
+                    error_body = e.response.text
+                    logger.error(f"Anthropic API error {e.response.status_code}: {error_body}")
+                    last_error = RuntimeError(f"Anthropic API error: {error_body}")
+                    if e.response.status_code not in _RETRY_STATUSES or attempt >= max_retries:
+                        raise last_error
+                    delay = base_delay * (2 ** attempt) * (0.75 + random.random() * 0.5)
+                    await asyncio.sleep(delay)
+                except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
+                    logger.warning(
+                        f"Network error (retryable) calling Anthropic API: {e} "
+                        f"(attempt {attempt + 1}/{max_retries + 1})"
+                    )
+                    last_error = RuntimeError(f"Network error: {e}")
+                    if attempt >= max_retries:
+                        raise last_error
+                    delay = base_delay * (2 ** attempt) * (0.75 + random.random() * 0.5)
+                    await asyncio.sleep(delay)
+                except httpx.HTTPError as e:
+                    logger.error(f"Network error calling Anthropic API: {e}")
+                    raise RuntimeError(f"Network error: {e}")
+
+            if last_error is not None:
+                raise last_error
+            raise RuntimeError("Anthropic API: exhausted retries with no response")
 
     async def _get_anthropic_headers(self) -> tuple:
         """Get base URL and headers for Anthropic-format API.

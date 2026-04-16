@@ -1,0 +1,6 @@
+{
+  "name": "gods-eye-opusmax-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Edge proxy for OpusMax LLM API with retry logic"
+}
