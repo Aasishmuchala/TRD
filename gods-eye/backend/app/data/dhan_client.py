@@ -205,6 +205,10 @@ class DhanClient:
         try:
             if method == "GET":
                 resp = await client.get(url)
+            elif method == "PUT":
+                resp = await client.put(url, json=payload or {})
+            elif method == "DELETE":
+                resp = await client.delete(url)
             else:
                 resp = await client.post(url, json=payload or {})
 
@@ -647,6 +651,101 @@ class DhanClient:
         if self._http:
             await self._http.aclose()
             self._http = None
+
+    # ─── Order Management ────────────────────────────────────────────────
+
+    async def place_order(
+        self,
+        transaction_type: str,    # "BUY" or "SELL"
+        exchange_segment: str,    # "NSE_FNO" for NSE F&O
+        product_type: str,        # "INTRADAY" or "CNC"
+        order_type: str,          # "MARKET", "LIMIT", "STOP_LOSS", "STOP_LOSS_MARKET"
+        security_id: str,         # Dhan security ID for the instrument
+        quantity: int,
+        price: float = 0.0,
+        trigger_price: float = 0.0,
+        validity: str = "DAY",
+        disclosed_quantity: int = 0,
+        correlation_id: str = "",
+    ) -> Optional[Dict]:
+        """Place an order via Dhan API.
+
+        Returns {"orderId": "...", "orderStatus": "PENDING"} on success, None on failure.
+
+        IMPORTANT: Dhan requires Static IP whitelisting for order APIs.
+        Set DHAN_ORDERS_ENABLED=true in env to activate (safety gate).
+        """
+        if not os.getenv("DHAN_ORDERS_ENABLED", "").lower() in ("true", "1", "yes"):
+            logger.warning("Dhan order blocked — DHAN_ORDERS_ENABLED is not set to true")
+            return None
+
+        payload = {
+            "dhanClientId": self._client_id,
+            "transactionType": transaction_type,
+            "exchangeSegment": exchange_segment,
+            "productType": product_type,
+            "orderType": order_type,
+            "validity": validity,
+            "securityId": security_id,
+            "quantity": quantity,
+            "price": price,
+            "triggerPrice": trigger_price,
+            "disclosedQuantity": disclosed_quantity,
+        }
+        if correlation_id:
+            payload["correlationId"] = correlation_id[:30]
+
+        logger.info(
+            "Dhan ORDER: %s %s qty=%d price=%.2f security=%s",
+            transaction_type, order_type, quantity, price, security_id,
+        )
+        result = await self._request("POST", "/orders", payload)
+        if result:
+            logger.info("Dhan order placed: orderId=%s status=%s", result.get("orderId"), result.get("orderStatus"))
+        return result
+
+    async def modify_order(
+        self,
+        order_id: str,
+        order_type: str,
+        quantity: int,
+        price: float = 0.0,
+        trigger_price: float = 0.0,
+        validity: str = "DAY",
+        disclosed_quantity: int = 0,
+    ) -> Optional[Dict]:
+        """Modify a pending order."""
+        payload = {
+            "dhanClientId": self._client_id,
+            "orderId": order_id,
+            "orderType": order_type,
+            "quantity": quantity,
+            "price": price,
+            "triggerPrice": trigger_price,
+            "validity": validity,
+            "disclosedQuantity": disclosed_quantity,
+        }
+        logger.info("Dhan MODIFY order: %s qty=%d price=%.2f", order_id, quantity, price)
+        return await self._request("PUT", f"/orders/{order_id}", payload)
+
+    async def cancel_order(self, order_id: str) -> Optional[Dict]:
+        """Cancel a pending order."""
+        logger.info("Dhan CANCEL order: %s", order_id)
+        return await self._request("DELETE", f"/orders/{order_id}")
+
+    async def get_order_by_id(self, order_id: str) -> Optional[Dict]:
+        """Get order status by order ID."""
+        return await self._request("GET", f"/orders/{order_id}")
+
+    async def get_order_book(self) -> Optional[List]:
+        """Get all orders for the day."""
+        result = await self._request("GET", "/orders")
+        return result if isinstance(result, list) else None
+
+    async def get_positions(self) -> Optional[List]:
+        """Get all open positions."""
+        result = await self._request("GET", "/positions")
+        return result if isinstance(result, list) else None
 
 
 # Global singleton

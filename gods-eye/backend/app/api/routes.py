@@ -47,6 +47,7 @@ from app.data.dhan_client import DhanFetchError
 from app.data.technical_signals import technical_signals, TechnicalSignals
 from app.config import config
 from app.engine.paper_trader import paper_trader, PaperTrade
+from app.engine.live_trader import live_trader, LiveTrade
 
 # Public router for health checks and auth endpoints
 router = APIRouter(prefix="/api", tags=["health", "auth"])
@@ -223,11 +224,6 @@ async def simulate(req_data: SimulateRequest, request: Request):
             instrument="NIFTY",   # live simulate is always Nifty context
         )
         response["signal_score"] = vars(score_result)
-
-        # Include gap risk estimate if available
-        gap_data = sim_result.get("gap_estimate")
-        if gap_data:
-            response["gap_estimate"] = gap_data
 
         return response
 
@@ -458,6 +454,7 @@ async def get_settings():
         "quant_llm_balance": config.QUANT_LLM_BALANCE,
         "model": config.MODEL,
         "mock_mode": config.MOCK_MODE,
+        "trading_mode": config.TRADING_MODE,
     }
 
 
@@ -1544,32 +1541,6 @@ def _trade_to_dict(trade: PaperTrade) -> dict:
     }
 
 
-@protected_router.get("/gap-risk")
-async def get_gap_risk(nifty_prev_close: float = 0.0):
-    """Get current pre-market gap risk estimate.
-
-    Call before market open (8:30-9:15 AM IST) for best results.
-    Uses Yahoo Finance global cues + Dhan pre-open session data.
-    """
-    try:
-        from app.data.gap_risk import gap_risk_estimator
-        estimate = await gap_risk_estimator.estimate(nifty_prev_close=nifty_prev_close)
-        return {
-            "estimated_gap_pct": estimate.estimated_gap_pct,
-            "gap_magnitude": estimate.gap_magnitude,
-            "risk_tier": estimate.risk_tier,
-            "confidence": estimate.confidence,
-            "position_multiplier": estimate.position_multiplier,
-            "stop_buffer_pct": estimate.stop_buffer_pct,
-            "global_cues": estimate.global_cues,
-            "warnings": estimate.warnings,
-            "data_source": estimate.data_source,
-            "timestamp": estimate.timestamp,
-        }
-    except Exception:
-        raise safe_error_response(500, "OPERATION_FAILED", "Gap risk estimation failed")
-
-
 @protected_router.get("/paper-trades")
 async def get_paper_trades(limit: int = 50, offset: int = 0):
     """Get paper trade history with pagination."""
@@ -1648,5 +1619,150 @@ async def close_all_paper_trades():
         }
     except HTTPException:
         raise
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
+
+
+# ─── Unified Trading Mode endpoints ─────────────────────────────────────────
+
+
+def _live_trade_to_dict(trade: LiveTrade) -> dict:
+    """Convert LiveTrade dataclass to JSON-serializable dict."""
+    return {
+        "trade_id": trade.trade_id,
+        "simulation_id": trade.simulation_id,
+        "prediction_id": trade.prediction_id,
+        "timestamp": trade.timestamp,
+        "date_ist": trade.date_ist,
+        "direction": trade.direction,
+        "conviction": trade.conviction,
+        "instrument": trade.instrument,
+        "option_type": trade.option_type,
+        "lot_size": trade.lot_size,
+        "lots": trade.lots,
+        "dte": trade.dte,
+        "entry_spot": trade.entry_spot,
+        "entry_premium": trade.entry_premium,
+        "stop_price": trade.stop_price,
+        "target_price": trade.target_price,
+        "stop_nifty": trade.stop_nifty,
+        "target_nifty": trade.target_nifty,
+        "entry_cost": trade.entry_cost,
+        "dhan_order_id": trade.dhan_order_id,
+        "dhan_exit_order_id": trade.dhan_exit_order_id,
+        "trading_mode": trade.trading_mode,
+        "order_status": trade.order_status,
+        "security_id": trade.security_id,
+        "status": trade.status,
+        "exit_premium": trade.exit_premium,
+        "exit_spot": trade.exit_spot,
+        "exit_timestamp": trade.exit_timestamp,
+        "exit_reason": trade.exit_reason,
+        "exit_value": trade.exit_value,
+        "gross_pnl": trade.gross_pnl,
+        "brokerage": trade.brokerage,
+        "net_pnl": trade.net_pnl,
+        "return_pct": trade.return_pct,
+    }
+
+
+@protected_router.get("/trading/mode")
+async def get_trading_mode():
+    """Get current trading mode (paper or live)."""
+    return {
+        "mode": config.TRADING_MODE,
+        "live_capital": config.LIVE_CAPITAL,
+        "live_max_daily_loss": config.LIVE_MAX_DAILY_LOSS,
+        "dhan_orders_enabled": os.getenv("DHAN_ORDERS_ENABLED", "").lower() in ("true", "1", "yes"),
+    }
+
+
+class TradingModeRequest(BaseModel):
+    """Request body for changing trading mode."""
+    mode: str = Field(..., pattern="^(paper|live)$")
+    confirm: bool = False
+
+
+@protected_router.put("/trading/mode")
+async def set_trading_mode(body: TradingModeRequest):
+    """Toggle between paper and live trading mode.
+
+    Switching to live requires confirm=true as a safety gate.
+    """
+    if body.mode == "live":
+        if not body.confirm:
+            raise HTTPException(
+                status_code=400,
+                detail="Switching to live trading requires confirm=true. This will place REAL orders with real money.",
+            )
+        dhan_enabled = os.getenv("DHAN_ORDERS_ENABLED", "").lower() in ("true", "1", "yes")
+        if not dhan_enabled:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot switch to live mode: DHAN_ORDERS_ENABLED env var is not set to true.",
+            )
+
+    config.TRADING_MODE = body.mode
+    return {
+        "mode": config.TRADING_MODE,
+        "message": f"Trading mode switched to {body.mode}",
+    }
+
+
+@protected_router.get("/trading/summary")
+async def get_trading_summary(days: int = 30):
+    """Unified P&L summary — delegates to active trading mode (paper or live)."""
+    try:
+        if config.TRADING_MODE == "live":
+            summary = live_trader.get_pnl_summary(days=days)
+        else:
+            summary = paper_trader.get_pnl_summary(days=days)
+        summary["active_mode"] = config.TRADING_MODE
+        return summary
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
+
+
+@protected_router.get("/trading/trades")
+async def get_trading_trades(limit: int = 50, offset: int = 0):
+    """Unified trade list from active trading mode."""
+    try:
+        limit = min(limit, 500)
+        if config.TRADING_MODE == "live":
+            trades = live_trader.get_trade_history(limit=limit, offset=offset)
+            return {
+                "active_mode": "live",
+                "trades": [_live_trade_to_dict(t) for t in trades],
+                "count": len(trades),
+            }
+        else:
+            trades = paper_trader.get_trade_history(limit=limit, offset=offset)
+            return {
+                "active_mode": "paper",
+                "trades": [_trade_to_dict(t) for t in trades],
+                "count": len(trades),
+            }
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
+
+
+@protected_router.get("/trading/pnl")
+async def get_trading_pnl(days: int = 30):
+    """Daily P&L breakdown from active trading mode."""
+    try:
+        if config.TRADING_MODE == "live":
+            summary = live_trader.get_pnl_summary(days=days)
+        else:
+            summary = paper_trader.get_pnl_summary(days=days)
+
+        return {
+            "active_mode": config.TRADING_MODE,
+            "period_days": days,
+            "daily_pnl": summary.get("daily_pnl", []),
+            "total_pnl_inr": summary.get("total_pnl_inr", 0),
+            "total_return_pct": summary.get("total_return_pct", 0),
+            "win_rate_pct": summary.get("win_rate_pct", 0),
+            "capital": summary.get("capital", 0),
+        }
     except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")

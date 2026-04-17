@@ -26,7 +26,7 @@ class Config:
     # nginx proxy; concurrency = 7 matches the number of LLM agents so all
     # agents in a round fire simultaneously (~90s/round instead of ~14min).
     LLM_MAX_CONCURRENT: int = int(os.getenv("GODS_EYE_LLM_MAX_CONCURRENT", "7"))
-    LLM_MAX_RETRIES: int = int(os.getenv("GODS_EYE_LLM_MAX_RETRIES", "3"))
+    LLM_MAX_RETRIES: int = int(os.getenv("GODS_EYE_LLM_MAX_RETRIES", "5"))
     LLM_RETRY_BASE_DELAY: float = float(os.getenv("GODS_EYE_LLM_RETRY_BASE_DELAY", "1.0"))
 
     # Legacy Claude support (backward compat — maps to LLM_API_KEY)
@@ -86,6 +86,11 @@ class Config:
     STOP_LOSS_ATR_MULTIPLIER: float = float(os.getenv("GODS_EYE_STOP_LOSS_ATR_MULTIPLIER", "1.5"))
     STOP_LOSS_PCT: float = float(os.getenv("GODS_EYE_STOP_LOSS_PCT", "1.5"))
     STOP_LOSS_ATR_PERIOD: int = int(os.getenv("GODS_EYE_STOP_LOSS_ATR_PERIOD", "14"))
+
+    # Trading Mode — "paper" (simulated) or "live" (real Dhan orders)
+    TRADING_MODE: str = os.getenv("GODS_EYE_TRADING_MODE", "paper")
+    LIVE_CAPITAL: float = float(os.getenv("GODS_EYE_LIVE_CAPITAL", "50000"))
+    LIVE_MAX_DAILY_LOSS: float = float(os.getenv("GODS_EYE_LIVE_MAX_LOSS", "10000"))
     def __post_init__(self):
         if self.AGENT_WEIGHTS is None:
             self.AGENT_WEIGHTS = {

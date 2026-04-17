@@ -57,6 +57,9 @@ async function request(url, options = {}, retries = 3, timeoutMs = 30000) {
 }
 
 export const apiClient = {
+  // Generic GET helper
+  get: (path) => request(`${API_BASE}${path.startsWith('/api') ? path.replace('/api', '') : path}`),
+
   // Simulation
   simulate: (data) => request(`${API_BASE}/simulate`, {
     method: 'POST',
@@ -164,6 +167,20 @@ export const apiClient = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   }, 0, 600000),
+
+  // Unified Trading (paper + live toggle)
+  getTradingMode: () => request(`${API_BASE}/trading/mode`),
+  setTradingMode: (mode, confirm = false) => request(`${API_BASE}/trading/mode`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode, confirm }),
+  }),
+  getTradingSummary: (days = 30) => request(`${API_BASE}/trading/summary?days=${days}`),
+  getTradingTrades: (params = {}) => {
+    const query = new URLSearchParams(params)
+    return request(`${API_BASE}/trading/trades?${query}`)
+  },
+  getTradingPnl: (days = 30) => request(`${API_BASE}/trading/pnl?days=${days}`),
 
   // Health
   getHealth: () => request(`${API_BASE}/health`),
