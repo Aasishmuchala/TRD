@@ -21,6 +21,7 @@ from app.engine.feedback_engine import FeedbackEngine
 from app.learning.review_engine import SimulationReviewEngine
 from app.api.schemas import AgentResponse, MarketInput
 from app.config import config
+from app.data.gap_risk import gap_risk_estimator, GapEstimate
 
 
 class Orchestrator:
@@ -61,12 +62,50 @@ class Orchestrator:
         """Run 3-round simulation with agent interaction and accuracy layer."""
         self.start_time = time.time()
 
+        # ── Pre-market gap risk estimation ────────────────────────────
+        # Fetches global cues (S&P futures, DXY, crude) + Dhan pre-open
+        # before agents run, so gap data can inform NEWS_EVENT and paper trader.
+        gap_estimate = None
+        try:
+            gap_estimate = await gap_risk_estimator.estimate(
+                nifty_prev_close=market_data.nifty_spot,
+            )
+            if gap_estimate and gap_estimate.warnings:
+                for w in gap_estimate.warnings:
+                    logger.warning("Gap risk: %s", w)
+        except Exception as e:
+            logger.warning("Gap risk estimation failed (non-fatal): %s", e)
+
         # Build enriched context for each agent (signals + knowledge + memory)
         agent_contexts = {}
         for agent_key in self.agents:
             agent_contexts[agent_key] = self.profile_generator.build_context(
                 agent_key, market_data, round_num=1
             )
+
+        # Inject gap risk data into NEWS_EVENT agent context
+        if gap_estimate and gap_estimate.data_source != "none":
+            gap_ctx = (
+                f"\n\nPRE-MARKET GAP RISK ({gap_estimate.risk_tier}):\n"
+                f"  Estimated gap: {gap_estimate.estimated_gap_pct:+.2f}%\n"
+                f"  Confidence: {gap_estimate.confidence:.0%}\n"
+                f"  Data source: {gap_estimate.data_source}\n"
+            )
+            if gap_estimate.global_cues:
+                gap_ctx += "  Global cues:\n"
+                for cue_name, cue_val in gap_estimate.global_cues.items():
+                    gap_ctx += f"    - {cue_name}: {cue_val:+.2f}%\n"
+            if gap_estimate.risk_tier in ("WARNING", "DANGER"):
+                gap_ctx += (
+                    "  ⚠ Large gap expected — consider HOLD to avoid adverse opening.\n"
+                )
+            # Append to NEWS_EVENT context (it's the gatekeeper)
+            if "NEWS_EVENT" in agent_contexts:
+                agent_contexts["NEWS_EVENT"] += gap_ctx
+            # Also give gap context to all agents for awareness
+            for key in agent_contexts:
+                if key != "NEWS_EVENT":
+                    agent_contexts[key] += f"\n[Gap risk: {gap_estimate.risk_tier}, est. {gap_estimate.estimated_gap_pct:+.2f}%]"
 
         # Determine current VIX regime for regime-stratified weight tuning
         vix_regime = self._classify_vix_regime(market_data.india_vix)
@@ -126,6 +165,22 @@ class Orchestrator:
             )
         )
 
+        # Serialize gap estimate for API response
+        gap_data = None
+        if gap_estimate:
+            gap_data = {
+                "estimated_gap_pct": gap_estimate.estimated_gap_pct,
+                "gap_magnitude": gap_estimate.gap_magnitude,
+                "risk_tier": gap_estimate.risk_tier,
+                "confidence": gap_estimate.confidence,
+                "position_multiplier": gap_estimate.position_multiplier,
+                "stop_buffer_pct": gap_estimate.stop_buffer_pct,
+                "global_cues": gap_estimate.global_cues,
+                "warnings": gap_estimate.warnings,
+                "data_source": gap_estimate.data_source,
+                "timestamp": gap_estimate.timestamp,
+            }
+
         return {
             "round1": round1_outputs,
             "round2": round2_outputs,
@@ -136,6 +191,8 @@ class Orchestrator:
             "tuned_weights": tuned_weights,
             "feedback_active": self.feedback_engine.should_activate(),
             "learning_enabled": config.LEARNING_ENABLED,
+            "gap_estimate": gap_data,
+            "_gap_estimate_obj": gap_estimate,  # Internal: passed to paper trader
         }
 
     async def _run_round(

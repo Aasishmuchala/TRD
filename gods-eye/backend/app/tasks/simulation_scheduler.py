@@ -331,6 +331,8 @@ class SimulationScheduler:
         trade_id = None
         try:
             vix = market_input.india_vix or 15.0
+            # Pass gap estimate from orchestrator to paper trader for position sizing
+            gap_est = sim_result.get("_gap_estimate_obj")
             trade = paper_trader.open_trade(
                 simulation_id=simulation_id,
                 prediction_id=prediction_id,
@@ -338,6 +340,7 @@ class SimulationScheduler:
                 conviction=conviction,
                 nifty_spot=nifty_spot,
                 vix=vix,
+                gap_estimate=gap_est,
             )
             if trade:
                 trade_id = trade.trade_id

@@ -200,16 +200,50 @@ class PaperTrader:
         nifty_spot: float,
         vix: float,
         instrument: str = "NIFTY",
+        gap_estimate=None,
     ) -> Optional[PaperTrade]:
         """Open a new paper trade from a simulation signal.
 
         Returns PaperTrade if trade was opened, None if skipped.
-        Reasons for skip: HOLD signal, low conviction, daily loss limit, can't afford.
+        Reasons for skip: HOLD signal, low conviction, daily loss limit,
+        can't afford, gap risk too high.
+
+        Args:
+            gap_estimate: Optional GapEstimate from gap_risk module.
+                          If provided, applies conservative position sizing
+                          and stop-loss adjustments based on gap risk tier.
         """
         # Skip HOLD signals
         if direction not in ("BUY", "SELL", "STRONG_BUY", "STRONG_SELL"):
             logger.info("PaperTrader: skipping %s signal (no trade)", direction)
             return None
+
+        # ── Gap Risk Gate (conservative) ─────────────────────────────────
+        # DANGER (>2% gap): skip entirely
+        # WARNING (1-2%): halve position
+        # CAUTION (0.5-1%): widen stops
+        position_multiplier = 1.0
+        stop_buffer_pct = 0.0
+        gap_tier = "NORMAL"
+
+        if gap_estimate is not None:
+            gap_tier = getattr(gap_estimate, "risk_tier", "NORMAL")
+            position_multiplier = getattr(gap_estimate, "position_multiplier", 1.0)
+            stop_buffer_pct = getattr(gap_estimate, "stop_buffer_pct", 0.0)
+            gap_pct = getattr(gap_estimate, "estimated_gap_pct", 0.0)
+
+            if gap_tier == "DANGER":
+                logger.warning(
+                    "PaperTrader: GAP DANGER (%.2f%%) — blocking trade entirely",
+                    gap_pct,
+                )
+                return None
+
+            if gap_tier in ("WARNING", "CAUTION"):
+                logger.info(
+                    "PaperTrader: GAP %s (%.2f%%) — position_mult=%.2f, stop_buffer=%.1f%%",
+                    gap_tier, gap_pct, position_multiplier, stop_buffer_pct,
+                )
 
         # Check conviction floor
         effective_conviction = conviction
@@ -242,13 +276,20 @@ class PaperTrader:
         lot_size = lot_size_for(instrument)
         dte = 5  # Weekly options (matches backtest)
         entry_premium = estimate_atm_premium(nifty_spot, vix, dte)
-        lots = max_affordable_lots(entry_premium, lot_size, PAPER_CAPITAL)
+        # Apply gap-adjusted capital (position_multiplier from gap risk)
+        effective_capital = PAPER_CAPITAL * position_multiplier
+        lots = max_affordable_lots(entry_premium, lot_size, effective_capital)
         if lots == 0:
-            logger.warning("PaperTrader: can't afford 1 lot (premium=%.1f, lot=%d)", entry_premium, lot_size)
+            logger.warning(
+                "PaperTrader: can't afford 1 lot (premium=%.1f, lot=%d, eff_capital=%.0f%s)",
+                entry_premium, lot_size, effective_capital,
+                f" [gap {gap_tier} reduced from ₹{PAPER_CAPITAL:.0f}]" if position_multiplier < 1.0 else "",
+            )
             return None
 
-        # Stop and target on premium
-        stop_price = round(entry_premium * (1.0 - STOP_LOSS_PCT), 2)
+        # Stop and target on premium — widen stop by gap buffer
+        effective_stop_pct = STOP_LOSS_PCT + (stop_buffer_pct / 100.0)
+        stop_price = round(entry_premium * (1.0 - effective_stop_pct), 2)
 
         # Target: 1.5x risk-reward on premium
         risk_per_unit = entry_premium - stop_price

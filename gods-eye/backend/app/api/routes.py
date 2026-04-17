@@ -223,6 +223,11 @@ async def simulate(req_data: SimulateRequest, request: Request):
         )
         response["signal_score"] = vars(score_result)
 
+        # Include gap risk estimate if available
+        gap_data = sim_result.get("gap_estimate")
+        if gap_data:
+            response["gap_estimate"] = gap_data
+
         return response
 
     except HTTPException:
@@ -1520,6 +1525,32 @@ def _trade_to_dict(trade: PaperTrade) -> dict:
         "net_pnl": trade.net_pnl,
         "return_pct": trade.return_pct,
     }
+
+
+@protected_router.get("/gap-risk")
+async def get_gap_risk(nifty_prev_close: float = 0.0):
+    """Get current pre-market gap risk estimate.
+
+    Call before market open (8:30-9:15 AM IST) for best results.
+    Uses Yahoo Finance global cues + Dhan pre-open session data.
+    """
+    try:
+        from app.data.gap_risk import gap_risk_estimator
+        estimate = await gap_risk_estimator.estimate(nifty_prev_close=nifty_prev_close)
+        return {
+            "estimated_gap_pct": estimate.estimated_gap_pct,
+            "gap_magnitude": estimate.gap_magnitude,
+            "risk_tier": estimate.risk_tier,
+            "confidence": estimate.confidence,
+            "position_multiplier": estimate.position_multiplier,
+            "stop_buffer_pct": estimate.stop_buffer_pct,
+            "global_cues": estimate.global_cues,
+            "warnings": estimate.warnings,
+            "data_source": estimate.data_source,
+            "timestamp": estimate.timestamp,
+        }
+    except Exception:
+        raise safe_error_response(500, "OPERATION_FAILED", "Gap risk estimation failed")
 
 
 @protected_router.get("/paper-trades")
