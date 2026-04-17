@@ -1,7 +1,7 @@
 """Pydantic schemas for API requests and responses."""
 
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import ClassVar, Optional, Dict, Any, List, FrozenSet
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -31,7 +31,7 @@ class MarketInput(BaseModel):
     rsi_14: Optional[float] = Field(default=None, description="RSI(14) value")
     macd_signal: Optional[float] = Field(default=None, description="MACD signal line")
 
-    VALID_CONTEXTS = frozenset({
+    VALID_CONTEXTS: ClassVar[FrozenSet[str]] = frozenset({
         "normal", "expiry", "budget", "election", "rbi_policy", "global_crisis",
         "pre_budget", "post_budget", "pre_election", "post_election",
         "pre_rbi", "post_rbi", "earnings_season", "ipo_heavy",
