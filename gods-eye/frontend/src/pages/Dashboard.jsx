@@ -150,7 +150,10 @@ const PnLBreakdown = ({ summary, pnlData, isLoading }) => {
     )
   }
 
-  const todayPnl = pnlData?.daily_pnl?.[0]?.pnl || 0
+  // Validate that daily_pnl[0] is actually today before showing as "Today" P&L
+  const todayDate = new Date().toISOString().slice(0, 10)
+  const latestEntry = pnlData?.daily_pnl?.[0]
+  const todayPnl = (latestEntry?.date === todayDate) ? (latestEntry?.pnl || 0) : 0
   const weeklyPnl = (pnlData?.daily_pnl || []).slice(0, 5).reduce((sum, d) => sum + (d.pnl || 0), 0)
   const totalPnl = summary?.total_pnl_inr || 0
   const winRate = summary?.win_rate_pct || 0
@@ -353,15 +356,15 @@ const EquityCurveChart = ({ pnlData, isLoading }) => {
 
 const SignalIntelSection = ({ result, events, isLoading }) => {
   const getLatestSignals = () => {
-    if (!result || !result.agent_responses) return []
+    if (!result || !result.agents_output) return []
 
-    return result.agent_responses
+    return result.agents_output
       .filter(r => r.reasoning)
       .slice(0, 3)
       .map(r => ({
         agent: r.agent_name,
         reasoning: r.reasoning.substring(0, 120) + (r.reasoning.length > 120 ? '...' : ''),
-        confidence: r.confidence || 0
+        confidence: r.conviction || 0
       }))
   }
 
@@ -542,8 +545,8 @@ export default function Dashboard() {
   // Handle mode change
   const handleModeChange = useCallback(async (newMode) => {
     try {
-      const confirm = newMode === 'live'
-      await apiClient.setTradingMode(newMode, confirm)
+      const needsConfirm = newMode === 'live'
+      await apiClient.setTradingMode(newMode, needsConfirm)
       setTradingMode(newMode)
     } catch (err) {
       alert(`Failed to switch mode: ${err.message}`)
@@ -552,6 +555,8 @@ export default function Dashboard() {
 
   // Fetch trading data (unified endpoint — respects active mode)
   const fetchTradingData = useCallback(async () => {
+    // Skip fetch if tab is hidden to avoid wasting API calls
+    if (document.hidden) return
     setTradesLoading(true)
     try {
       const [summaryRes, pnlRes, tradesRes] = await Promise.all([
@@ -570,6 +575,7 @@ export default function Dashboard() {
   }, [])
 
   // Poll trading data every 10s, and re-fetch on mode change
+  // fetchTradingData is stable (no deps), so tradingMode change is the only re-trigger
   useEffect(() => {
     fetchTradingData()
     const interval = setInterval(fetchTradingData, 10000)
@@ -595,7 +601,10 @@ export default function Dashboard() {
   const directionStats = getDirectionStats()
   // FE-L4: completedAgents is an object, not an array — .length would be undefined
   const activeSignalCount = Object.keys(completedAgents).length
-  const todayPnl = tradingPnl?.daily_pnl?.[0]?.pnl || 0
+  // Validate that daily_pnl[0] is actually today before showing as "Today" P&L
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const latestPnlEntry = tradingPnl?.daily_pnl?.[0]
+  const todayPnl = (latestPnlEntry?.date === todayStr) ? (latestPnlEntry?.pnl || 0) : 0
 
   return (
     <div className="min-h-screen bg-surface-0 pt-6 pb-12">

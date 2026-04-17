@@ -13,6 +13,7 @@ Daily max loss: configurable via GODS_EYE_LIVE_MAX_LOSS (default 10,000 = 20%).
 IMPORTANT: Dhan requires Static IP whitelisting for order APIs.
 """
 
+import asyncio
 import sqlite3
 import logging
 import os
@@ -113,6 +114,7 @@ class LiveTrader:
         self.db_path = db_path
         self._daily_pnl: float = 0.0
         self._daily_date: Optional[_date_type] = None
+        self._trade_lock = asyncio.Lock()  # Serialize open_trade to prevent race conditions
         self._init_db()
 
     def _init_db(self):
@@ -279,7 +281,28 @@ class LiveTrader:
 
         Same risk guards as PaperTrader, but places a real order via Dhan.
         Returns LiveTrade if order was placed, None if skipped or order failed.
+
+        Uses asyncio.Lock to prevent concurrent requests from bypassing
+        the open trade count check and placing duplicate orders.
         """
+        async with self._trade_lock:
+            return await self._open_trade_inner(
+                simulation_id, prediction_id, direction, conviction,
+                nifty_spot, vix, instrument, gap_estimate,
+            )
+
+    async def _open_trade_inner(
+        self,
+        simulation_id: str,
+        prediction_id: str,
+        direction: str,
+        conviction: float,
+        nifty_spot: float,
+        vix: float,
+        instrument: str = "NIFTY",
+        gap_estimate=None,
+    ) -> Optional[LiveTrade]:
+        """Inner open_trade logic — called under _trade_lock."""
         # Skip HOLD signals
         if direction not in ("BUY", "SELL", "STRONG_BUY", "STRONG_SELL"):
             logger.info("LiveTrader: skipping %s signal (no trade)", direction)
@@ -451,9 +474,39 @@ class LiveTrader:
         exit_premium: float,
         reason: str,
     ) -> LiveTrade:
-        """Close a trade: place exit order via Dhan and compute P&L."""
-        # Place exit order
-        if trade.security_id and trade.dhan_order_id:
+        """Close a trade: place exit order via Dhan and compute P&L.
+
+        SAFETY: Only places exit SELL if the entry order was actually TRADED
+        (filled) by the exchange. If the entry was REJECTED/CANCELLED/PENDING,
+        we mark the trade closed without placing an exit order to avoid
+        creating a naked short position.
+        """
+        # Check if Dhan orders are still enabled (could be turned off mid-session)
+        dhan_enabled = os.getenv("DHAN_ORDERS_ENABLED", "").lower() in ("true", "1", "yes")
+
+        # Only place exit order if entry was actually filled at the exchange
+        entry_filled = trade.order_status in ("TRADED", "TRANSIT")
+        can_place_exit = (
+            trade.security_id
+            and trade.dhan_order_id
+            and entry_filled
+            and dhan_enabled
+        )
+
+        if trade.dhan_order_id and not entry_filled:
+            logger.warning(
+                "LiveTrader: skipping exit order for %s — entry order_status=%s (not filled)",
+                trade.trade_id, trade.order_status,
+            )
+
+        if trade.dhan_order_id and entry_filled and not dhan_enabled:
+            logger.error(
+                "LiveTrader: DHAN_ORDERS_ENABLED is OFF but trade %s has a filled entry! "
+                "Position remains open at Dhan — close manually.",
+                trade.trade_id,
+            )
+
+        if can_place_exit:
             quantity = trade.lots * trade.lot_size
             exit_result = await dhan_client.place_order(
                 transaction_type="SELL",
@@ -767,7 +820,7 @@ class LiveTrader:
                 SUM(CASE WHEN status = 'CLOSED_EOD' THEN 1 ELSE 0 END) as eod_count,
                 SUM(CASE WHEN status = 'ORDER_FAILED' THEN 1 ELSE 0 END) as failed_count
             FROM live_trades
-            WHERE date_ist >= ? AND status NOT IN ('OPEN', 'PENDING')
+            WHERE date_ist >= ? AND status NOT IN ('OPEN', 'PENDING', 'CANCELLED', 'ORDER_FAILED')
         """, (cutoff,))
         row = cursor.fetchone()
 
@@ -782,7 +835,17 @@ class LiveTrader:
         stopped = row[8] or 0
         targets = row[9] or 0
         eod = row[10] or 0
-        failed = row[11] or 0
+        # failed_count from this query is always 0 since we excluded ORDER_FAILED above
+        # Query separately for display purposes
+        cursor.execute("""
+            SELECT
+                SUM(CASE WHEN status = 'ORDER_FAILED' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END)
+            FROM live_trades WHERE date_ist >= ?
+        """, (cutoff,))
+        fail_row = cursor.fetchone()
+        failed = (fail_row[0] or 0) if fail_row else 0
+        cancelled = (fail_row[1] or 0) if fail_row else 0
 
         win_rate = (wins / total * 100) if total > 0 else 0
 

@@ -1688,6 +1688,7 @@ async def set_trading_mode(body: TradingModeRequest):
     """Toggle between paper and live trading mode.
 
     Switching to live requires confirm=true as a safety gate.
+    Switching away from live warns if there are open live positions.
     """
     if body.mode == "live":
         if not body.confirm:
@@ -1702,11 +1703,25 @@ async def set_trading_mode(body: TradingModeRequest):
                 detail="Cannot switch to live mode: DHAN_ORDERS_ENABLED env var is not set to true.",
             )
 
+    # Safety: warn if switching away from live with open positions
+    open_live_warning = None
+    if config.TRADING_MODE == "live" and body.mode == "paper":
+        open_live_trades = live_trader.get_open_trades()
+        if open_live_trades:
+            open_live_warning = (
+                f"WARNING: {len(open_live_trades)} open LIVE trade(s) remain at Dhan. "
+                "These positions will NOT be closed automatically. "
+                "Close them manually via Dhan or use /paper-trades/close-all equivalent for live."
+            )
+
     config.TRADING_MODE = body.mode
-    return {
+    result = {
         "mode": config.TRADING_MODE,
         "message": f"Trading mode switched to {body.mode}",
     }
+    if open_live_warning:
+        result["warning"] = open_live_warning
+    return result
 
 
 @protected_router.get("/trading/summary")
