@@ -178,7 +178,7 @@ Your aggressive assessment:"""
                 {"role": "system", "content": "You are a decisive quantitative trading analyst for Indian equity derivatives. You MUST respond with ONLY valid JSON — no markdown, no code fences, no explanation text. You MUST pick BUY or SELL. HOLD is a cop-out — only use it when signals are exactly 50/50. A trader paying for your analysis needs a direction."},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=2048,
+            max_tokens=1024,
         )
 
     def _parse_response(self, response_text: str) -> Optional[Dict]:

@@ -12,6 +12,7 @@ Auth modes:
 import asyncio
 import json
 import logging
+import os
 import random
 from typing import Optional, Dict, Any, List
 
@@ -55,10 +56,10 @@ class LLMClient:
     ANTHROPIC_VERSION = "2023-06-01"
 
     def __init__(self):
-        # Opus + extended thinking routinely takes 60-90s per call.
-        # Short connect timeout, long read timeout so we don't cut off mid-generation.
+        # Opus + extended thinking takes ~15-25s per call with reduced thinking budget.
+        # Short connect timeout, moderate read timeout — fail fast rather than wait forever.
         self._http = httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=10.0, read=150.0, write=30.0, pool=10.0)
+            timeout=httpx.Timeout(connect=10.0, read=90.0, write=15.0, pool=10.0)
         )
 
     def _get_api_format(self) -> str:
@@ -134,11 +135,11 @@ class LLMClient:
         if user_messages and user_messages[0]["role"] == "assistant":
             user_messages.insert(0, {"role": "user", "content": "Continue."})
 
-        # OpusCode Pro forces extended thinking on all models.
-        # Cap the thinking budget so the model spends ≤1024 tokens thinking
-        # and has the remaining tokens for the JSON output (~200-400 tokens).
-        # Without this cap, thinking consumes ALL of max_tokens and no text is produced.
-        THINKING_BUDGET = 1024
+        # OpusMax enables extended thinking on all models (cannot be disabled).
+        # Use the minimum viable thinking budget — agents produce structured JSON,
+        # not essays. 128 tokens is enough for the model to orient on direction +
+        # conviction before writing output. Lower budget = faster time-to-first-token.
+        THINKING_BUDGET = int(os.getenv("GODS_EYE_THINKING_BUDGET", "128"))
         effective_max_tokens = max(max_tokens, THINKING_BUDGET + 500)
 
         payload = {

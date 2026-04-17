@@ -214,7 +214,7 @@ Your assessment:"""
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=2048,
+            max_tokens=1024,
         )
 
     def _parse_response(self, response_text: str) -> Optional[Dict]:

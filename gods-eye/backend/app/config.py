@@ -26,7 +26,7 @@ class Config:
     # nginx proxy; concurrency = 7 matches the number of LLM agents so all
     # agents in a round fire simultaneously (~90s/round instead of ~14min).
     LLM_MAX_CONCURRENT: int = int(os.getenv("GODS_EYE_LLM_MAX_CONCURRENT", "7"))
-    LLM_MAX_RETRIES: int = int(os.getenv("GODS_EYE_LLM_MAX_RETRIES", "5"))
+    LLM_MAX_RETRIES: int = int(os.getenv("GODS_EYE_LLM_MAX_RETRIES", "3"))
     LLM_RETRY_BASE_DELAY: float = float(os.getenv("GODS_EYE_LLM_RETRY_BASE_DELAY", "1.0"))
 
     # Legacy Claude support (backward compat — maps to LLM_API_KEY)
