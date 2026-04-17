@@ -5,7 +5,7 @@ Zero LLM calls. No I/O. No app.* imports. Only stdlib + dataclasses + typing.
 
 Scoring rules:
 
-BUY side (max 90 pts):
+BUY side (max 90 pts base + Phase 4 MACD/BB):
   fii_flow:        fii_net_cr >  +1000 Cr → +25
   dii_absorption:  dii_net_cr > 0 AND fii_net_cr < 0 → +10
   pcr:             pcr > 1.2 (put-heavy = contrarian bullish) → +15
@@ -13,12 +13,17 @@ BUY side (max 90 pts):
   vix:             vix < 14 AND vix < vix_5d_avg (calm + falling) → +10
   supertrend:      supertrend == "bullish" → +10
 
-SELL side (max 80 pts):
+SELL side (max 80 pts base + Phase 4 MACD/BB):
   fii_flow:        fii_net_cr < -1000 Cr → +25
   pcr:             pcr < 0.7 (call-heavy = contrarian bearish) → +15
   rsi:             rsi > 70 (overbought) → +20
   vix:             vix > 20 AND vix > vix_5d_avg (fear + rising) → +10
   supertrend:      supertrend == "bearish" → +10
+
+ARCH-M4: BUY max (90 base) > SELL max (80 base) because dii_absorption is
+buy-only. This creates a slight bullish bias in the quant engine. Acceptable
+for now since DII absorption is a genuine Indian market asymmetry (SIP flows
+are structurally bullish), but monitor backtest results for skew.
 
 Direction: BUY  if buy_points  > sell_points AND buy_points  > 50
            SELL if sell_points > buy_points  AND sell_points > 50

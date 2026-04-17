@@ -93,6 +93,7 @@ export default function Sidebar() {
               key={item.path}
               to={item.path}
               className={`nav-item ${isActive ? 'nav-item-active' : ''}`}
+              aria-current={isActive ? 'page' : undefined}
             >
               <span className={isActive ? 'text-primary' : 'text-onSurfaceDim'}>{item.icon}</span>
               <span>{item.label}</span>

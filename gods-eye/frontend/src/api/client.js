@@ -1,7 +1,14 @@
-const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+// FE-H5: Validate API_BASE to prevent SSRF via malicious env var
+const API_BASE = (() => {
+  const base = import.meta.env.VITE_API_BASE || '/api'
+  if (!base.startsWith('/') && !base.startsWith('http')) throw new Error('Invalid API_BASE')
+  return base
+})()
 
 async function request(url, options = {}, retries = 3, timeoutMs = 30000) {
-  // Attach auth header from localStorage if available
+  // TODO (FE-C3): API key stored in localStorage persists across sessions. Moving to
+  // sessionStorage would log users out on every tab — acceptable trade-off for single-user tool.
+  // Revisit if multi-user auth is added.
   const apiKey = localStorage.getItem('godsEyeApiKey')
   if (apiKey) {
     options.headers = {
@@ -38,8 +45,9 @@ async function request(url, options = {}, retries = 3, timeoutMs = 30000) {
         }
         throw new Error('Request timed out')
       }
-      // Retry on network errors but not on client errors
-      if (attempt < retries && !err.message.includes('4')) {
+      // Retry on network errors (fetch failures throw TypeError)
+      // FE-C2: Previous heuristic (!err.message.includes('4')) was too broad
+      if (attempt < retries && err.name === 'TypeError') {
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)))
         continue
       }
@@ -125,6 +133,37 @@ export const apiClient = {
   getPaperPnl: (days = 30) => request(`${API_BASE}/paper-trades/pnl?days=${days}`),
   getPaperTrade: (tradeId) => request(`${API_BASE}/paper-trades/${tradeId}`),
   closeAllTrades: () => request(`${API_BASE}/paper-trades/close-all`, { method: 'POST' }),
+
+  // Market Screener
+  screenStocks: () => request(`${API_BASE}/market/screener`),
+
+  // Options Suggestion
+  getOptionSuggestion: (data) => request(`${API_BASE}/options/suggestion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, 0, 60000),
+
+  // Hybrid Signal (quant + agents + validator)
+  getHybridSignal: (instrument, date) => request(`${API_BASE}/hybrid/signal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ instrument, date }),
+  }, 0, 60000),
+
+  // Quant-only backtest
+  runQuantBacktest: (data) => request(`${API_BASE}/backtest/quant`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, 0, 600000),
+
+  // Hybrid backtest (quant + LLM)
+  runHybridBacktest: (data) => request(`${API_BASE}/backtest/hybrid`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }, 0, 600000),
 
   // Health
   getHealth: () => request(`${API_BASE}/health`),

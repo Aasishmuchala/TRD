@@ -31,7 +31,7 @@ export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
           setDataSource('live')
         }
       })
-      .catch(() => null)
+      .catch(() => null) // TODO (FE-M9): Swallowed error — consider logging or showing fallback indicator
   }, [])
 
   const handleConfirm = () => {
@@ -74,9 +74,9 @@ export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
               <div key={key}>
                 <label className="block text-[9px] font-mono text-onSurfaceDim mb-0.5">{label}</label>
                 <input
-                  type="text"
+                  type="number"
                   value={flowData[key]}
-                  onChange={(e) => setFlowData(prev => ({ ...prev, [key]: e.target.value }))}
+                  onChange={(e) => setFlowData(prev => ({ ...prev, [key]: Number(e.target.value) || 0 }))}
                   placeholder={placeholder}
                   className="w-full px-2 py-1 text-[11px] font-mono bg-surface-2 border border-[rgba(255,255,255,0.08)] rounded text-onSurface placeholder-onSurfaceDim focus:outline-none focus:border-primary/40"
                 />

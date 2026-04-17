@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 import ModeCompare from '../components/ModeCompare'
 
@@ -44,7 +43,6 @@ export default function Performance() {
   const hasNeitherResult = !hasAnyResult && !isRunning && !quantError && !hybridError
 
   return (
-    <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
         {/* Page header */}
         <div className="mb-5">
@@ -174,6 +172,5 @@ export default function Performance() {
           </div>
         )}
       </div>
-    </Layout>
   )
 }

@@ -100,7 +100,9 @@ async def run_agents_staggered(engine, market_input):
 
 def ist_now() -> str:
     """Current time in IST (UTC+5:30)."""
-    utc_now = datetime.utcnow()
+    # TRD-L3: Replaced deprecated datetime.utcnow() with timezone-aware alternative.
+    from datetime import timezone
+    utc_now = datetime.now(timezone.utc)
     ist = utc_now + timedelta(hours=5, minutes=30)
     return ist.strftime("%H:%M IST")
 
@@ -130,6 +132,11 @@ async def fetch_live_spot(dhan_client) -> dict:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 async def main():
+    # TRD-M7: No market hours or holiday validation. This script runs on any day/time
+    # including weekends, NSE holidays, and pre-market hours. For production use,
+    # add checks for: (1) NSE holiday calendar (nse_holidays), (2) weekend detection,
+    # (3) pre-market window (run only 8:30-9:15 AM IST), (4) post-market data
+    # staleness (don't use yesterday's close after 3:30 PM without fresh data).
     global USE_COLOR
 
     ap = argparse.ArgumentParser(description="God's Eye live signal")
@@ -186,6 +193,10 @@ async def main():
                 prev_rows = [r for r in all_ohlcv if r["date"] < signal_date]
                 if prev_rows:
                     prev = prev_rows[-1]
+                    # TRD-L4: Synthetic row uses volume=0. Any technical indicator
+                    # that relies on volume (VWAP, OBV, volume-weighted RSI) will
+                    # produce misleading values. This is acceptable for pre-market
+                    # signals but should not be used for intraday recalculation.
                     synthetic_row = {
                         "date":   signal_date,
                         "open":   prev["close"],

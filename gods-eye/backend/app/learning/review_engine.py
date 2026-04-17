@@ -216,7 +216,7 @@ class SimulationReviewEngine:
                 agent="ALL",
                 description="All agents agreed on BUY — rare and potentially significant",
                 content=(
-                    "All 6 agents converged on a bullish signal. This level of agreement "
+                    f"All {len(directions)} agents converged on a bullish signal. This level of agreement "
                     "is statistically unusual and typically occurs during strong trending markets "
                     "or after significant positive catalysts. Historically, unanimous consensus "
                     "may indicate either a strong trend continuation OR a contrarian reversal setup. "
@@ -230,7 +230,7 @@ class SimulationReviewEngine:
                 agent="ALL",
                 description="All agents agreed on SELL — rare and potentially significant",
                 content=(
-                    "All 6 agents converged on a bearish signal. This level of agreement "
+                    f"All {len(directions)} agents converged on a bearish signal. This level of agreement "
                     "is rare. In Indian markets, extreme bearish consensus often coincides "
                     "with capitulation lows (contrarian buy signal) OR genuine structural breaks. "
                     "Track whether this predicted a bottom or continuation."
@@ -285,7 +285,7 @@ class SimulationReviewEngine:
                     agent="ALL",
                     description="Multiple agents bullish despite high VIX — contrarian or brave?",
                     content=(
-                        f"With VIX at {market_data.india_vix}, {len(bullish_agents)} out of 6 agents "
+                        f"With VIX at {market_data.india_vix}, {len(bullish_agents)} out of {len(final_outputs)} agents "
                         f"called BUY with >60% conviction. High VIX typically signals fear, but "
                         f"bullish consensus in fear often marks market bottoms in Indian markets. "
                         f"Track outcome to determine if this is a reliable contrarian signal."
@@ -337,7 +337,10 @@ class SimulationReviewEngine:
         if a.agent != b.agent:
             return False
 
-        # Simple word overlap check
+        # ARCH-M3: Simple word overlap check — may merge unrelated skills if they
+        # share common words (e.g. "FII direction revision BUY to SELL" vs
+        # "FII direction revision SELL to BUY"). Consider semantic similarity
+        # or structured key comparison in a future iteration.
         a_words = set(a.name.lower().split())
         b_words = set(b.name.lower().split())
         overlap = len(a_words & b_words) / max(len(a_words | b_words), 1)

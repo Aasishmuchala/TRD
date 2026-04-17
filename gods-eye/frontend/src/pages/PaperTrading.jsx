@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 
 export default function PaperTrading() {
@@ -85,11 +84,9 @@ export default function PaperTrading() {
 
   if (loading) {
     return (
-      <Layout>
         <div className="flex items-center justify-center h-[calc(100vh-2.5rem)]">
           <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING PAPER TRADING...</span>
         </div>
-      </Layout>
     )
   }
 
@@ -106,7 +103,6 @@ export default function PaperTrading() {
   const totalPnl = realizedPnl + unrealizedPnl
 
   return (
-    <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
         {fetchError && (
           <div className="terminal-card p-3 border-l-2 border-bear mb-4">
@@ -238,8 +234,8 @@ export default function PaperTrading() {
               <div className="terminal-card p-4 mt-4">
                 <div className="section-header mb-3">Daily P&L</div>
                 <div className="space-y-1.5">
-                  {pnl.daily_pnl.slice(-10).reverse().map((day, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-[10px] font-mono">
+                  {pnl.daily_pnl.slice(-10).reverse().map((day) => (
+                    <div key={day.date} className="flex items-center justify-between text-[10px] font-mono">
                       <span className="text-onSurfaceDim">{day.date}</span>
                       <span className="text-onSurfaceDim">{day.trades}t · {day.wins}w</span>
                       <span className={day.pnl >= 0 ? 'text-bull' : 'text-bear'}>
@@ -351,6 +347,5 @@ export default function PaperTrading() {
           </div>
         </div>
       </div>
-    </Layout>
   )
 }

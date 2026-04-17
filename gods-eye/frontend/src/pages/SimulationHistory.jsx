@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import Layout from '../components/Layout'
+import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../api/client'
 
 const dirColor = (dir) => {
@@ -25,11 +24,7 @@ export default function SimulationHistory() {
   const [recordingId, setRecordingId] = useState(null)
   const [toast, setToast] = useState(null)
 
-  useEffect(() => {
-    fetchHistory()
-  }, [timeFilter])
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true)
     try {
       const limitMap = { '7D': 10, '30D': 20, '90D': 50, 'All': 100 }
@@ -41,7 +36,11 @@ export default function SimulationHistory() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeFilter])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
 
   const showToast = (message, type = 'info') => {
     setToast({ message, type })
@@ -83,7 +82,12 @@ export default function SimulationHistory() {
         dir,
         typeof conv === 'number' ? conv.toFixed(1) : '',
         item.execution_time_ms?.toFixed(0) || '',
-      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')
+      ].map((v) => {
+          // FE-M10: Prefix formula-injection characters to prevent CSV injection in Excel/Sheets
+          let s = String(v).replace(/"/g, '""')
+          if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
+          return `"${s}"`
+        }).join(',')
     })
 
     const csv = [headers.join(','), ...rows].join('\n')
@@ -99,7 +103,6 @@ export default function SimulationHistory() {
   const totalSims = history.length
 
   return (
-    <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto relative">
         {/* Toast */}
         {toast && (
@@ -253,6 +256,5 @@ export default function SimulationHistory() {
           Record actual market outcomes to train the accuracy feedback engine. After 30+ outcomes, agent weights auto-tune.
         </p>
       </div>
-    </Layout>
   )
 }

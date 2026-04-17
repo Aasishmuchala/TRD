@@ -26,6 +26,8 @@ from app.agents.dii_agent import DIIAgent
 from app.agents.retail_fno_agent import RetailFNOAgent
 from app.agents.promoter_agent import PromoterAgent
 from app.agents.rbi_policy_agent import RBIPolicyAgent
+from app.agents.stock_options_agent import StockOptionsAgent
+from app.agents.news_event_agent import NewsEventAgent
 from app.agents.profile_generator import ProfileGenerator
 from app.engine.aggregator import Aggregator
 from app.engine.feedback_engine import FeedbackEngine
@@ -47,6 +49,8 @@ class StreamingOrchestrator:
             "RETAIL_FNO": RetailFNOAgent(),
             "PROMOTER": PromoterAgent(),
             "RBI": RBIPolicyAgent(),
+            "STOCK_OPTIONS": StockOptionsAgent(),
+            "NEWS_EVENT": NewsEventAgent(),
         }
         self.agent_memory = AgentMemory(db_path=config.DATABASE_PATH)
         self.profile_generator = ProfileGenerator(agent_memory=self.agent_memory)

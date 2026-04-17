@@ -25,11 +25,8 @@ class Aggregator:
         if not agents_output:
             return Aggregator._neutral_result()
 
-        # Use tuned weights if provided, otherwise config defaults
-        if tuned_weights:
-            # Temporarily override config weights for this aggregation
-            original_weights = dict(config.AGENT_WEIGHTS)
-            config.AGENT_WEIGHTS = tuned_weights
+        # ARCH-C2: Use tuned weights as parameter instead of mutating config singleton
+        weights = tuned_weights if tuned_weights else dict(config.AGENT_WEIGHTS)
 
         # Separate quant and LLM agents
         quant_agents = {}
@@ -43,14 +40,10 @@ class Aggregator:
 
         if hybrid and quant_agents and llm_agents:
             result = Aggregator._hybrid_aggregate(
-                quant_agents, llm_agents, agents_output
+                quant_agents, llm_agents, agents_output, weights
             )
         else:
-            result = Aggregator._standard_aggregate(agents_output)
-
-        # Restore original weights if we overrode them
-        if tuned_weights:
-            config.AGENT_WEIGHTS = original_weights
+            result = Aggregator._standard_aggregate(agents_output, weights)
 
         # Conviction floor: if agents aren't confident enough, sit out.
         # This prevents trading on uncertain days even when the score
@@ -62,8 +55,10 @@ class Aggregator:
         return result
 
     @staticmethod
-    def _standard_aggregate(agents_output: Dict[str, AgentResponse]) -> AggregatorResult:
+    def _standard_aggregate(agents_output: Dict[str, AgentResponse], weights: Dict[str, float] = None) -> AggregatorResult:
         """Standard weighted aggregation."""
+        if weights is None:
+            weights = config.AGENT_WEIGHTS
         direction_scores = {
             "STRONG_BUY": 1.0,
             "BUY": 0.6,
@@ -77,18 +72,14 @@ class Aggregator:
         direction_distribution = {}
 
         for agent_name, response in agents_output.items():
-            agent_weight = config.AGENT_WEIGHTS.get(agent_name, 0.1)
+            agent_weight = weights.get(agent_name, 0.1)
             score = direction_scores.get(response.direction, 0.0)
 
             # Conviction adjustment (0-1 scale)
             conviction_factor = (response.conviction / 100.0) ** 0.8
 
-            # Reproducibility bonus: deterministic quant agents get 1.2×,
-            # stochastic LLM agents get 0.9× (they vary across samples)
-            if response.reproducible:
-                conviction_factor *= 1.2
-            else:
-                conviction_factor *= 0.9
+            # ARCH-H3: Removed reproducibility multiplier (1.2x quant / 0.9x LLM)
+            # that made ALGO disproportionately powerful relative to its stated weight.
 
             weighted_score = score * agent_weight * conviction_factor
             total_score += weighted_score
@@ -113,10 +104,16 @@ class Aggregator:
         # Convert to final direction
         final_direction = Aggregator._score_to_direction(consensus_score)
 
-        # Compute final conviction
-        avg_conviction = sum(r.conviction for r in agents_output.values()) / len(
-            agents_output
-        )
+        # TRD-H1: Compute weight-adjusted conviction instead of simple average.
+        # Agents with higher weights (e.g. FII 0.27) contribute more to final
+        # conviction than low-weight agents (e.g. PROMOTER 0.05).
+        weighted_conv_sum = 0.0
+        conv_weight_sum = 0.0
+        for agent_name, response in agents_output.items():
+            w = weights.get(agent_name, 0.1)
+            weighted_conv_sum += response.conviction * w
+            conv_weight_sum += w
+        avg_conviction = weighted_conv_sum / conv_weight_sum if conv_weight_sum > 0 else 50.0
         final_conviction = min(100, avg_conviction * 0.9)  # Slight penalty
 
         # Detect conflict
@@ -139,15 +136,23 @@ class Aggregator:
         quant_agents: Dict[str, AgentResponse],
         llm_agents: Dict[str, AgentResponse],
         all_agents: Dict[str, AgentResponse],
+        weights: Dict[str, float] = None,
     ) -> AggregatorResult:
         """Hybrid aggregation with quant/LLM weighting."""
+        if weights is None:
+            weights = config.AGENT_WEIGHTS
 
-        # Quant consensus (0.45 weight)
-        quant_result = Aggregator._standard_aggregate(quant_agents)
+        # Quant consensus (0.45 weight bucket)
+        # TRD-M1: ALGO is currently the only quant agent, so it receives 100% of the
+        # 0.45 quant bucket. This is intentional by design — ALGO IS the quant signal
+        # (technical indicators, PCR, FII/DII flows scored deterministically). If more
+        # quant agents are added in future, the 0.45 bucket will be split among them
+        # via their individual weights in _standard_aggregate.
+        quant_result = Aggregator._standard_aggregate(quant_agents, weights)
         quant_score = quant_result.consensus_score
 
-        # LLM consensus (0.55 weight)
-        llm_result = Aggregator._standard_aggregate(llm_agents)
+        # LLM consensus (0.55 weight bucket)
+        llm_result = Aggregator._standard_aggregate(llm_agents, weights)
         llm_score = llm_result.consensus_score
 
         # Check agreement between quant and LLM
@@ -166,10 +171,12 @@ class Aggregator:
         llm_score_num = direction_scores.get(llm_dir, 0)
 
         # Agreement detection
+        # ARCH-M6: direction_scores are integers so gap is always integer.
+        # Use 0 threshold (same direction = strong agreement).
         agreement_gap = abs(quant_score_num - llm_score_num)
 
-        if agreement_gap <= 0.5:
-            # Strong agreement
+        if agreement_gap <= 0:
+            # Strong agreement (same direction)
             agreement_boost = 1.15
         elif agreement_gap <= 2:
             # Moderate agreement
@@ -184,9 +191,14 @@ class Aggregator:
 
         final_direction = Aggregator._score_to_direction(hybrid_score)
 
-        # Conviction from both
-        all_convictions = [r.conviction for r in all_agents.values()]
-        avg_conviction = sum(all_convictions) / len(all_convictions) if all_convictions else 50
+        # TRD-H1: Weight-adjusted conviction (same fix as _standard_aggregate).
+        weighted_conv_sum = 0.0
+        conv_weight_sum = 0.0
+        for agent_name, response in all_agents.items():
+            w = weights.get(agent_name, 0.1)
+            weighted_conv_sum += response.conviction * w
+            conv_weight_sum += w
+        avg_conviction = weighted_conv_sum / conv_weight_sum if conv_weight_sum > 0 else 50.0
         final_conviction = min(100, avg_conviction * agreement_boost)
 
         # Conflict detection across all
@@ -197,7 +209,7 @@ class Aggregator:
             direction_distribution[agent_name] = {
                 "direction": response.direction,
                 "conviction": response.conviction,
-                "weight": config.AGENT_WEIGHTS.get(agent_name, 0.1),
+                "weight": weights.get(agent_name, 0.1),
             }
 
         # Compute quant/LLM agreement as 0-1 score

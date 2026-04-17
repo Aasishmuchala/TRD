@@ -154,16 +154,21 @@ class Orchestrator:
             )
 
         # Fire-and-forget: background review for auto-learning
-        asyncio.create_task(
-            self.review_engine.review_simulation(
-                simulation_id=simulation_id,
-                market_data=market_data,
-                round1_outputs=round1_outputs,
-                round2_outputs=round2_outputs,
-                round3_outputs=final_outputs if direction_changed else None,
-                aggregator_result={},  # Will be populated by aggregator
-            )
-        )
+        # SEC-L5: Wrap in error-handling callback to prevent silent failures
+        async def _safe_review():
+            try:
+                await self.review_engine.review_simulation(
+                    simulation_id=simulation_id,
+                    market_data=market_data,
+                    round1_outputs=round1_outputs,
+                    round2_outputs=round2_outputs,
+                    round3_outputs=final_outputs if direction_changed else None,
+                    aggregator_result={},  # Will be populated by aggregator
+                )
+            except Exception as exc:
+                logger.error("Background review task failed for %s: %s", simulation_id, exc, exc_info=True)
+
+        asyncio.create_task(_safe_review())
 
         # Serialize gap estimate for API response
         gap_data = None
@@ -259,6 +264,17 @@ class Orchestrator:
                     "conviction": response.conviction,
                     "type": "LLM",
                 }
+            else:
+                # TRD-M2: Log when an LLM agent fails — its weight is NOT redistributed
+                # to other agents, so the remaining agents' weights won't sum to 1.0.
+                # This is the conservative approach: redistributing weights could amplify
+                # a wrong signal from the surviving agents. The trade-off is that consensus
+                # strength is slightly diluted when agents fail.
+                logger.warning(
+                    "Agent %s returned no result in round %d — excluded from consensus "
+                    "(weight not redistributed to other agents)",
+                    agent_name, round_num,
+                )
 
         self.round_history.append(round_data)
         return outputs

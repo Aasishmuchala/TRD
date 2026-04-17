@@ -9,6 +9,12 @@ import Backtest from './pages/Backtest'
 import PaperTrading from './pages/PaperTrading'
 import Settings from './pages/Settings'
 import Skills from './pages/Skills'
+import Signal from './pages/Signal'
+import Performance from './pages/Performance'
+
+// TODO (FE-H4): All routes are public. Add AuthGate wrapper once auth state is stable.
+// TODO (FE-L2): Add React.lazy() for route-level code splitting once imports are stable.
+// TODO (FE-L8): Minimal test coverage — add unit tests for critical paths (simulation, API client, agents).
 
 export default function App() {
   return (
@@ -30,6 +36,14 @@ export default function App() {
                 <Route path="/paper-trading" element={<PaperTrading />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/skills" element={<Skills />} />
+                <Route path="/signal" element={<Signal />} />
+                <Route path="/performance" element={<Performance />} />
+                <Route path="*" element={
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>
+                    <h2>Page Not Found</h2>
+                    <p>The page you're looking for doesn't exist.</p>
+                  </div>
+                } />
               </Routes>
             </AuthGate>
           } />

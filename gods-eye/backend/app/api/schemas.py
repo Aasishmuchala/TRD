@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MarketInput(BaseModel):
@@ -31,10 +31,28 @@ class MarketInput(BaseModel):
     rsi_14: Optional[float] = Field(default=None, description="RSI(14) value")
     macd_signal: Optional[float] = Field(default=None, description="MACD signal line")
 
+    VALID_CONTEXTS = frozenset({
+        "normal", "expiry", "budget", "election", "rbi_policy", "global_crisis",
+        "pre_budget", "post_budget", "pre_election", "post_election",
+        "pre_rbi", "post_rbi", "earnings_season", "ipo_heavy",
+        "low_vix", "normal_vix", "elevated_vix", "high_vix",
+        "macro_shock", "us_election", "pre_event_blackout",
+        "post_india_election", "post_rbi_policy",
+    })
+
     context: str = Field(
         default="normal",
         description="Market context (normal, expiry, budget, election, etc.)",
     )
+
+    @field_validator("context")
+    @classmethod
+    def validate_context(cls, v: str) -> str:
+        if v not in cls.VALID_CONTEXTS:
+            raise ValueError(
+                f"Invalid context '{v}'. Must be one of: {sorted(cls.VALID_CONTEXTS)}"
+            )
+        return v
 
     historical_prices: Optional[List[float]] = Field(
         default=None, description="Historical closing prices for last N days"

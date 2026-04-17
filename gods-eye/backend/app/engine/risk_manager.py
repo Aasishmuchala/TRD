@@ -62,6 +62,12 @@ class RiskManager:
     """Pure static methods for position sizing and stop/target computation.
 
     No instance state. No side effects. Safe to call from any context.
+
+    TRD-L6: This module is used by hybrid_backtest.py (line 239) and imported
+    (but not called) in paper_trader.py. The main backtest_engine.py and
+    orchestrator.py do NOT use this module — they use StopLossEngine instead.
+    Consider either integrating RiskManager into the main pipeline or removing
+    the unused import from paper_trader.py.
     """
 
     @staticmethod

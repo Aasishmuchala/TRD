@@ -4,7 +4,7 @@ Converts NIFTY/stock point moves into actual ₹ P&L accounting for:
 - Lot sizes (instrument-specific)
 - ATM premium estimation (VIX-based Black-Scholes approximation)
 - Delta scaling (near-ATM ≈ 0.45)
-- 40% premium stop-loss
+- 25% premium stop-loss (was 40%, tightened for better risk control)
 - Round-trip brokerage (₹80 flat — Dhan/Zerodha)
 - Expiry selection: always weekly (5 DTE) for close-to-close 1-day hold strategy
 """
@@ -61,11 +61,18 @@ INDEX_LOT_SIZES: dict = {
 BROKERAGE_ROUND_TRIP = 80.0
 
 # ATM option delta approximation (near-ATM call or put)
+# TRD-M10: Fixed delta ignores gamma — in reality, delta changes with the
+# underlying price (gamma effect). For ATM weekly options near expiry (DTE=5),
+# gamma is very high (~0.003-0.005 per point), meaning delta can shift from
+# 0.45 to 0.60+ on a 50-pt move. This underestimates P&L on large correct
+# calls and overestimates it on wrong ones. A proper model would use
+# Black-Scholes delta recalculated at exit price and DTE-1.
 ATM_DELTA = 0.45
 
-# 25% premium stop-loss threshold
-# 40% was too loose — triggered only at ~308 NIFTY pts adverse move (delta=0.45, DTE=20)
-# 25% triggers at ~193 pts, catching moves like Apr 10 2024 (-234 pts Iran-Israel selloff)
+# 25% premium stop-loss threshold (exit when option loses 25% of entry premium)
+# Previously 40% — was too loose, triggered only at ~308 NIFTY pts adverse move
+# (delta=0.45, DTE=20). 25% triggers at ~193 pts, catching moves like Apr 10
+# 2024 (-234 pts Iran-Israel selloff).
 STOP_LOSS_PCT = 0.25
 
 # Conviction thresholds for expiry selection
@@ -90,7 +97,7 @@ class OptionsTrade:
     lots: int
     entry_premium: float      # ₹/unit at entry
     exit_premium: float       # ₹/unit at exit (may be stop-loss price)
-    stop_price: float         # 40% stop-loss level (entry × 0.60)
+    stop_price: float         # 25% stop-loss level (entry × 0.75)
     stop_triggered: bool      # True if exit was at stop price, not target
 
     entry_cost: float         # lots × lot_size × entry_premium
@@ -239,7 +246,7 @@ def compute_options_pnl(
     For SELL/STRONG_SELL: buys a PE (profits when market falls).
     HOLD: returns None (no trade).
 
-    Stop-loss: 40% of entry premium (entry × 0.60).
+    Stop-loss: 25% of entry premium (entry × 0.75).
     Exit premium: entry + (delta × underlying_move), floored at stop price.
 
     Args:
@@ -268,7 +275,7 @@ def compute_options_pnl(
         # Can't afford even 1 lot — skip trade
         return None
 
-    # Stop-loss level (40% below entry)
+    # Stop-loss level (25% below entry)
     stop_price = entry_premium * (1.0 - STOP_LOSS_PCT)
 
     # Option price movement: CE profits when market rises, PE when it falls

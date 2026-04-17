@@ -14,7 +14,7 @@ import os
 import sqlite3
 import uuid
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from app.api.schemas import MarketInput
@@ -49,6 +49,10 @@ _BUY_FAMILY = {"BUY", "STRONG_BUY"}
 _SELL_FAMILY = {"SELL", "STRONG_SELL"}
 
 # Minimum directional move (%) for a prediction to count as correct
+# TRD-L1: 0.1% = ~22 NIFTY points at 22,000 level. This is below typical
+# round-trip transaction costs (brokerage + STT + slippage ≈ 0.15-0.25%).
+# A "correct" BUY with +0.12% move would actually lose money after costs.
+# Consider raising to 0.2-0.3% to only count trades that would be profitable.
 _CORRECT_THRESHOLD = 0.1
 
 # ATM option leverage proxy (delta ≈ 0.5, leverage ≈ 3x underlying move)
@@ -230,7 +234,11 @@ class BacktestEngine:
                 instrument, from_date, to_date,
             )
 
-        # Override config for backtest speed (restored in finally)
+        # ARCH-C2: Override config for backtest speed (restored in finally block).
+        # This save/restore pattern is not thread-safe but acceptable since the
+        # application runs with --workers 1 (see CLAUDE.md "What NOT to Use").
+        # If multi-worker deployment is needed, move these overrides to a
+        # request-scoped context or pass them as parameters.
         original_model = config.MODEL
         original_samples = config.SAMPLES_PER_AGENT
         original_rounds = config.INTERACTION_ROUNDS
@@ -280,8 +288,9 @@ class BacktestEngine:
                 # Run all agents in staggered parallel with retry (0.5s stagger between tasks)
                 try:
                     tasks = {}
-                    for i, (name, agent) in enumerate(self.orchestrator.agents.items()):
-                        await asyncio.sleep(0.5 * i)  # stagger to avoid rate-limit bursts
+                    # ARCH-M7: Use `agent_idx` to avoid shadowing outer loop variable `i`
+                    for agent_idx, (name, agent) in enumerate(self.orchestrator.agents.items()):
+                        await asyncio.sleep(0.5 * agent_idx)  # stagger to avoid rate-limit bursts
                         tasks[name] = asyncio.create_task(
                             self._call_agent_with_retry(name, agent, market_input, round_num=1)
                         )
@@ -455,7 +464,7 @@ class BacktestEngine:
             overall_accuracy=round(overall_accuracy, 4),
             per_agent_accuracy=per_agent_accuracy,
             total_pnl_points=round(total_pnl_points, 2),
-            created_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
             hit_rate_pct=hit_rate_pct,
             avg_pnl_per_trade=avg_pnl_per_trade,
             max_drawdown_pct=max_drawdown_pct,
@@ -570,8 +579,12 @@ class BacktestEngine:
             context = f"normal | trend:{trend_regime} {trend_pct:+.1f}%_vs_20dSMA"
 
         # --- Event calendar context ---
-        event_on_day = get_event_for_date(signal_date)
-        pre_blackout = is_pre_event_blackout(signal_date, lookahead_days=1)
+        # TRD-H3: exclude_shocks=True in backtest to avoid lookahead bias.
+        # MACRO_SHOCK events (e.g. Iran missile attack, Japan crash) are
+        # unknowable in advance — including them gives the backtest unfair
+        # foreknowledge that would inflate accuracy metrics.
+        event_on_day = get_event_for_date(signal_date, exclude_shocks=True)
+        pre_blackout = is_pre_event_blackout(signal_date, lookahead_days=1, exclude_shocks=True)
         post_ctx = get_post_event_context(signal_date, lookback_days=2)
 
         if event_on_day:
@@ -595,6 +608,10 @@ class BacktestEngine:
             india_vix=india_vix,
             fii_flow_5d=round(fii_flow_5d, 2),
             dii_flow_5d=round(dii_flow_5d, 2),
+            # TRD-L5: Hardcoded USD/INR and DXY — these should use actual historical
+            # values for the signal date. USD/INR moved from 82 to 87 during FY2024-25
+            # and DXY from 99 to 108. FII agent uses these for flow direction inference.
+            # Future: add a forex_store with daily USD/INR and DXY history.
             usd_inr=84.0,
             dxy=103.0,
             pcr_index=round(pcr_index, 3),
@@ -648,6 +665,14 @@ class BacktestEngine:
         self, final_outputs: Dict
     ) -> Tuple[str, float]:
         """Compute weighted consensus using config.AGENT_WEIGHTS.
+
+        TODO (TRD-H2): This consensus algorithm diverges from aggregator.py's
+        _standard_aggregate / _hybrid_aggregate. Backtest uses a threshold-based
+        family-weight approach (faster, no quant/LLM split) while the live
+        aggregator uses a score-based weighted average with hybrid quant/LLM
+        buckets and agreement boost. Unifying them is desirable but risky —
+        the backtest WFO parameters were optimized against THIS algorithm.
+        Any unification must re-run WFO optimization and validate on out-of-sample data.
 
         Groups: BUY family (STRONG_BUY, BUY), SELL family (SELL, STRONG_SELL), HOLD.
 
@@ -835,6 +860,14 @@ class BacktestEngine:
         ATM CE (BUY signal): profits when market goes up.
         ATM PE (SELL signal): profits when market goes down.
         Proxy: option moves ~3x the underlying % move (delta ≈ 0.5, leverage ≈ 3x).
+
+        TRD-M4: Transaction costs are NOT modeled here. Real-world costs include:
+        - Brokerage: ~Rs80 round-trip (Dhan/Zerodha flat fee)
+        - STT: 0.0625% on sell side for options
+        - Slippage: 0.5-2 NIFTY points per leg depending on liquidity
+        - Impact cost: wider for large orders near expiry
+        The options_pnl.py module accounts for brokerage but this backtest P&L
+        proxy does not. Actual returns will be lower than reported here.
         """
         if predicted in _BUY_FAMILY:
             return actual_move_pct * _OPTION_LEVERAGE * (close / 100)
@@ -920,6 +953,15 @@ class BacktestEngine:
 
         Uses all days (including HOLD = 0 P&L) for a realistic daily return series.
         Returns 0.0 if fewer than 2 days or zero variance.
+
+        TRD-M6: This Sharpe is computed on raw NIFTY index points, not percentage
+        returns. Because NIFTY's absolute level changes over time (e.g. 18,000 vs
+        24,000), the same % move produces different point values. This inflates
+        Sharpe in rising markets and deflates it in falling ones. For a true
+        risk-adjusted metric, convert pnl_points to % returns first:
+          daily_return_pct = pnl_points / entry_price * 100
+        Kept as-is for now since the backtest operates on a narrow date range
+        where the NIFTY level variation is small (~10%).
         """
         if len(days) < 2:
             return 0.0

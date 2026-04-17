@@ -9,6 +9,19 @@ Then prints the top configurations so you can update backtest_engine.py.
 
 Metrics ranked by: Sharpe ratio (annualised), with tiebreak on total P&L.
 
+TODO (TRD-H4): This is not true walk-forward optimization. The train window
+(2023-2024) and validation window (2025) are fixed — a proper WFO would use
+rolling/expanding windows (e.g. train on months 1-6, validate on month 7,
+then train on months 2-7, validate on month 8, etc.). The current approach
+risks overfitting to the specific 2023-2024 regime. ON HOLD — changing the
+optimizer methodology requires re-running all WFO experiments.
+
+TODO (TRD-H5): P-hacking risk — the grid search evaluates ~13,800 parameter
+combinations on a single train/test split. With that many comparisons, some
+configurations will appear profitable by chance alone. Consider applying
+Bonferroni correction (alpha / n_comparisons) or permutation testing to
+establish statistical significance of the top configurations. ON HOLD.
+
 Usage:
     python3 bt_wfo_optimize.py                  # uses bt_wfo_signals.csv
     python3 bt_wfo_optimize.py --top 20         # show top 20 configs

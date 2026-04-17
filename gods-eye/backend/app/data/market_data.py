@@ -331,24 +331,6 @@ class MarketDataService:
             return self._error_nifty("Dhan API returned no data — market may be closed")
         logger.error("Dhan API not configured — set DHAN_ACCESS_TOKEN + DHAN_CLIENT_ID")
         return self._error_nifty("Dhan API not configured")
-        # NSE fallback disabled — Dhan is the only source
-        data = await self._nse.get(
-            f"{NSE_API}/equity-stockIndices?index=NIFTY%2050"
-        )
-        if data and "data" in data:
-            for item in data["data"]:
-                if item.get("symbol") == "NIFTY 50":
-                    return {
-                        "last": item.get("lastPrice", 0),
-                        "open": item.get("open", 0),
-                        "high": item.get("dayHigh", 0),
-                        "low": item.get("dayLow", 0),
-                        "prev_close": item.get("previousClose", 0),
-                        "change": item.get("change", 0),
-                        "change_pct": item.get("pChange", 0),
-                    }
-        # Fallback
-        return self._fallback_nifty()
 
     async def _fetch_bank_nifty(self) -> Dict[str, Any]:
         """Fetch Bank Nifty — Dhan only. Error if Dhan fails."""
@@ -359,38 +341,6 @@ class MarketDataService:
                 return result
             return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0, "_error": "Dhan returned no Bank Nifty data"}
         return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0, "_error": "Dhan not configured"}
-        # NSE fallback disabled
-        cached = cache.get("bank_nifty")
-        if cached:
-            return cached
-
-        data = await self._nse.get(
-            f"{NSE_API}/equity-stockIndices?index=NIFTY%20BANK"
-        )
-        if data and "data" in data:
-            for item in data["data"]:
-                symbol = item.get("symbol", item.get("indexSymbol", ""))
-                if "BANK" in symbol.upper() and "NIFTY" in symbol.upper():
-                    last = float(item.get("lastPrice", 0) or 0)
-                    prev = float(item.get("previousClose", 0) or 0)
-                    change = float(item.get("change", last - prev) or 0)
-                    change_pct = float(item.get("pChange", 0) or 0)
-                    if change_pct == 0 and prev > 0:
-                        change_pct = (change / prev) * 100
-                    result = {
-                        "last": last,
-                        "open": float(item.get("open", 0) or 0),
-                        "high": float(item.get("dayHigh", 0) or 0),
-                        "low": float(item.get("dayLow", 0) or 0),
-                        "prev_close": prev,
-                        "change": change,
-                        "change_pct": change_pct,
-                    }
-                    cache.set("bank_nifty", result, ttl=MarketCache.DEFAULT_TTLS.get("spot", 60))
-                    return result
-
-        # Graceful fallback — return zeroed values
-        return {"last": 0, "open": 0, "high": 0, "low": 0, "prev_close": 0, "change": 0, "change_pct": 0}
 
     async def _fetch_india_vix(self) -> Dict[str, Any]:
         """Fetch India VIX — Dhan only. Error if Dhan fails."""
@@ -401,17 +351,6 @@ class MarketDataService:
                 return result
             return {"current": 0, "change": 0, "change_pct": 0, "_error": "Dhan returned no VIX data"}
         return {"current": 0, "change": 0, "change_pct": 0, "_error": "Dhan not configured"}
-        # NSE fallback disabled
-        data = await self._nse.get(f"{NSE_API}/allIndices")
-        if data and "data" in data:
-            for item in data["data"]:
-                if "VIX" in item.get("index", "").upper():
-                    return {
-                        "current": item.get("last", 15.0),
-                        "change": item.get("variation", 0),
-                        "change_pct": item.get("percentChange", 0),
-                    }
-        return {"current": 15.0, "change": 0, "change_pct": 0}
 
     async def _fetch_fii_dii(self) -> Dict[str, Any]:
         """Fetch FII/DII daily activity data — stored 5-day sum from real data.
@@ -721,29 +660,34 @@ class MarketDataService:
 
     @staticmethod
     def _is_market_open() -> bool:
-        """Check if Indian markets are currently open (IST)."""
-        now = datetime.utcnow()
-        # IST = UTC + 5:30
-        ist_hour = now.hour + 5
-        ist_minute = now.minute + 30
-        if ist_minute >= 60:
-            ist_hour += 1
-            ist_minute -= 60
+        """Check if Indian markets are currently open (IST).
+
+        ARCH-H7: Uses ZoneInfo for proper IST conversion instead of
+        fragile manual hour+5/minute+30 arithmetic.
+        """
+        from zoneinfo import ZoneInfo
+
+        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
 
         # Market hours: 9:15 AM - 3:30 PM IST, Mon-Fri
-        weekday = (now.weekday())  # 0=Mon
-        if weekday >= 5:  # Sat/Sun
+        if now_ist.weekday() >= 5:  # Sat/Sun
             return False
 
         market_start = 9 * 60 + 15
         market_end = 15 * 60 + 30
-        current = ist_hour * 60 + ist_minute
+        current = now_ist.hour * 60 + now_ist.minute
 
         return market_start <= current <= market_end
 
     @staticmethod
     def _detect_context() -> str:
-        """Auto-detect market context from date."""
+        """Auto-detect market context from date.
+
+        ARCH-L3: This is minimal — only detects weekly/monthly expiry.
+        Live simulations don't produce rich contexts like backtest does
+        (correction, rally, etc.). Consider enriching with VIX regime,
+        FII flow direction, and trend state for live sims.
+        """
         now = datetime.now()
         day_of_week = now.weekday()
 

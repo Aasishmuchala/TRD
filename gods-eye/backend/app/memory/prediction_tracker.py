@@ -18,7 +18,9 @@ class PredictionTracker:
 
     def _init_db(self):
         """Initialize SQLite database."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         cursor.execute(
@@ -59,7 +61,9 @@ class PredictionTracker:
 
     def log_simulation(self, result: SimulationResult) -> str:
         """Log a simulation result."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         # Serialize complex objects
@@ -95,7 +99,9 @@ class PredictionTracker:
     def log_prediction(self, simulation_result: SimulationResult) -> str:
         """Log a prediction for tracking accuracy."""
         prediction_id = f"pred_{simulation_result.simulation_id}"
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         market_input_json = simulation_result.market_input.model_dump_json()
@@ -132,8 +138,18 @@ class PredictionTracker:
         actual_direction: str,
         notes: Optional[str] = None,
     ) -> bool:
-        """Record actual market outcome and compute accuracy."""
-        conn = sqlite3.connect(self.db_path)
+        """Record actual market outcome and compute accuracy.
+
+        TRD-L2: Outcomes are recorded manually — there is no automated T+1
+        comparison job that fetches next-day NIFTY close and scores predictions.
+        Without automation, predictions go unscored, which means FeedbackEngine
+        weight tuning has no data to work with. Future: add a scheduled task
+        (cron or APScheduler) that runs daily at 15:35 IST to fetch T+1 close
+        and call record_outcome for all pending predictions.
+        """
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         # Get prediction
@@ -147,8 +163,20 @@ class PredictionTracker:
 
         predicted_direction = result[0]
 
-        # Check accuracy
-        accuracy = 1 if predicted_direction == actual_direction else 0
+        # ARCH-H5: Map directions to families before comparing.
+        # Exact match was too strict (STRONG_BUY vs BUY counted as wrong).
+        _DIRECTION_FAMILY = {
+            "STRONG_BUY": "UP", "BUY": "UP",
+            "HOLD": "NEUTRAL",
+            "SELL": "DOWN", "STRONG_SELL": "DOWN",
+        }
+        predicted_family = _DIRECTION_FAMILY.get(predicted_direction, predicted_direction)
+        actual_family = _DIRECTION_FAMILY.get(actual_direction, actual_direction)
+        # TRD-M3: Binary accuracy — a +0.01% BUY counts the same as a +3% BUY.
+        # Future improvement: magnitude-weighted accuracy (e.g. score = move_pct
+        # when correct, -move_pct when wrong) would better reward high-conviction
+        # correct calls and penalize large misses.
+        accuracy = 1 if predicted_family == actual_family else 0
 
         # Update record
         cursor.execute(
@@ -173,7 +201,9 @@ class PredictionTracker:
 
     def get_accuracy_metrics(self, lookback_days: int = 30) -> Dict:
         """Get accuracy metrics for recent predictions."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         cutoff_date = (datetime.now() - timedelta(days=lookback_days)).isoformat()
@@ -213,7 +243,9 @@ class PredictionTracker:
         self, limit: int = 100, offset: int = 0
     ) -> List[Dict]:
         """Get paginated prediction history."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         cursor.execute(
@@ -251,7 +283,9 @@ class PredictionTracker:
         self, limit: int = 100, offset: int = 0
     ) -> List[Dict]:
         """Get paginated simulation history with full data."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         cursor = conn.cursor()
 
         cursor.execute(

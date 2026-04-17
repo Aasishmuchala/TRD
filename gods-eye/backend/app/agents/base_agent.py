@@ -6,7 +6,15 @@ from app.api.schemas import AgentResponse, MarketInput
 
 
 class BaseAgent(ABC):
-    """Abstract base class for all market agents."""
+    """Abstract base class for all market agents.
+
+    TODO: ARCH-C1 — All 6 LLM agents (FII, DII, Retail, Promoter, RBI, NewsEvent,
+    StockOptions) duplicate _call_llm, _parse_response, _consensus_direction, and the
+    sampling/consensus loop in analyze(). These should be extracted into BaseAgent as
+    shared methods once the agent prompts are stable. Estimated dedup: ~200 lines per
+    agent → ~50 lines each. Defer until agent prompt tuning is complete to avoid
+    breaking functionality mid-iteration.
+    """
 
     def __init__(
         self,

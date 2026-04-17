@@ -48,6 +48,11 @@ class AgentMemory:
     Schema extends PredictionTracker with agent-level granularity.
     PredictionTracker logs aggregate predictions; AgentMemory tracks
     each agent's individual calls within those predictions.
+
+    ARCH-M8: Tables (agent_predictions, etc.) are created via raw SQL in
+    _init_schema() below, bypassing Alembic migrations. When migrating to
+    PostgreSQL (Phase 2), these CREATE TABLE statements must be converted
+    to proper Alembic migration scripts.
     """
 
     def __init__(self, db_path: str = "gods_eye.db"):
@@ -55,8 +60,10 @@ class AgentMemory:
         self._init_tables()
 
     def _get_conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=10)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
     def _init_tables(self):
@@ -297,10 +304,15 @@ class AgentMemory:
         """
         # Map regime to context patterns — the context field may contain
         # regime info if stored, otherwise fall back to all-context accuracy
-        cutoff = (datetime.now() - timedelta(days=lookback_days)).isoformat()
+        # ARCH-M9: Standardize to UTC (other methods already use timezone.utc)
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
         conn = self._get_conn()
         try:
             # Try to find predictions with VIX-regime-annotated context
+            # SEC-M5: vix_regime is derived from internal VIX classification
+            # (low_vix/normal_vix/elevated_vix/high_vix), never from user input.
+            # If this changes to accept user input, escape SQL LIKE wildcards
+            # (%, _) with: vix_regime.replace('%','').replace('_','')
             rows = conn.execute(
                 """SELECT direction, conviction, context, was_correct, timestamp
                    FROM agent_predictions
@@ -313,7 +325,7 @@ class AgentMemory:
             if len(rows) < 5:
                 return self.get_agent_accuracy(agent_key, lookback_days)
 
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             total = len(rows)
 
             weighted_correct = 0.0

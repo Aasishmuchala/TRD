@@ -1,15 +1,18 @@
 """FastAPI application entry point."""
 
+import asyncio
 import json
 import os
 
-# Load .env before anything reads os.getenv()
+# TODO: ARCH-L7 — python-dotenv is used here despite CLAUDE.md recommending
+# pydantic-settings instead. Keep for now since removing it would break local
+# .env loading. Migrate to pydantic-settings when config.py is refactored.
 from dotenv import load_dotenv
 load_dotenv()
 
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +22,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.limiter import limiter
 from app.api.routes import router, protected_router
 from app.api.schemas import MarketInput
+from app.auth.middleware import require_auth
 from app.engine.streaming_orchestrator import StreamingOrchestrator
 from app.engine.scenarios import ScenarioGenerator
 from app.data.market_data import market_data_service
@@ -55,6 +59,10 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
+    # SEC-M4: This regex intentionally matches ALL *.vercel.app subdomains so
+    # per-deployment preview URLs work without env var changes. The tradeoff is
+    # that any Vercel-hosted app could make credentialed requests to this backend.
+    # Acceptable for a single-user tool; tighten for multi-tenant use.
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
@@ -68,11 +76,12 @@ app.include_router(protected_router)
 
 # ─── SSE endpoint — works through any HTTP proxy/tunnel ───
 @app.post("/api/simulate/stream-sse")
-async def sse_simulate_stream(request: Request):
+async def sse_simulate_stream(request: Request, _token: str = Depends(require_auth)):
     """Stream simulation events via Server-Sent Events (SSE).
 
     Unlike WebSocket, SSE works through HTTP proxies and tunnel services.
     Client POSTs the simulation request body, receives SSE event stream back.
+    Requires the same Bearer token auth as protected_router endpoints.
     """
     body = await request.json()
 
@@ -128,7 +137,7 @@ async def sse_simulate_stream(request: Request):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Simulation failed. Check server logs for details.'})}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -142,18 +151,74 @@ async def sse_simulate_stream(request: Request):
 
 
 # ─── WebSocket endpoint (mounted directly on app to avoid CORS issues) ───
+
+# Simple connection counter for WebSocket DoS protection
+_ws_active_connections = 0
+_WS_MAX_CONNECTIONS = 5
+_WS_RECEIVE_TIMEOUT = 30  # seconds to wait for initial message
+_WS_MAX_MESSAGE_SIZE = 64 * 1024  # 64 KB max message size
+
 @app.websocket("/api/simulate/stream")
 async def websocket_simulate_stream(websocket: WebSocket):
     """Stream simulation events over WebSocket.
 
     Client sends JSON to start:
-        {"scenario_id": "rbi_rate_cut"}  or
-        {"source": "live"}              or
-        {"market_input": {...}}
+        {"token": "<bearer_token>", "scenario_id": "rbi_rate_cut"}  or
+        {"token": "<bearer_token>", "source": "live"}              or
+        {"token": "<bearer_token>", "market_input": {...}}
+
+    The 'token' field is required for authentication (same token as Bearer header).
+    In MOCK_MODE or when LLM_API_KEY is set with any non-empty token, auth is relaxed.
     """
+    global _ws_active_connections
+
+    # SEC-H2: Connection limit check
+    if _ws_active_connections >= _WS_MAX_CONNECTIONS:
+        await websocket.close(code=1013, reason="Too many connections")
+        return
+
     await websocket.accept()
+    _ws_active_connections += 1
     try:
-        data = await websocket.receive_json()
+        # SEC-H2: Timeout on initial message receive
+        try:
+            raw_data = await asyncio.wait_for(websocket.receive_text(), timeout=_WS_RECEIVE_TIMEOUT)
+        except asyncio.TimeoutError:
+            await websocket.send_json({"type": "error", "message": "Connection timed out waiting for request"})
+            await websocket.close()
+            return
+
+        # SEC-H2: Max message size check
+        if len(raw_data) > _WS_MAX_MESSAGE_SIZE:
+            await websocket.send_json({"type": "error", "message": "Message too large"})
+            await websocket.close()
+            return
+
+        data = json.loads(raw_data)
+
+        # SEC-C3: WebSocket auth — check token from first message
+        ws_token = data.get("token", "")
+        if not config.MOCK_MODE:
+            if config.LLM_API_KEY:
+                # API key mode: require any non-empty token
+                if not ws_token:
+                    await websocket.send_json({"type": "error", "message": "Authentication required. Include 'token' in message."})
+                    await websocket.close()
+                    return
+            elif not ws_token:
+                await websocket.send_json({"type": "error", "message": "Authentication required. Include 'token' in message."})
+                await websocket.close()
+                return
+            else:
+                # Validate against stored auth token
+                from app.auth.device_auth import get_auth_manager
+                auth_manager = get_auth_manager()
+                valid_token = await auth_manager.get_valid_token()
+                if not valid_token or ws_token != valid_token:
+                    await websocket.send_json({"type": "error", "message": "Invalid authentication token"})
+                    await websocket.close()
+                    return
+
         market_input = None
         data_source = "fallback"
 
@@ -173,7 +238,7 @@ async def websocket_simulate_stream(websocket: WebSocket):
                     market_input = scenario.market_data
                     break
             if not market_input:
-                await websocket.send_json({"type": "error", "message": f"Scenario not found"})
+                await websocket.send_json({"type": "error", "message": "Scenario not found"})
                 await websocket.close()
                 return
 
@@ -211,12 +276,17 @@ async def websocket_simulate_stream(websocket: WebSocket):
         import traceback
         traceback.print_exc()
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json({"type": "error", "message": "Simulation failed. Check server logs for details."})
             await websocket.close()
         except Exception:
             pass
+    finally:
+        _ws_active_connections -= 1
 
 
+# TODO (SEC-L2): Replace @app.on_event("startup") / @app.on_event("shutdown")
+# with the lifespan context manager pattern (FastAPI ≥0.109). Deferred to avoid
+# breaking the startup/shutdown sequence which initializes multiple subsystems.
 @app.on_event("startup")
 async def startup_event():
     """Startup event handler."""
@@ -317,7 +387,10 @@ if FRONTEND_DIST.is_dir() and (FRONTEND_DIST / "index.html").exists():
         if full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json"):
             return JSONResponse({"detail": "Not found"}, status_code=404)
         # Serve actual files if they exist (favicon.ico, etc.)
-        file_path = FRONTEND_DIST / full_path
+        # SEC-M6: Path containment check — resolved path must be under FRONTEND_DIST
+        file_path = (FRONTEND_DIST / full_path).resolve()
+        if not str(file_path).startswith(str(FRONTEND_DIST.resolve())):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
         if full_path and file_path.is_file():
             return FileResponse(str(file_path))
         # Otherwise serve index.html for SPA routing

@@ -5,10 +5,10 @@ import sqlite3
 import time
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.auth.middleware import require_auth
 from app.auth.device_auth import DeviceAuthManager, DeviceCodeResponse, AuthTokens, get_auth_manager
 from app.learning.skill_store import get_skill_store
@@ -145,7 +145,8 @@ async def simulate(req_data: SimulateRequest, request: Request):
                 detail="Provide 'source': 'live', 'scenario_id', 'market_input', or flat market fields",
             )
 
-        # Create orchestrator
+        # ARCH-M1: New Orchestrator per request is intentional — Orchestrator holds
+        # stateful round_history that must be isolated between concurrent simulations.
         orchestrator = Orchestrator()
 
         # Run simulation
@@ -273,6 +274,7 @@ async def get_preset(scenario_id: str):
 async def get_history(limit: int = 20, offset: int = 0):
     """Get simulation history with pagination."""
     try:
+        limit = min(limit, 500)  # SEC-M7: cap pagination limit
         history = tracker.get_simulation_history(limit=limit, offset=offset)
         return {
             "total_count": len(history),
@@ -321,41 +323,55 @@ async def get_metrics(lookback_days: int = 30):
 @protected_router.get("/agent/{agent_id}")
 async def get_agent(agent_id: str):
     """Get agent details and recent performance."""
+    # ARCH-L1: Weights read from config.AGENT_WEIGHTS (not hardcoded) so they
+    # stay in sync with the canonical weights defined in config.py.
     agent_map = {
         "fii": {
             "id": "fii", "name": "FII Flows Analyst", "type": "LLM",
             "persona": "Foreign Institutional Investor managing Asia-Pacific allocations",
-            "time_horizon": "Quarterly", "weight": config.AGENT_WEIGHTS.get("FII", 0.30),
+            "time_horizon": "Quarterly", "weight": config.AGENT_WEIGHTS.get("FII", 0.27),
             "risk_appetite": "Moderate",
         },
         "dii": {
             "id": "dii", "name": "DII Strategy Desk", "type": "LLM",
             "persona": "Large domestic mutual fund/pension manager tracking SIP inflows",
-            "time_horizon": "Quarterly", "weight": config.AGENT_WEIGHTS.get("DII", 0.25),
+            "time_horizon": "Quarterly", "weight": config.AGENT_WEIGHTS.get("DII", 0.22),
             "risk_appetite": "Conservative",
         },
         "retail_fno": {
             "id": "retail_fno", "name": "Retail F&O Desk", "type": "LLM",
             "persona": "Retail derivatives trader focused on intraday volatility and expiry plays",
-            "time_horizon": "Intraday", "weight": config.AGENT_WEIGHTS.get("RETAIL_FNO", 0.15),
+            "time_horizon": "Intraday", "weight": config.AGENT_WEIGHTS.get("RETAIL_FNO", 0.13),
             "risk_appetite": "Aggressive",
         },
         "algo": {
             "id": "algo", "name": "Algo Trading Engine", "type": "QUANT",
             "persona": "Pure quantitative algorithm analyzing technical signals",
-            "time_horizon": "Intraday", "weight": config.AGENT_WEIGHTS.get("ALGO", 0.10),
+            "time_horizon": "Intraday", "weight": config.AGENT_WEIGHTS.get("ALGO", 0.17),
             "risk_appetite": "Moderate",
         },
         "promoter": {
             "id": "promoter", "name": "Promoter Desk", "type": "LLM",
             "persona": "Company promoter/insider tracking stock performance and control implications",
-            "time_horizon": "Yearly", "weight": config.AGENT_WEIGHTS.get("PROMOTER", 0.10),
+            "time_horizon": "Yearly", "weight": config.AGENT_WEIGHTS.get("PROMOTER", 0.05),
             "risk_appetite": "Conservative",
         },
         "rbi": {
             "id": "rbi", "name": "RBI Policy Desk", "type": "LLM",
             "persona": "RBI monetary policy committee focusing on inflation control",
-            "time_horizon": "Quarterly", "weight": config.AGENT_WEIGHTS.get("RBI", 0.10),
+            "time_horizon": "Quarterly", "weight": config.AGENT_WEIGHTS.get("RBI", 0.05),
+            "risk_appetite": "Conservative",
+        },
+        "stock_options": {
+            "id": "stock_options", "name": "Stock Options Desk", "type": "LLM",
+            "persona": "Prop desk trader specialising in NIFTY50 stock options for positional trades",
+            "time_horizon": "Short-Term", "weight": config.AGENT_WEIGHTS.get("STOCK_OPTIONS", 0.04),
+            "risk_appetite": "Aggressive",
+        },
+        "news_event": {
+            "id": "news_event", "name": "News & Event Risk Analyst", "type": "LLM",
+            "persona": "Macro event specialist tracking binary event risk and VIX regime",
+            "time_horizon": "Weekly", "weight": config.AGENT_WEIGHTS.get("NEWS_EVENT", 0.07),
             "risk_appetite": "Conservative",
         },
     }
@@ -445,34 +461,35 @@ async def get_settings():
     }
 
 
+class SettingsUpdateRequest(BaseModel):
+    """Validated settings update request — SEC-H3."""
+    agent_weights: Optional[Dict[str, float]] = None
+    samples_per_agent: Optional[int] = Field(default=None, ge=1, le=10)
+    interaction_rounds: Optional[int] = Field(default=None, ge=1, le=5)
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    quant_llm_balance: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+
+
 @protected_router.post("/settings")
-async def update_settings(settings: dict):
+async def update_settings(settings: SettingsUpdateRequest):
     """Update simulation settings."""
-    if "agent_weights" in settings:
-        weights = settings["agent_weights"]
+    if settings.agent_weights is not None:
+        weights = settings.agent_weights
         total = sum(weights.values())
         if 0.99 <= total <= 1.01:
             config.AGENT_WEIGHTS = weights
 
-    if "samples_per_agent" in settings:
-        val = int(settings["samples_per_agent"])
-        if 1 <= val <= 10:
-            config.SAMPLES_PER_AGENT = val
+    if settings.samples_per_agent is not None:
+        config.SAMPLES_PER_AGENT = settings.samples_per_agent
 
-    if "interaction_rounds" in settings:
-        val = int(settings["interaction_rounds"])
-        if 1 <= val <= 5:
-            config.INTERACTION_ROUNDS = val
+    if settings.interaction_rounds is not None:
+        config.INTERACTION_ROUNDS = settings.interaction_rounds
 
-    if "temperature" in settings:
-        val = float(settings["temperature"])
-        if 0 <= val <= 1:
-            config.TEMPERATURE = val
+    if settings.temperature is not None:
+        config.TEMPERATURE = settings.temperature
 
-    if "quant_llm_balance" in settings:
-        val = float(settings["quant_llm_balance"])
-        if 0 <= val <= 1:
-            config.QUANT_LLM_BALANCE = val
+    if settings.quant_llm_balance is not None:
+        config.QUANT_LLM_BALANCE = settings.quant_llm_balance
 
     return {
         "status": "updated",
@@ -531,19 +548,14 @@ async def get_data_freshness():
 
 @router.get("/health")
 async def health_check():
-    """Health check endpoint with database connectivity check."""
+    """Health check endpoint — SEC-M2: redacted to avoid leaking internal config."""
     health_status = {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0",
-        "model": config.MODEL,
-        "mock_mode": config.MOCK_MODE,
-        "llm_provider": config.LLM_PROVIDER,
-        "learning_enabled": config.LEARNING_ENABLED,
-        "environment": config.ENV,
     }
 
-    # Check database connectivity
+    # Check database connectivity (do not expose path or size)
     try:
         db_path = config.DATABASE_PATH
         if os.path.exists(db_path):
@@ -551,22 +563,12 @@ async def health_check():
             cursor = conn.cursor()
             cursor.execute("SELECT 1")
             conn.close()
-            health_status["database"] = {
-                "status": "connected",
-                "path": db_path,
-                "size_mb": round(os.path.getsize(db_path) / (1024 * 1024), 2),
-            }
+            health_status["database"] = {"status": "connected"}
         else:
-            health_status["database"] = {
-                "status": "not_initialized",
-                "path": db_path,
-            }
-    except Exception as e:
+            health_status["database"] = {"status": "not_initialized"}
+    except Exception:
         health_status["status"] = "degraded"
-        health_status["database"] = {
-            "status": "error",
-            "error": str(e),
-        }
+        health_status["database"] = {"status": "error"}
 
     return health_status
 
@@ -684,12 +686,12 @@ async def get_auth_status():
         status = auth.get_auth_status()
         status["mock_mode"] = config.MOCK_MODE
         return status
-    except Exception as e:
+    except Exception:
         return {
             "authenticated": False,
             "provider": config.LLM_PROVIDER,
             "mock_mode": config.MOCK_MODE,
-            "error": str(e),
+            "error": "Failed to retrieve auth status",
         }
 
 
@@ -1260,8 +1262,23 @@ async def seed_fii_dii_data(years: int = 2):
     }
 
 
+class NiftyOHLCVRow(BaseModel):
+    """Single OHLCV row for bulk seed — SEC-M8."""
+    date: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int = 0
+
+
+class SeedNiftyBulkRequest(BaseModel):
+    """Validated request body for bulk NIFTY seed — SEC-M8."""
+    rows: List[NiftyOHLCVRow] = Field(..., min_length=1, max_length=5000)
+
+
 @protected_router.post("/admin/seed-nifty-bulk")
-async def seed_nifty_bulk(body: dict):
+async def seed_nifty_bulk(body: SeedNiftyBulkRequest):
     """Accept bulk NIFTY OHLCV rows and upsert into historical_prices.
 
     Body: {"rows": [{"date":"YYYY-MM-DD","open":...,"high":...,"low":...,"close":...,"volume":...}, ...]}
@@ -1269,7 +1286,7 @@ async def seed_nifty_bulk(body: dict):
     """
     import sqlite3 as _sqlite3
 
-    rows_in = body.get("rows", [])
+    rows_in = body.rows
     if not rows_in:
         return {"status": "error", "message": "No rows provided"}
 
@@ -1278,7 +1295,7 @@ async def seed_nifty_bulk(body: dict):
     conn = _sqlite3.connect(db_path)
     cur = conn.cursor()
     params = [
-        ("NIFTY", r["date"], r["open"], r["high"], r["low"], r["close"], r.get("volume", 0), fetched_at)
+        ("NIFTY", r.date, r.open, r.high, r.low, r.close, r.volume, fetched_at)
         for r in rows_in
     ]
     cur.executemany(
@@ -1289,7 +1306,7 @@ async def seed_nifty_bulk(body: dict):
     )
     conn.commit()
     conn.close()
-    dates = [r["date"] for r in rows_in]
+    dates = [r.date for r in rows_in]
     return {"status": "ok", "seeded": len(params), "date_range": f"{min(dates)} → {max(dates)}"}
 
 
@@ -1453,7 +1470,7 @@ async def get_option_suggestion(symbol: str, direction: str, capital: int = 1000
 # ── Phase: Automated Paper Trading Scheduler ─────────────────────────────────
 
 
-@router.get("/scheduler/status")
+@protected_router.get("/scheduler/status")
 async def scheduler_status():
     """Get automated paper trading scheduler status."""
     from app.tasks.simulation_scheduler import simulation_scheduler
@@ -1557,6 +1574,7 @@ async def get_gap_risk(nifty_prev_close: float = 0.0):
 async def get_paper_trades(limit: int = 50, offset: int = 0):
     """Get paper trade history with pagination."""
     try:
+        limit = min(limit, 500)  # SEC-M7: cap pagination limit
         trades = paper_trader.get_trade_history(limit=limit, offset=offset)
         return {
             "trades": [_trade_to_dict(t) for t in trades],

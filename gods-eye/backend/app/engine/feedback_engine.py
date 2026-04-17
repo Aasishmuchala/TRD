@@ -64,6 +64,11 @@ class FeedbackEngine:
             return base_weights
 
         # Compute average accuracy across all agents with data
+        # TRD-M12: Per-agent threshold of 5 predictions is very low — at n=5, the
+        # 95% confidence interval for accuracy is roughly ±40% (binomial). This means
+        # a 60% accurate agent could appear as 20% or 100% by chance. Consider raising
+        # to n>=20 for meaningful weight tuning, or applying Bayesian shrinkage toward
+        # the base weight when sample size is small.
         accuracies = {k: s.accuracy_pct / 100.0 for k, s in stats.items() if s.total_predictions >= 5}
         if not accuracies:
             return base_weights

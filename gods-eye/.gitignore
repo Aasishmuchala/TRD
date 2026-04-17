@@ -40,3 +40,6 @@ alembic/versions/__pycache__/
 
 # God's Eye local data
 ~/.gods-eye/
+
+# Startup scripts (may contain API keys)
+start.sh

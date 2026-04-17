@@ -1,8 +1,11 @@
+// TODO (FE-M2): Consider wrapping PressurePanel with React.memo once component is stable
 import AgentPressureBar from './AgentPressureBar'
 import DirectionGauge from './DirectionGauge'
 import { agentLabels } from '../utils/colors'
+import { AGENT_ORDER } from '../constants/agents'
 
-const AGENTS = ['FII', 'DII', 'RETAIL_FNO', 'ALGO', 'PROMOTER', 'RBI']
+// FE-L5: Use canonical AGENT_ORDER from constants instead of hardcoded list
+const AGENTS = AGENT_ORDER
 
 function mapDirection(dir) {
   if (!dir) return 'neutral'

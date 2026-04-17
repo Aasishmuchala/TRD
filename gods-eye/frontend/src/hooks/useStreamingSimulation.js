@@ -91,6 +91,11 @@ export function useStreamingSimulation() {
           try {
             const event = JSON.parse(jsonStr)
             allEvents = [...allEvents, event]
+            // FE-M3: Cap events array to prevent unbounded memory growth
+            // (unlikely in practice since simulations produce ~30 events, but guards against edge cases)
+            if (allEvents.length > 200) {
+              allEvents = allEvents.slice(-200)
+            }
             setEvents([...allEvents])
 
             switch (event.type) {

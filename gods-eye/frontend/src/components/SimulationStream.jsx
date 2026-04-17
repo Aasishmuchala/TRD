@@ -1,5 +1,7 @@
+// TODO (FE-M2): Consider wrapping SimulationStream with React.memo once component is stable
 import { useState } from 'react'
 import { agents as agentColors, agentLabels } from '../utils/colors'
+import { AGENT_ORDER } from '../constants/agents'
 
 const DIRECTION_COLORS = {
   STRONG_BUY: '#00FF88',
@@ -15,7 +17,7 @@ const ROUND_LABELS = {
   3: 'Finding Equilibrium',
 }
 
-const AGENT_ORDER = ['ALGO', 'FII', 'DII', 'RETAIL_FNO', 'PROMOTER', 'RBI']
+// FE-L5: Using canonical AGENT_ORDER from constants/agents.js
 
 /**
  * SimulationStream — real-time visualization of agent simulation.

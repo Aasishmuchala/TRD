@@ -1,9 +1,13 @@
 import React from 'react'
 
+// FE-M4: ErrorBoundary only catches synchronous render errors.
+// Async errors (promises, event handlers) need window.onerror or
+// window.addEventListener('unhandledrejection', ...) — not handled here.
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false, error: null, attemptKey: 0 }
   }
 
   static getDerivedStateFromError(error) {
@@ -12,6 +16,12 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo)
+  }
+
+  handleRetry = () => {
+    // FE-M5: Increment attemptKey to force a full remount of children,
+    // preventing infinite error loops if the child throws immediately on render.
+    this.setState((prev) => ({ hasError: false, error: null, attemptKey: prev.attemptKey + 1 }))
   }
 
   render() {
@@ -23,7 +33,7 @@ class ErrorBoundary extends React.Component {
             The application encountered an unexpected error.
           </p>
           <button
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={this.handleRetry}
             style={{
               padding: '0.5rem 1.5rem',
               background: '#3b82f6',
@@ -39,7 +49,7 @@ class ErrorBoundary extends React.Component {
         </div>
       )
     }
-    return this.props.children
+    return <React.Fragment key={this.state.attemptKey}>{this.props.children}</React.Fragment>
   }
 }
 

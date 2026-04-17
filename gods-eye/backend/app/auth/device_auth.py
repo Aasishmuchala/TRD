@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # ─── Constants ────────────────────────────────────────────────────────────
 AUTH_DIR = Path.home() / ".gods-eye"
 AUTH_FILE = AUTH_DIR / "auth.json"
-POLL_INTERVAL_CAP = 1  # seconds
+POLL_INTERVAL_CAP = 5  # seconds — respect server's requested interval (SEC-L3)
 ACCESS_TOKEN_REFRESH_SKEW = 120  # refresh 2 min before expiry
 
 

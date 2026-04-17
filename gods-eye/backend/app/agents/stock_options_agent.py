@@ -251,7 +251,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=50000,
+            max_tokens=2048,
         )
 
     def _parse_response(self, response_text: str) -> Optional[Dict]:
@@ -267,6 +267,11 @@ Respond ONLY with valid JSON (no markdown, no code blocks):
             required = ["direction", "conviction", "key_triggers", "reasoning"]
             if not all(f in data for f in required):
                 return None
+
+            # ARCH-H4: Validate direction
+            valid_directions = {"STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"}
+            if data.get("direction") not in valid_directions:
+                data["direction"] = "HOLD"
 
             data["conviction"] = max(0.0, min(100.0, float(data.get("conviction", 50))))
             return data

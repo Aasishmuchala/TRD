@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '../api/client'
 import { agents as agentColors, agentLabels } from '../utils/colors'
+import { AGENT_ORDER } from '../constants/agents'
 
-const AGENT_KEYS = ['FII', 'DII', 'RETAIL_FNO', 'ALGO', 'PROMOTER', 'RBI']
+// FE-L5: Use canonical AGENT_ORDER from constants instead of hardcoded list
+const AGENT_KEYS = AGENT_ORDER
 
 export default function AccuracyPanel() {
   const [data, setData] = useState(null)

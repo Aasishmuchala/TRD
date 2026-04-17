@@ -36,6 +36,12 @@ BLACKOUT_EVENT_TYPES: Set[str] = {
 # ---------------------------------------------------------------------------
 # Format: "YYYY-MM-DD": EVENT_TYPE
 # For multi-day events (election phases), each relevant day is listed separately.
+#
+# TODO (TRD-M9): This calendar only covers FY2024-25 (Apr 2024 – Mar 2025).
+# Extend to FY2025-26 with: RBI MPC dates (Apr, Jun, Aug, Oct, Dec 2025,
+# Feb 2026), state elections, Union Budget Feb 2026, monthly F&O expiry
+# Thursdays, and any known global events. Without FY2025-26 coverage,
+# the event_risk and pre_event_blackout features are inactive for current dates.
 # ---------------------------------------------------------------------------
 
 EVENT_CALENDAR: dict = {
@@ -102,19 +108,28 @@ EVENT_CALENDAR: dict = {
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_event_for_date(date_str: str) -> Optional[str]:
+def get_event_for_date(date_str: str, exclude_shocks: bool = False) -> Optional[str]:
     """Return event type string if this exact date is a known event, else None.
 
     Args:
         date_str: Date in "YYYY-MM-DD" format.
+        exclude_shocks: If True, filter out MACRO_SHOCK events. Use this when
+            called from backtest to avoid lookahead bias — MACRO_SHOCK events
+            (e.g. "Iran missile attack", "Japan Nikkei crash") are unknowable
+            in advance and would give the backtest unfair foreknowledge.
 
     Returns:
         Event type constant (e.g. "RBI_POLICY") or None.
     """
-    return EVENT_CALENDAR.get(date_str)
+    event = EVENT_CALENDAR.get(date_str)
+    if event and exclude_shocks and event == MACRO_SHOCK:
+        return None
+    return event
 
 
-def is_pre_event_blackout(date_str: str, lookahead_days: int = 2) -> bool:
+def is_pre_event_blackout(
+    date_str: str, lookahead_days: int = 2, exclude_shocks: bool = False
+) -> bool:
     """True if a HIGH-IMPACT binary event falls within lookahead_days of date_str.
 
     Only blackout-class events (INDIA_ELECTION, BUDGET, US_ELECTION,
@@ -125,6 +140,8 @@ def is_pre_event_blackout(date_str: str, lookahead_days: int = 2) -> bool:
         lookahead_days: How many calendar days ahead to check (default 2).
                         2 days covers the T-1 session before a binary event
                         and the event day itself (e.g., election results).
+        exclude_shocks: If True, skip MACRO_SHOCK events (backtest mode —
+                        avoids lookahead bias from unknowable-in-advance shocks).
 
     Returns:
         True if a blackout event is imminent, False otherwise.
@@ -138,6 +155,8 @@ def is_pre_event_blackout(date_str: str, lookahead_days: int = 2) -> bool:
         future_date = (d + timedelta(days=offset)).isoformat()
         event = EVENT_CALENDAR.get(future_date)
         if event and event in BLACKOUT_EVENT_TYPES:
+            if exclude_shocks and event == MACRO_SHOCK:
+                continue
             return True
     return False
 

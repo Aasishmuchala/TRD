@@ -32,9 +32,15 @@ async def require_auth(
         return "mock_token"
 
     # Direct API key mode: backend already has the LLM key configured,
-    # no need for per-request user auth (single-user tool)
+    # still require a non-empty Bearer token (single-user tool — any token accepted)
     if config.LLM_API_KEY:
-        return credentials.credentials if credentials and credentials.credentials else "api_key_mode"
+        if not credentials or not credentials.credentials:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing or invalid Authorization header",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return credentials.credentials
 
     # If no credentials provided, return 401
     if not credentials:

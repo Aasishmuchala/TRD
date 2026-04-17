@@ -180,7 +180,7 @@ Your assessment:"""
                 {"role": "system", "content": "You are a decisive quantitative trading analyst for Indian equity derivatives. You MUST respond with ONLY valid JSON — no markdown, no code fences, no explanation text. You MUST pick BUY or SELL. HOLD is a cop-out — only use it when signals are exactly 50/50. A trader paying for your analysis needs a direction."},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=50000,
+            max_tokens=2048,
         )
 
     def _parse_response(self, response_text: str) -> Optional[Dict]:
@@ -197,6 +197,11 @@ Your assessment:"""
             required = ["direction", "conviction", "key_triggers", "reasoning"]
             if not all(field in data for field in required):
                 return None
+
+            # ARCH-H4: Validate direction
+            valid_directions = {"STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"}
+            if data.get("direction") not in valid_directions:
+                data["direction"] = "HOLD"
 
             conviction = max(0, min(100, float(data.get("conviction", 50))))
             data["conviction"] = conviction

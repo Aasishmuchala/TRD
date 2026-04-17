@@ -48,7 +48,12 @@ DAILY_MAX_LOSS_INR = 4_000.0  # 20% of capital
 # Conviction floor — don't trade below this (matches config.CONVICTION_FLOOR)
 MIN_CONVICTION = 55.0
 
-# VIX gate — don't trade when VIX ≥ 30 (matches backtest VIX regime gate)
+# TRD-M8: VIX gate discrepancy — paper trader blocks at VIX >= 30, but
+# backtest_engine.VIX_EXTREME_THRESHOLD = 19.0 (WFO-optimized). The backtest
+# is much stricter. This 30.0 threshold is more permissive for live paper
+# trading to gather data in elevated-VIX regimes, but means paper trade
+# results won't match backtest results when VIX is 19-30. Consider aligning
+# to backtest threshold (19.0) once enough live data validates the WFO result.
 VIX_HOLD_THRESHOLD = 30.0
 
 

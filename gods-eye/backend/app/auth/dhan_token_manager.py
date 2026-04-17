@@ -154,7 +154,7 @@ class DhanTokenManager:
             try:
                 resp = await client.post(
                     self.GENERATE_URL,
-                    params={
+                    json={
                         "dhanClientId": self.client_id,
                         "pin": self.pin,
                         "totp": totp_code,

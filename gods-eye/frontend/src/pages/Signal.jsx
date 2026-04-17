@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Layout from '../components/Layout'
 import { apiClient } from '../api/client'
 import { AGENT_DISPLAY_NAMES } from '../constants/agents'
 
@@ -255,7 +254,6 @@ export default function Signal() {
   }
 
   return (
-    <Layout>
       <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
         {/* Page header */}
         <div className="mb-5">
@@ -358,6 +356,5 @@ export default function Signal() {
           </div>
         )}
       </div>
-    </Layout>
   )
 }

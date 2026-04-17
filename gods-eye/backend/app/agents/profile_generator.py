@@ -117,6 +117,9 @@ class ProfileGenerator:
 
         This gives every agent a shared quantitative baseline to reason against,
         so their LLM analysis is grounded in reproducible numbers.
+
+        ARCH-L4: Wrapped in try/except because QuantInputs constructor may fail
+        if fii_dii_store or pcr_store are not initialized (e.g. fresh database).
         """
         try:
             from app.engine.quant_signal_engine import QuantSignalEngine, QuantInputs

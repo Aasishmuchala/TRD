@@ -63,6 +63,13 @@ _NO_STOP = StopLossResult(
 class StopLossEngine:
     """Computes stop loss levels and evaluates stop hits for backtest replay.
 
+    TRD-M5: Stops are computed on the NIFTY index level, not on option premium.
+    This means gamma acceleration and IV expansion/crush are not modeled:
+    - Near expiry, a 50-pt NIFTY move can cause a 200%+ premium swing (gamma).
+    - After events, IV crush can kill premium even if direction is correct.
+    - Deep-OTM options have delta < 0.3; stops based on index distance are too wide.
+    For a more accurate stop, use premium-based stops (options_pnl.STOP_LOSS_PCT).
+
     All methods are stateless. No DB calls. No side effects.
 
     Usage (backtest):

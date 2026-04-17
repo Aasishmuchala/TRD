@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../api/client'
 
 /**
@@ -13,7 +13,7 @@ export default function MarketTicker() {
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // Fetch live data first (critical), options separately (nice-to-have)
       const live = await apiClient.getMarketLive()
@@ -26,13 +26,13 @@ export default function MarketTicker() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 30000) // Refresh every 30s (also retries on failure)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   if (loading) {
     return (
