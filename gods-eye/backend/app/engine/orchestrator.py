@@ -1,8 +1,11 @@
 """Orchestrator for 3-round agent simulation with MiroFish accuracy layer."""
 
 import asyncio
+import logging
 import time
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 from app.agents.base_agent import BaseAgent
 from app.agents.algo_agent import AlgoQuantAgent
 from app.agents.fii_agent import FIIAgent
@@ -160,25 +163,45 @@ class Orchestrator:
                     "type": "QUANT",
                 }
 
-        # Run LLM agents sequentially to avoid overwhelming the proxy
-        # (parallel calls cause 502 errors on rate-limited proxies)
-        for agent_name, agent in self.agents.items():
-            if agent.agent_type == "LLM":
-                try:
-                    response = await agent.analyze(
-                        market_data, round_num, other_agents,
-                        enriched_context=agent_contexts.get(agent_name, "") if agent_contexts else None,
-                    )
-                    if isinstance(response, AgentResponse):
-                        outputs[agent_name] = response
-                        round_data["agents"][agent_name] = {
-                            "direction": response.direction,
-                            "conviction": response.conviction,
-                            "type": "LLM",
-                        }
-                except Exception:
-                    # Handle error in LLM response
-                    pass
+        # Run LLM agents in parallel — streaming keeps connections alive through
+        # the proxy, and the semaphore in llm_client.py caps burst concurrency.
+        llm_agents = {
+            name: agent for name, agent in self.agents.items()
+            if agent.agent_type == "LLM"
+        }
+
+        async def _run_llm_agent(agent_name: str, agent):
+            """Run a single LLM agent, returning (name, response) or (name, None)."""
+            try:
+                response = await agent.analyze(
+                    market_data, round_num, other_agents,
+                    enriched_context=agent_contexts.get(agent_name, "") if agent_contexts else None,
+                )
+                if isinstance(response, AgentResponse):
+                    return agent_name, response
+                logger.warning(f"LLM agent {agent_name} returned non-AgentResponse in round {round_num}")
+                return agent_name, None
+            except Exception as exc:
+                logger.error(
+                    f"LLM agent {agent_name} failed in round {round_num}: "
+                    f"{type(exc).__name__}: {exc}",
+                    exc_info=True,
+                )
+                return agent_name, None
+
+        llm_results = await asyncio.gather(
+            *[_run_llm_agent(name, agent) for name, agent in llm_agents.items()],
+            return_exceptions=False,
+        )
+
+        for agent_name, response in llm_results:
+            if response is not None:
+                outputs[agent_name] = response
+                round_data["agents"][agent_name] = {
+                    "direction": response.direction,
+                    "conviction": response.conviction,
+                    "type": "LLM",
+                }
 
         self.round_history.append(round_data)
         return outputs
