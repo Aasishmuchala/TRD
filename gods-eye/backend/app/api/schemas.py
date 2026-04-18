@@ -1,7 +1,7 @@
 """Pydantic schemas for API requests and responses."""
 
 from datetime import datetime
-from typing import ClassVar, Optional, Dict, Any, List, FrozenSet
+from typing import ClassVar, FrozenSet, Optional, Dict, Any, List
 from pydantic import BaseModel, Field, field_validator
 
 

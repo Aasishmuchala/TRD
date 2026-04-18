@@ -358,7 +358,12 @@ const SignalIntelSection = ({ result, events, isLoading }) => {
   const getLatestSignals = () => {
     if (!result || !result.agents_output) return []
 
-    return result.agents_output
+    // agents_output can be a dict (keyed by agent name) or an array — normalize to array
+    const agentsArr = Array.isArray(result.agents_output)
+      ? result.agents_output
+      : Object.values(result.agents_output)
+
+    return agentsArr
       .filter(r => r.reasoning)
       .slice(0, 3)
       .map(r => ({
