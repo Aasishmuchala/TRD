@@ -1,323 +1,326 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import Layout from '../components/Layout'
+import React, { useState, useEffect } from 'react'
 import { apiClient } from '../api/client'
-import { agents as agentColors, agentLabels } from '../utils/colors'
-
-const AGENT_KEYS = ['fii', 'dii', 'retail_fno', 'algo', 'promoter', 'rbi']
-const AGENT_DESCS = {
-  fii: 'Foreign Institutional Investor managing Asia-Pacific allocations',
-  dii: 'Large domestic mutual fund tracking SIP inflows and sector rotation',
-  retail_fno: 'Retail derivatives trader focused on expiry-week gamma and momentum',
-  algo: 'Pure quantitative engine analyzing technical signals deterministically',
-  promoter: 'Company insider tracking pledged holdings and bulk deal patterns',
-  rbi: 'Monetary policy committee focused on inflation control and forex stability',
-}
-
-const dirColor = (dir) => {
-  if (!dir) return '#FFC107'
-  if (dir.includes('BUY')) return '#00E676'
-  if (dir.includes('SELL')) return '#FF1744'
-  return '#FFC107'
-}
-
-function AgentCard({ agentKey, isActive, onClick }) {
-  const key = agentKey.toUpperCase()
-  const color = agentColors[key] || '#8B95A5'
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 border ${
-        isActive
-          ? 'bg-surface-2 border-primary/20'
-          : 'bg-transparent border-transparent hover:bg-surface-2'
-      }`}
-    >
-      <div className="flex items-center gap-2.5">
-        <div
-          className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-mono font-bold flex-shrink-0"
-          style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30`, color }}
-        >
-          {agentKey.slice(0, 2).toUpperCase()}
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-onSurface">{agentLabels[key] || key}</p>
-          <p className="text-[10px] text-onSurfaceDim truncate max-w-[140px]">{AGENT_DESCS[agentKey]?.split(' ').slice(0, 4).join(' ')}...</p>
-        </div>
-      </div>
-    </button>
-  )
-}
+import { AGENTS } from '../constants/agents'
 
 export default function AgentDetail() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [selected, setSelected] = useState(searchParams.get('id') || 'fii')
-  const [agentInfo, setAgentInfo] = useState(null)
+  const [selectedAgentId, setSelectedAgentId] = useState('FII')
+  const [agent, setAgent] = useState(null)
   const [accuracy, setAccuracy] = useState(null)
-  const [patterns, setPatterns] = useState(null)
+  const [failurePatterns, setFailurePatterns] = useState([])
   const [loading, setLoading] = useState(true)
-  const [fetchError, setFetchError] = useState(null)
+  const [error, setError] = useState(null)
+
+  const selectedAgent = AGENTS.find(a => a.id === selectedAgentId)
 
   useEffect(() => {
-    const fetchAgent = async () => {
-      setFetchError(null)
+    const fetchAgentData = async () => {
       setLoading(true)
+      setError(null)
       try {
-        const [info, acc, pat] = await Promise.all([
-          apiClient.getAgent(selected),
-          apiClient.getAgentAccuracy(selected, 90),
-          apiClient.getFailurePatterns(selected),
+        const [agentData, accuracyData, patternsData] = await Promise.all([
+          apiClient.getAgent(selectedAgentId),
+          apiClient.getAgentAccuracy(selectedAgentId, 90),
+          apiClient.getFailurePatterns(selectedAgentId),
         ])
-        setAgentInfo(info)
-        setAccuracy(acc)
-        setPatterns(pat)
+        setAgent(agentData)
+        setAccuracy(accuracyData)
+        setFailurePatterns(patternsData?.patterns || patternsData || [])
       } catch (err) {
-        setFetchError(err.message || 'Failed to load agent data')
+        setError(err.message)
       } finally {
         setLoading(false)
       }
     }
-    fetchAgent()
-  }, [selected])
+    fetchAgentData()
+  }, [selectedAgentId])
 
-  const handleSelect = (key) => {
-    setSelected(key)
-    setSearchParams({ id: key })
-  }
-
-  const agentColor = agentColors[selected.toUpperCase()] || '#8B95A5'
+  const directionData = accuracy?.directionBreakdown || []
+  const accentColor = selectedAgent?.color || '#CC152B'
 
   return (
-    <Layout>
-      <div className="flex h-[calc(100vh-2.5rem)]">
-        {/* Agent Sidebar */}
-        <div className="w-52 bg-surface-1 border-r border-[rgba(255,255,255,0.06)] p-3 space-y-1 overflow-y-auto flex-shrink-0">
-          <span className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest px-3 block mb-2">Agents</span>
-          {AGENT_KEYS.map((key) => (
-            <AgentCard
-              key={key}
-              agentKey={key}
-              isActive={selected === key}
-              onClick={() => handleSelect(key)}
-            />
-          ))}
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING AGENT DATA...</span>
-            </div>
-          ) : fetchError ? (
-            <div className="terminal-card p-3 border-l-2 border-bear">
-              <p className="text-xs font-mono text-bear">
-                Could not load agent data: {fetchError}
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Header */}
-              <div className="flex items-center gap-4 mb-2">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-mono font-bold"
-                  style={{ backgroundColor: `${agentColor}15`, border: `1px solid ${agentColor}30`, color: agentColor }}
+    <div className="flex h-full bg-surface-1 p-4 gap-4">
+      {/* Left Panel — Agent List */}
+      <div className="w-[220px] flex-shrink-0 flex flex-col gap-1 overflow-y-auto pr-1">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-onSurfaceMuted px-3 pb-3">
+          Agents
+        </h2>
+        {AGENTS.map(a => {
+          const isSelected = selectedAgentId === a.id
+          return (
+            <button
+              key={a.id}
+              onClick={() => setSelectedAgentId(a.id)}
+              className={`w-full text-left rounded-xl px-3 py-2.5 transition-all duration-200 border ${
+                isSelected
+                  ? 'bg-white shadow-sm'
+                  : 'border-transparent hover:bg-white/60'
+              }`}
+              style={{
+                borderColor: isSelected ? `${a.color}30` : 'transparent',
+                boxShadow: isSelected ? `inset 3px 0 0 ${a.color}` : 'none',
+              }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="font-mono text-[10px] font-bold w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    backgroundColor: isSelected ? a.color : `${a.color}10`,
+                    color: isSelected ? '#fff' : a.color,
+                  }}
                 >
-                  {selected.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-onSurface">
-                    {agentLabels[selected.toUpperCase()] || selected}
-                  </h1>
-                  <p className="text-xs text-onSurfaceMuted">{AGENT_DESCS[selected]}</p>
-                </div>
-                <div className="ml-auto flex items-center gap-3">
-                  {agentInfo && (
-                    <>
-                      <span className="tag-primary">{agentInfo.type}</span>
-                      <span className="tag-primary">{agentInfo.time_horizon}</span>
-                      <span className="text-xs font-mono text-onSurfaceMuted">
-                        W: {((agentInfo.weight || 0) * 100).toFixed(0)}%
-                      </span>
-                    </>
-                  )}
+                  {a.shortLabel}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-onSurface truncate">
+                    {a.displayName}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span
+                      className="font-mono text-[10px] font-bold"
+                      style={{ color: a.color }}
+                    >
+                      {(a.weight * 100).toFixed(0)}%
+                    </span>
+                  </div>
                 </div>
               </div>
+            </button>
+          )
+        })}
+      </div>
 
-              <div className="grid grid-cols-12 gap-4">
-                {/* Accuracy Overview */}
-                <div className="col-span-4 terminal-card p-4">
-                  <div className="section-header mb-3">Accuracy Stats</div>
-                  {accuracy && accuracy.total_predictions > 0 ? (
-                    <div className="space-y-4">
-                      {/* Big accuracy number */}
-                      <div className="text-center py-3">
-                        <span
-                          className="text-4xl font-bold font-mono tabular-nums"
-                          style={{ color: accuracy.accuracy_percent >= 55 ? '#00E676' : accuracy.accuracy_percent >= 40 ? '#FFC107' : '#FF1744' }}
-                        >
-                          {accuracy.accuracy_percent?.toFixed(1)}%
-                        </span>
-                        <p className="text-[10px] font-mono text-onSurfaceDim mt-1">
-                          {accuracy.correct}/{accuracy.total_predictions} correct
-                        </p>
-                      </div>
+      {/* Right Panel — Agent Detail */}
+      <div className="flex-1 overflow-y-auto">
+        {error && (
+          <div className="bg-bear-dim border border-bear/20 rounded-xl p-4 mb-4 text-bear text-sm">
+            {error}
+          </div>
+        )}
 
-                      {/* Stats grid */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-surface-2 rounded-lg p-3">
-                          <span className="text-[10px] font-mono text-onSurfaceDim">Conv. (correct)</span>
-                          <p className="text-sm font-mono text-bull mt-1">
-                            {accuracy.avg_conviction_when_correct?.toFixed(1)}%
-                          </p>
-                        </div>
-                        <div className="bg-surface-2 rounded-lg p-3">
-                          <span className="text-[10px] font-mono text-onSurfaceDim">Conv. (wrong)</span>
-                          <p className="text-sm font-mono text-bear mt-1">
-                            {accuracy.avg_conviction_when_wrong?.toFixed(1)}%
-                          </p>
-                        </div>
-                        <div className="bg-surface-2 rounded-lg p-3">
-                          <span className="text-[10px] font-mono text-onSurfaceDim">Calibration</span>
-                          <p className="text-sm font-mono text-primary mt-1">
-                            {(accuracy.calibration_score * 100)?.toFixed(0)}%
-                          </p>
-                        </div>
-                        <div className="bg-surface-2 rounded-lg p-3">
-                          <span className="text-[10px] font-mono text-onSurfaceDim">Streak</span>
-                          <p className={`text-sm font-mono mt-1 ${accuracy.recent_streak > 0 ? 'text-bull' : accuracy.recent_streak < 0 ? 'text-bear' : 'text-onSurfaceMuted'}`}>
-                            {accuracy.recent_streak > 0 ? '+' : ''}{accuracy.recent_streak}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Strengths */}
-                      {accuracy.strongest_context !== 'unknown' && (
-                        <div className="text-[10px] font-mono text-onSurfaceDim mt-2 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Best context:</span>
-                            <span className="text-bull">{accuracy.strongest_context}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Worst context:</span>
-                            <span className="text-bear">{accuracy.weakest_context}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2 text-onSurfaceDim">
-                      <span className="text-xs font-mono">NO DATA YET</span>
-                      <span className="text-[10px] font-mono">Run simulations to build accuracy history</span>
-                    </div>
-                  )}
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING AGENT DATA...</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {/* Agent Header Card */}
+            <div className="terminal-card p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-sm flex-shrink-0 text-white"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {selectedAgent?.shortLabel}
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-onSurface leading-tight">
+                      {agent?.name || selectedAgent?.displayName}
+                    </h1>
+                    <p className="text-onSurfaceMuted text-sm leading-relaxed mt-1.5 max-w-2xl">
+                      {agent?.description || 'Agent description not available'}
+                    </p>
+                  </div>
                 </div>
+                <div className="flex items-center gap-5 flex-shrink-0">
+                  <div className="text-right">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-onSurfaceMuted block">
+                      Weight
+                    </span>
+                    <span className="font-mono font-bold text-lg" style={{ color: accentColor }}>
+                      {(selectedAgent?.weight * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-px h-8 bg-gray-200" />
+                  <div className="text-right">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-onSurfaceMuted block">
+                      Type
+                    </span>
+                    <span className="font-mono font-bold text-lg" style={{ color: accentColor }}>
+                      {agent?.type || 'HYBRID'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                {/* Direction Breakdown */}
-                <div className="col-span-4 terminal-card p-4">
-                  <div className="section-header mb-3">Direction Breakdown</div>
-                  {accuracy?.direction_breakdown && Object.keys(accuracy.direction_breakdown).length > 0 ? (
-                    <div className="space-y-3">
-                      {Object.entries(accuracy.direction_breakdown).map(([dir, stats]) => (
-                        <div key={dir} className="flex items-center gap-3">
+            {/* Stat Cards — 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <StatCard
+                label="Overall Accuracy"
+                value={accuracy?.overall?.toFixed(1) || '0.0'}
+                unit="%"
+                trend={accuracy?.trend}
+                accentColor={accentColor}
+              />
+              <StatCard
+                label="Directional Accuracy"
+                value={accuracy?.directional?.toFixed(1) || '0.0'}
+                unit="%"
+                trend={accuracy?.directionalTrend}
+                accentColor={accentColor}
+              />
+              <StatCard
+                label="Conviction Calibration"
+                value={accuracy?.convictionCalibration?.toFixed(1) || '0.0'}
+                unit="%"
+                trend={accuracy?.calibrationTrend}
+                accentColor={accentColor}
+              />
+              <StatCard
+                label="Avg Execution Time"
+                value={accuracy?.avgExecutionTime?.toFixed(0) || '0'}
+                unit="ms"
+                accentColor={accentColor}
+              />
+            </div>
+
+            {/* Direction Breakdown + Failure Patterns */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Direction Breakdown */}
+              <div className="terminal-card p-5">
+                <h3 className="font-mono font-bold text-xs uppercase tracking-widest text-primary mb-5">
+                  Direction Breakdown
+                </h3>
+                <div className="space-y-4">
+                  {['BUY', 'SELL', 'HOLD'].map((dir) => {
+                    const dirData = directionData.find(d => d.direction === dir)
+                    const percentage = dirData?.count || 0
+                    const accuracy_pct = dirData?.accuracy || 0
+                    const barColor =
+                      dir === 'BUY' ? '#059669' : dir === 'SELL' ? '#DC2626' : '#D97706'
+
+                    return (
+                      <div key={dir}>
+                        <div className="flex items-center justify-between mb-2">
                           <span
-                            className="text-[10px] font-mono font-bold w-20 text-right"
-                            style={{ color: dirColor(dir) }}
+                            className="font-mono text-xs font-bold uppercase tracking-widest"
+                            style={{ color: barColor }}
                           >
                             {dir}
                           </span>
-                          <div className="flex-1 h-1.5 bg-surface-3 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${stats.accuracy || 0}%`,
-                                backgroundColor: dirColor(dir),
-                              }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-mono text-onSurfaceMuted w-12 text-right">
-                            {stats.count || 0}x
+                          <span className="text-onSurfaceMuted text-xs">
+                            {percentage} calls · {accuracy_pct.toFixed(0)}% accurate
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2 text-onSurfaceDim">
-                      <span className="text-xs font-mono">AWAITING OUTCOMES</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Failure Patterns */}
-                <div className="col-span-4 terminal-card p-4">
-                  <div className="section-header mb-3">Failure Patterns</div>
-                  {patterns?.patterns?.length > 0 ? (
-                    <div className="space-y-3">
-                      {patterns.patterns.map((p, i) => (
-                        <div key={i} className="bg-surface-2 rounded-lg p-3 border border-bear/10">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="w-1.5 h-1.5 bg-bear rounded-full" />
-                            <span className="text-[11px] font-mono font-bold text-bear">
-                              {p.type?.replace(/_/g, ' ').toUpperCase()}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-onSurfaceDim">
-                            {p.sample_count} occurrences
-                          </p>
-                          {p.example_contexts?.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {p.example_contexts.slice(0, 3).map((ctx, j) => (
-                                <span key={j} className="text-[9px] font-mono px-1.5 py-0.5 bg-surface-3 rounded text-onSurfaceDim">
-                                  {ctx}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                        <div className="relative h-2 bg-surface-3 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(percentage, 100)}%`,
+                              backgroundColor: barColor,
+                            }}
+                          />
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 gap-2 text-onSurfaceDim">
-                      <span className="text-xs font-mono">NO PATTERNS DETECTED</span>
-                      <span className="text-[10px] font-mono">Insufficient data for pattern analysis</span>
-                    </div>
-                  )}
-
-                  {/* Prompt Hints */}
-                  {patterns?.prompt_hints && (
-                    <div className="mt-4 pt-3 divider">
-                      <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Active Prompt Hints</span>
-                      <p className="text-[11px] text-primary font-mono mt-1 leading-relaxed">
-                        {patterns.prompt_hints}
-                      </p>
-                    </div>
-                  )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* Agent Meta */}
-              <div className="terminal-card p-4">
-                <div className="section-header mb-3">Agent Configuration</div>
-                <div className="grid grid-cols-6 gap-4">
-                  {agentInfo && [
-                    { label: 'Type', value: agentInfo.type },
-                    { label: 'Persona', value: agentInfo.persona?.split(' ').slice(0, 6).join(' ') + '...' },
-                    { label: 'Horizon', value: agentInfo.time_horizon },
-                    { label: 'Weight', value: `${((agentInfo.weight || 0) * 100).toFixed(0)}%` },
-                    { label: 'Risk', value: agentInfo.risk_appetite },
-                    { label: 'ID', value: agentInfo.id },
-                  ].map((item) => (
-                    <div key={item.label} className="bg-surface-2 rounded-lg p-3">
-                      <span className="text-[10px] font-mono text-onSurfaceDim uppercase">{item.label}</span>
-                      <p className="text-xs font-mono text-onSurface mt-1 truncate">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
+              {/* Failure Patterns */}
+              <div className="terminal-card p-5">
+                <h3 className="font-mono font-bold text-xs uppercase tracking-widest text-primary mb-5">
+                  Failure Patterns
+                </h3>
+                {failurePatterns.length === 0 ? (
+                  <p className="text-onSurfaceMuted text-sm">No significant failure patterns detected</p>
+                ) : (
+                  <div className="space-y-3">
+                    {failurePatterns.map((pattern, idx) => {
+                      const severityColors = {
+                        critical: '#DC2626',
+                        high: '#EF4444',
+                        medium: '#D97706',
+                        low: '#059669',
+                      }
+                      const color = severityColors[pattern.severity] || '#D97706'
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-3 p-3 rounded-xl border border-gray-100"
+                          style={{ backgroundColor: `${color}05` }}
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+                            style={{ backgroundColor: color }}
+                          />
+                          <div className="flex-1">
+                            <p className="text-onSurface text-sm font-medium">{pattern.pattern}</p>
+                            <p className="text-onSurfaceMuted text-xs mt-1">{pattern.description}</p>
+                          </div>
+                          <span
+                            className="font-mono text-xs font-bold uppercase tracking-wider flex-shrink-0"
+                            style={{ color }}
+                          >
+                            {pattern.occurrences}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-            </>
-          )}
-        </div>
+            </div>
+
+            {/* Agent Config */}
+            <div className="terminal-card p-5">
+              <h3 className="font-mono font-bold text-xs uppercase tracking-widest text-primary mb-4">
+                Configuration
+              </h3>
+              <pre className="text-onSurface text-xs font-mono bg-surface-1 p-4 rounded-xl overflow-auto max-h-96 border border-gray-100">
+                {JSON.stringify(
+                  {
+                    id: agent?.id,
+                    displayName: agent?.displayName,
+                    type: agent?.type,
+                    weight: selectedAgent?.weight,
+                    description: agent?.description,
+                    parameters: agent?.parameters,
+                  },
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          </div>
+        )}
       </div>
-    </Layout>
+    </div>
+  )
+}
+
+function StatCard({ label, value, unit, trend, accentColor }) {
+  return (
+    <div className="terminal-card p-4 flex flex-col">
+      <span className="font-mono text-xs uppercase tracking-widest text-onSurfaceMuted mb-3">
+        {label}
+      </span>
+      <div className="flex items-baseline gap-1 mb-2">
+        <span
+          className="font-mono font-bold text-3xl tabular-nums"
+          style={{ color: accentColor }}
+        >
+          {value}
+        </span>
+        <span className="text-onSurfaceMuted font-mono text-sm">{unit}</span>
+      </div>
+      {trend && (
+        <div className="flex items-center gap-1">
+          {trend > 0 ? (
+            <>
+              <span className="text-bull text-sm">▲</span>
+              <span className="text-xs text-bull font-mono">+{trend.toFixed(1)}%</span>
+            </>
+          ) : trend < 0 ? (
+            <>
+              <span className="text-bear text-sm">▼</span>
+              <span className="text-xs text-bear font-mono">{trend.toFixed(1)}%</span>
+            </>
+          ) : null}
+        </div>
+      )}
+    </div>
   )
 }

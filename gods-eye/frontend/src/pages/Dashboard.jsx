@@ -21,65 +21,19 @@ const formatINR = (value) => {
   return num < 0 ? `-${formatted}` : formatted
 }
 
-const formatPercent = (value, decimals = 2) => {
+const formatPercent = (value, decimals = 1) => {
   if (value === null || value === undefined) return '0%'
   const num = parseFloat(value)
   return isNaN(num) ? '0%' : `${num.toFixed(decimals)}%`
 }
 
-const getDirectionColor = (direction) => {
-  if (direction === 'BUY') return 'text-bull'
-  if (direction === 'SELL') return 'text-bear'
-  return 'text-neutral'
-}
+// ─── Hero Banner ──────────────────────────────────────────────────────────────
 
-const getDirectionBgColor = (direction) => {
-  if (direction === 'BUY') return 'bg-bull/10'
-  if (direction === 'SELL') return 'bg-bear/10'
-  return 'bg-neutral/10'
-}
-
-const StatCard = ({ label, value, icon, accent, trend, trendValue }) => (
-  <div className="terminal-card p-4 relative overflow-hidden group">
-    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-    <div className="relative z-10 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-mono uppercase tracking-wider text-onSurfaceMuted">{label}</span>
-        {icon && (
-          <span className="material-symbols-outlined text-lg text-primary/60 group-hover:text-primary transition-colors">
-            {icon}
-          </span>
-        )}
-      </div>
-
-      <div className="flex-1">
-        <div className={`text-3xl font-bold tracking-tight ${accent || 'text-primary'}`}>
-          {value}
-        </div>
-      </div>
-
-      {trend && trendValue !== null && (
-        <div className={`text-xs mt-2 flex items-center gap-1 ${
-          parseFloat(trendValue) >= 0 ? 'text-bull' : 'text-bear'
-        }`}>
-          <span className="material-symbols-outlined text-sm">
-            {parseFloat(trendValue) >= 0 ? 'trending_up' : 'trending_down'}
-          </span>
-          <span>{Math.abs(parseFloat(trendValue)).toFixed(1)}%</span>
-        </div>
-      )}
-    </div>
-  </div>
-)
-
-// ─── Trading Mode Toggle ──────────────────────────────────────────────────────
-
-const TradingModeToggle = ({ mode, onModeChange, dhanEnabled }) => {
+const HeroBanner = ({ direction, conviction, consensusScore, todayPnl, tradingMode, onModeChange, dhanEnabled, isSimulating }) => {
   const [switching, setSwitching] = useState(false)
 
   const handleToggle = async (newMode) => {
-    if (newMode === mode || switching) return
+    if (newMode === tradingMode || switching) return
     setSwitching(true)
     try {
       if (newMode === 'live') {
@@ -98,277 +52,221 @@ const TradingModeToggle = ({ mode, onModeChange, dhanEnabled }) => {
     }
   }
 
+  const dirColor = direction === 'BUY' ? 'text-bull' : direction === 'SELL' ? 'text-bear' : 'text-neutral'
+  const dirBg = direction === 'BUY' ? 'bg-bull-dim' : direction === 'SELL' ? 'bg-bear-dim' : 'bg-neutral-dim'
+  const dirArrow = direction === 'BUY' ? '▲' : direction === 'SELL' ? '▼' : '─'
+  const pnlColor = todayPnl >= 0 ? 'text-bull' : 'text-bear'
+
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => handleToggle('paper')}
-        disabled={switching}
-        className={`px-3 py-1.5 rounded text-xs font-mono uppercase tracking-wider transition-all ${
-          mode === 'paper'
-            ? 'bg-primary/20 text-primary border border-primary/40 shadow-glow-sm'
-            : 'bg-surface-1 text-onSurfaceDim border border-surface-2 hover:border-primary/30'
-        }`}
-      >
-        Paper
-      </button>
-      <button
-        onClick={() => handleToggle('live')}
-        disabled={switching}
-        className={`px-3 py-1.5 rounded text-xs font-mono uppercase tracking-wider transition-all ${
-          mode === 'live'
-            ? 'bg-bear/20 text-bear border border-bear/40 shadow-glow-sm'
-            : 'bg-surface-1 text-onSurfaceDim border border-surface-2 hover:border-bear/30'
-        }`}
-      >
-        Live
-      </button>
-      {mode === 'live' && (
-        <span className="flex items-center gap-1 text-xs text-bear">
-          <span className="w-2 h-2 bg-bear rounded-full animate-pulse" />
-          REAL MONEY
-        </span>
-      )}
+    <div className={`terminal-card p-5 ${dirBg}`}>
+      <div className="flex items-center justify-between">
+        {/* Left: Direction + Conviction */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <span className={`text-3xl font-bold ${dirColor}`}>{dirArrow}</span>
+            <div>
+              <div className={`text-2xl font-bold tracking-tight ${dirColor}`}>{direction}</div>
+              <div className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest">CONSENSUS</div>
+            </div>
+          </div>
+
+          <div className="h-10 w-px bg-gray-200" />
+
+          <div className="text-center">
+            <div className="text-xl font-bold font-mono text-onSurface">{formatPercent(conviction)}</div>
+            <div className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest">CONVICTION</div>
+          </div>
+
+          <div className="h-10 w-px bg-gray-200" />
+
+          <div className="text-center">
+            <div className="text-xl font-bold font-mono text-primary">{formatPercent(consensusScore)}</div>
+            <div className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest">ALIGNMENT</div>
+          </div>
+
+          {isSimulating && (
+            <>
+              <div className="h-10 w-px bg-gray-200" />
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                <span className="text-xs font-mono text-primary">SIMULATING...</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Right: P&L + Mode */}
+        <div className="flex items-center gap-5">
+          <div className="text-right">
+            <div className={`text-xl font-bold font-mono ${pnlColor}`}>{formatINR(todayPnl)}</div>
+            <div className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest">TODAY P&L</div>
+          </div>
+
+          <div className="h-10 w-px bg-gray-200" />
+
+          {/* Mode toggle */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleToggle('paper')}
+              disabled={switching}
+              className={`px-3 py-1.5 rounded-pill text-[10px] font-mono uppercase tracking-wider transition-all ${
+                tradingMode === 'paper'
+                  ? 'bg-primary/10 text-primary border border-primary/30'
+                  : 'bg-surface-2 text-onSurfaceDim border border-gray-200 hover:border-primary/30'
+              }`}
+            >
+              Paper
+            </button>
+            <button
+              onClick={() => handleToggle('live')}
+              disabled={switching}
+              className={`px-3 py-1.5 rounded-pill text-[10px] font-mono uppercase tracking-wider transition-all ${
+                tradingMode === 'live'
+                  ? 'bg-bear-dim text-bear border border-bear/30'
+                  : 'bg-surface-2 text-onSurfaceDim border border-gray-200 hover:border-bear/30'
+              }`}
+            >
+              Live
+            </button>
+            {tradingMode === 'live' && (
+              <span className="w-2 h-2 bg-bear rounded-full animate-pulse" title="Real money mode" />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-// ─── P&L Breakdown Panel ──────────────────────────────────────────────────────
+// ─── Compact Agent Grid ─────────────────────────────────────────────────────────
 
-const PnLBreakdown = ({ summary, pnlData, isLoading }) => {
-  if (isLoading) {
-    return (
-      <div className="terminal-card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-lg text-primary">analytics</span>
-          <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">P&L Breakdown</h3>
-        </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-          <span className="text-xs text-onSurfaceDim ml-2">Loading P&L...</span>
-        </div>
-      </div>
-    )
-  }
+const AgentGrid = ({ completedAgents, result }) => {
+  const agentsOutput = result?.agents_output
+  const agentsArr = agentsOutput
+    ? (Array.isArray(agentsOutput) ? agentsOutput : Object.values(agentsOutput))
+    : []
 
-  // Validate that daily_pnl[0] is actually today before showing as "Today" P&L
+  const agentMap = {}
+  agentsArr.forEach(a => { agentMap[a.agent_name] = a })
+
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {AGENTS.map(agent => {
+        const data = agentMap[agent.id] || completedAgents[agent.id]
+        const dir = data?.direction || data?.final_direction || '—'
+        const conv = data?.conviction || data?.conviction_percent || 0
+        const dirColor = dir === 'BUY' ? 'text-bull' : dir === 'SELL' ? 'text-bear' : 'text-onSurfaceDim'
+        const dirArrow = dir === 'BUY' ? '▲' : dir === 'SELL' ? '▼' : '─'
+        const isActive = !!data
+
+        return (
+          <div
+            key={agent.id}
+            className={`rounded-xl border p-2.5 transition-all ${
+              isActive
+                ? 'bg-white border-gray-200 shadow-sm'
+                : 'bg-surface-1 border-gray-100'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: agent.color }} />
+                <span className="text-[10px] font-mono text-onSurfaceMuted uppercase tracking-wider">{agent.shortLabel}</span>
+              </div>
+              <span className="text-[10px] font-mono text-onSurfaceDim">{(agent.weight * 100).toFixed(0)}%w</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className={`text-sm font-bold ${dirColor}`}>{dirArrow} {dir}</span>
+              <span className="text-xs font-mono text-onSurfaceMuted">{isActive ? formatPercent(conv) : '—'}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Quick Scenario Buttons ────────────────────────────────────────────────────
+
+const QuickScenarios = ({ onSelect }) => {
+  const scenarios = [
+    { id: 'normal_day', label: 'Normal', icon: '☀' },
+    { id: 'expiry_day', label: 'Expiry', icon: '⏰' },
+    { id: 'budget_session', label: 'Budget', icon: '📊' },
+    { id: 'rbi_policy', label: 'RBI', icon: '🏦' },
+    { id: 'flash_crash', label: 'Crash', icon: '⚡' },
+    { id: 'global_selloff', label: 'Selloff', icon: '🌍' },
+  ]
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {scenarios.map(s => (
+        <button
+          key={s.id}
+          onClick={() => onSelect(s.id)}
+          aria-label={`Run ${s.label} scenario`}
+          className="px-3 py-1.5 rounded-pill bg-surface-2 hover:bg-surface-3 border border-gray-200 hover:border-primary/20 text-xs font-medium text-onSurfaceMuted hover:text-onSurface transition-all duration-200"
+        >
+          <span className="mr-1" aria-hidden="true">{s.icon}</span>{s.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── P&L Summary Strip ──────────────────────────────────────────────────────────
+
+const PnLStrip = ({ summary, pnlData, isLoading }) => {
+  if (isLoading || !summary) return null
+
   const todayDate = new Date().toISOString().slice(0, 10)
   const latestEntry = pnlData?.daily_pnl?.[0]
   const todayPnl = (latestEntry?.date === todayDate) ? (latestEntry?.pnl || 0) : 0
   const weeklyPnl = (pnlData?.daily_pnl || []).slice(0, 5).reduce((sum, d) => sum + (d.pnl || 0), 0)
   const totalPnl = summary?.total_pnl_inr || 0
   const winRate = summary?.win_rate_pct || 0
-  const totalTrades = summary?.total_trades || 0
-  const capital = summary?.capital || 0
-  const totalReturn = summary?.total_return_pct || 0
-  const maxDrawdown = summary?.max_drawdown_pct || 0
-  const profitFactor = summary?.profit_factor || 0
-  const avgWin = summary?.avg_win_inr || 0
-  const avgLoss = summary?.avg_loss_inr || 0
+  const trades = summary?.total_trades || 0
+  const maxDD = summary?.max_drawdown_pct || 0
 
-  const PnLRow = ({ label, value, isPercent = false, highlight = false }) => (
-    <div className={`flex justify-between items-center py-1.5 ${highlight ? 'border-t border-primary/20 pt-2 mt-1' : ''}`}>
-      <span className="text-xs text-onSurfaceMuted">{label}</span>
-      <span className={`text-sm font-mono font-semibold ${
-        isPercent
-          ? (parseFloat(value) >= 0 ? 'text-bull' : 'text-bear')
-          : (typeof value === 'string' ? 'text-onSurface' : (value >= 0 ? 'text-bull' : 'text-bear'))
-      }`}>
-        {isPercent ? formatPercent(value) : (typeof value === 'string' ? value : formatINR(value))}
-      </span>
+  const Stat = ({ label, value, color }) => (
+    <div className="text-center">
+      <div className={`text-sm font-bold font-mono ${color || 'text-onSurface'}`}>{value}</div>
+      <div className="text-[9px] font-mono text-onSurfaceDim uppercase tracking-widest">{label}</div>
     </div>
   )
 
   return (
-    <div className="terminal-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-lg text-primary">analytics</span>
-        <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">P&L Breakdown</h3>
-      </div>
-
-      <div className="space-y-0.5">
-        <PnLRow label="Today" value={todayPnl} />
-        <PnLRow label="This Week (5d)" value={weeklyPnl} />
-        <PnLRow label="Cumulative" value={totalPnl} highlight />
-        <PnLRow label="Total Return" value={totalReturn} isPercent />
-        <PnLRow label="Capital" value={capital} />
-
-        <div className="border-t border-surface-2 my-2" />
-
-        <PnLRow label="Win Rate" value={winRate} isPercent />
-        <PnLRow label="Total Trades" value={String(totalTrades)} />
-        <PnLRow label="Avg Win" value={avgWin} />
-        <PnLRow label="Avg Loss" value={avgLoss} />
-        <PnLRow label="Profit Factor" value={profitFactor ? profitFactor.toFixed(2) + 'x' : '—'} />
-        <PnLRow label="Max Drawdown" value={maxDrawdown} isPercent />
-      </div>
-    </div>
-  )
-}
-
-// ─── Daily P&L Chart ──────────────────────────────────────────────────────────
-
-const DailyPnLChart = ({ pnlData, isLoading }) => {
-  const dailyPnl = pnlData?.daily_pnl || []
-
-  // Show last 14 days max
-  const displayData = dailyPnl.slice(0, 14).reverse()
-
-  if (isLoading || displayData.length === 0) {
-    return (
-      <div className="terminal-card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-lg text-primary">bar_chart</span>
-          <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">Daily P&L</h3>
+    <div className="terminal-card px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <Stat label="Today" value={formatINR(todayPnl)} color={todayPnl >= 0 ? 'text-bull' : 'text-bear'} />
+          <Stat label="Week" value={formatINR(weeklyPnl)} color={weeklyPnl >= 0 ? 'text-bull' : 'text-bear'} />
+          <Stat label="Total" value={formatINR(totalPnl)} color={totalPnl >= 0 ? 'text-bull' : 'text-bear'} />
         </div>
-        <div className="flex items-center justify-center py-12 text-onSurfaceDim text-xs">
-          {isLoading ? 'Loading...' : 'No daily P&L data yet'}
-        </div>
-      </div>
-    )
-  }
-
-  const maxVal = Math.max(...displayData.map(d => Math.abs(d.pnl || 0)), 1)
-  const barWidth = 100 / displayData.length
-
-  return (
-    <div className="terminal-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-lg text-primary">bar_chart</span>
-        <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">Daily P&L</h3>
-      </div>
-
-      <div className="relative h-36 bg-surface-0/30 rounded px-2 pt-2 pb-6">
-        {/* Zero line */}
-        <div className="absolute left-2 right-2 top-1/2 border-t border-dashed border-primary/20" />
-
-        <div className="flex items-end justify-around h-full relative">
-          {displayData.map((day, idx) => {
-            const pnl = day.pnl || 0
-            const height = (Math.abs(pnl) / maxVal) * 45 // max 45% of container
-            const isPositive = pnl >= 0
-
-            return (
-              <div
-                key={day.date || idx}
-                className="flex flex-col items-center relative"
-                style={{ width: `${barWidth}%` }}
-                title={`${day.date}: ${formatINR(pnl)}`}
-              >
-                <div className="relative w-full flex justify-center" style={{ height: '100%' }}>
-                  <div
-                    className={`w-3/4 max-w-[24px] rounded-sm transition-all ${
-                      isPositive ? 'bg-bull/60' : 'bg-bear/60'
-                    }`}
-                    style={{
-                      height: `${Math.max(height, 2)}%`,
-                      position: 'absolute',
-                      bottom: isPositive ? '50%' : 'auto',
-                      top: isPositive ? 'auto' : '50%',
-                    }}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Date labels */}
-        <div className="absolute bottom-0 left-2 right-2 flex justify-between">
-          <span className="text-[9px] text-onSurfaceDim">
-            {displayData[0]?.date?.slice(5) || ''}
-          </span>
-          <span className="text-[9px] text-onSurfaceDim">
-            {displayData[displayData.length - 1]?.date?.slice(5) || ''}
-          </span>
+        <div className="flex items-center gap-6">
+          <Stat label="Win Rate" value={formatPercent(winRate)} color={winRate >= 50 ? 'text-bull' : 'text-bear'} />
+          <Stat label="Trades" value={String(trades)} />
+          <Stat label="Max DD" value={formatPercent(maxDD)} color="text-bear" />
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Equity Curve (cumulative) ────────────────────────────────────────────────
+// ─── Signal Intel ───────────────────────────────────────────────────────────────
 
-const EquityCurveChart = ({ pnlData, isLoading }) => {
-  const dailyPnl = pnlData?.daily_pnl || []
-  const displayData = dailyPnl.slice().reverse()
-
-  if (isLoading || displayData.length === 0) {
-    return (
-      <div className="terminal-card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-lg text-primary">show_chart</span>
-          <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">Equity Curve</h3>
-        </div>
-        <div className="flex items-center justify-center py-12 text-onSurfaceDim text-xs">
-          {isLoading ? 'Loading equity curve...' : 'No trade data yet'}
-        </div>
-      </div>
-    )
-  }
-
-  const cumulativeData = displayData.map(d => d.cumulative || 0)
-  const maxPnL = Math.max(...cumulativeData, 0) || 1
-  const minPnL = Math.min(...cumulativeData, 0) || 0
-  const range = maxPnL - minPnL || 1
-
-  return (
-    <div className="terminal-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-lg text-primary">show_chart</span>
-        <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">Equity Curve</h3>
-      </div>
-
-      <div className="relative h-32 bg-surface-0/30 rounded p-4">
-        <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(168, 154, 255, 0.1)" strokeWidth="0.5" />
-
-          {cumulativeData.length > 1 && (
-            <>
-              <path
-                d={`M 0 ${100 - ((cumulativeData[0] - minPnL) / range) * 100} ${cumulativeData
-                  .map((val, i) => `L ${(i / (cumulativeData.length - 1)) * 100} ${100 - ((val - minPnL) / range) * 100}`)
-                  .join(' ')} L 100 100 L 0 100 Z`}
-                fill="rgba(168, 154, 255, 0.15)"
-              />
-              <polyline
-                points={cumulativeData
-                  .map((val, i) => `${(i / (cumulativeData.length - 1)) * 100},${100 - ((val - minPnL) / range) * 100}`)
-                  .join(' ')}
-                fill="none"
-                stroke="#A89AFF"
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-              />
-            </>
-          )}
-        </svg>
-
-        <div className="absolute bottom-2 left-2 right-2 flex justify-between text-xs text-onSurfaceDim pointer-events-none">
-          <span>{formatINR(minPnL)}</span>
-          <span>{formatINR(maxPnL)}</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Signal Intel ─────────────────────────────────────────────────────────────
-
-const SignalIntelSection = ({ result, events, isLoading }) => {
+const SignalIntelSection = ({ result, isLoading }) => {
   const getLatestSignals = () => {
     if (!result || !result.agents_output) return []
-
-    // agents_output can be a dict (keyed by agent name) or an array — normalize to array
     const agentsArr = Array.isArray(result.agents_output)
       ? result.agents_output
       : Object.values(result.agents_output)
-
     return agentsArr
       .filter(r => r.reasoning)
       .slice(0, 3)
       .map(r => ({
         agent: r.agent_name,
-        reasoning: r.reasoning.substring(0, 120) + (r.reasoning.length > 120 ? '...' : ''),
+        reasoning: r.reasoning.substring(0, 100) + (r.reasoning.length > 100 ? '...' : ''),
         confidence: r.conviction || 0
       }))
   }
@@ -376,30 +274,26 @@ const SignalIntelSection = ({ result, events, isLoading }) => {
   const signals = getLatestSignals()
 
   return (
-    <div className="terminal-card p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="material-symbols-outlined text-lg text-primary">smart_toy</span>
-        <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">Signal Intel</h3>
-      </div>
-
-      <div className="space-y-3">
+    <div className="terminal-card p-4">
+      <h3 className="text-[10px] font-mono uppercase tracking-widest text-onSurfaceMuted mb-3">Key Signals</h3>
+      <div className="space-y-2">
         {isLoading ? (
-          <div className="flex items-center gap-2 py-8 justify-center">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-xs text-onSurfaceDim">Analyzing agents...</span>
+          <div className="flex items-center gap-2 py-4 justify-center">
+            <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+            <span className="text-[11px] text-onSurfaceDim">Analyzing...</span>
           </div>
         ) : signals.length === 0 ? (
-          <div className="text-xs text-onSurfaceDim py-6 text-center">
+          <div className="text-[11px] text-onSurfaceDim py-3 text-center">
             Run a simulation to see agent insights
           </div>
         ) : (
           signals.map((signal) => (
-            <div key={signal.agent} className="p-3 bg-surface-0/50 rounded border border-primary/20 hover:border-primary/40 transition-colors">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <span className="text-xs font-mono text-primary-glow">{signal.agent}</span>
-                <span className="text-xs text-onSurfaceDim">{formatPercent(signal.confidence)}</span>
+            <div key={signal.agent} className="p-2.5 bg-surface-1 rounded-xl border border-gray-100">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[10px] font-mono text-primary font-medium">{signal.agent}</span>
+                <span className="text-[10px] text-onSurfaceDim">{formatPercent(signal.confidence)}</span>
               </div>
-              <p className="text-xs text-onSurface leading-relaxed">{signal.reasoning}</p>
+              <p className="text-[11px] text-onSurfaceMuted leading-relaxed">{signal.reasoning}</p>
             </div>
           ))
         )}
@@ -408,136 +302,18 @@ const SignalIntelSection = ({ result, events, isLoading }) => {
   )
 }
 
-// ─── Trade History Table ──────────────────────────────────────────────────────
-
-const TradesTable = ({ trades, tradingMode, isLoading }) => {
-  const formatDate = (dateString) => {
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleString('en-IN', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    } catch {
-      return dateString
-    }
-  }
-
-  const getStatusBadge = (status) => {
-    const styles = {
-      OPEN: 'bg-primary/20 text-primary',
-      STOPPED: 'bg-bear/20 text-bear',
-      TARGET_HIT: 'bg-bull/20 text-bull',
-      CLOSED_EOD: 'bg-neutral/20 text-neutral',
-      ORDER_FAILED: 'bg-bear/30 text-bear',
-      CANCELLED: 'bg-surface-2 text-onSurfaceDim',
-    }
-    return styles[status] || 'bg-surface-2 text-onSurfaceDim'
-  }
-
-  return (
-    <div className="terminal-card p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-lg text-primary">trending_up</span>
-          <h3 className="font-mono text-sm uppercase tracking-wider text-primary-glow">
-            Trade History
-          </h3>
-        </div>
-        <span className={`text-xs font-mono px-2 py-0.5 rounded ${
-          tradingMode === 'live' ? 'bg-bear/10 text-bear' : 'bg-primary/10 text-primary'
-        }`}>
-          {tradingMode?.toUpperCase()}
-        </span>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-primary/20">
-              <th className="text-left py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">Time</th>
-              <th className="text-left py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">Dir</th>
-              <th className="text-left py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">Type</th>
-              <th className="text-right py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">Entry</th>
-              <th className="text-right py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">Exit</th>
-              <th className="text-right py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">P&L</th>
-              <th className="text-left py-2 px-2 text-onSurfaceDim font-mono uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-6 text-onSurfaceDim">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    <span>Loading trades...</span>
-                  </div>
-                </td>
-              </tr>
-            ) : trades.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-6 text-onSurfaceDim">
-                  No trades recorded yet
-                </td>
-              </tr>
-            ) : (
-              trades.map((trade) => {
-                const pnl = parseFloat(trade.net_pnl) || 0
-                const pnlColor = pnl > 0 ? 'text-bull' : pnl < 0 ? 'text-bear' : 'text-onSurfaceDim'
-                const dirColor = trade.direction?.includes('BUY') ? 'text-bull' : trade.direction?.includes('SELL') ? 'text-bear' : 'text-neutral'
-
-                return (
-                  <tr key={trade.trade_id} className="border-b border-surface-2 hover:bg-surface-1/50 transition-colors">
-                    <td className="py-2 px-2 text-onSurfaceMuted">{formatDate(trade.timestamp)}</td>
-                    <td className={`py-2 px-2 font-mono font-semibold ${dirColor}`}>
-                      {trade.direction}
-                    </td>
-                    <td className="py-2 px-2 text-onSurface">
-                      {trade.option_type} {trade.lots}L
-                    </td>
-                    <td className="py-2 px-2 text-right text-onSurface font-mono">
-                      {trade.entry_premium?.toFixed(1)}
-                    </td>
-                    <td className="py-2 px-2 text-right text-onSurface font-mono">
-                      {trade.exit_premium ? trade.exit_premium.toFixed(1) : '—'}
-                    </td>
-                    <td className={`py-2 px-2 text-right font-mono font-semibold ${pnlColor}`}>
-                      {trade.status === 'OPEN' ? '—' : formatINR(pnl)}
-                    </td>
-                    <td className="py-2 px-2">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] uppercase tracking-wide ${getStatusBadge(trade.status)}`}>
-                        {trade.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
+// ─── Main Dashboard ─────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { simulate, result, events, currentRound, completedAgents, aggregation, streamStatus, isLoading, error, reset } = useStreamingSimulation()
 
-  // Trading mode state
   const [tradingMode, setTradingMode] = useState('paper')
   const [dhanEnabled, setDhanEnabled] = useState(false)
-
-  // Unified trading data
   const [tradingSummary, setTradingSummary] = useState(null)
   const [tradingPnl, setTradingPnl] = useState(null)
   const [tradingTrades, setTradingTrades] = useState([])
   const [tradesLoading, setTradesLoading] = useState(false)
 
-  // Fetch trading mode on mount
   useEffect(() => {
     apiClient.getTradingMode()
       .then(data => {
@@ -547,7 +323,6 @@ export default function Dashboard() {
       .catch(() => {})
   }, [])
 
-  // Handle mode change
   const handleModeChange = useCallback(async (newMode) => {
     try {
       const needsConfirm = newMode === 'live'
@@ -558,9 +333,7 @@ export default function Dashboard() {
     }
   }, [])
 
-  // Fetch trading data (unified endpoint — respects active mode)
   const fetchTradingData = useCallback(async () => {
-    // Skip fetch if tab is hidden to avoid wasting API calls
     if (document.hidden) return
     setTradesLoading(true)
     try {
@@ -579,149 +352,103 @@ export default function Dashboard() {
     }
   }, [])
 
-  // Poll trading data every 10s, and re-fetch on mode change
-  // fetchTradingData is stable (no deps), so tradingMode change is the only re-trigger
   useEffect(() => {
     fetchTradingData()
     const interval = setInterval(fetchTradingData, 10000)
     return () => clearInterval(interval)
   }, [fetchTradingData, tradingMode])
 
-  const getDirectionStats = () => {
-    if (!aggregation) {
-      return {
-        direction: 'HOLD',
-        conviction: 0,
-        consensusScore: 0,
-      }
-    }
-
+  const directionStats = (() => {
+    if (!aggregation) return { direction: 'HOLD', conviction: 0, consensusScore: 0 }
     return {
       direction: aggregation.final_direction || 'HOLD',
       conviction: aggregation.conviction_percent || 0,
       consensusScore: aggregation.consensus_score || 0,
     }
-  }
+  })()
 
-  const directionStats = getDirectionStats()
-  // FE-L4: completedAgents is an object, not an array — .length would be undefined
-  const activeSignalCount = Object.keys(completedAgents).length
-  // Validate that daily_pnl[0] is actually today before showing as "Today" P&L
   const todayStr = new Date().toISOString().slice(0, 10)
   const latestPnlEntry = tradingPnl?.daily_pnl?.[0]
   const todayPnl = (latestPnlEntry?.date === todayStr) ? (latestPnlEntry?.pnl || 0) : 0
 
   return (
-    <div className="min-h-screen bg-surface-0 pt-6 pb-12">
-      <div className="max-w-7xl mx-auto px-6">
-        {/* Header with Trading Mode Toggle */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-primary-glow mb-1 tracking-tight">God's Eye</h1>
-            <p className="text-sm text-onSurfaceDim font-mono">Multi-Agent Market Intelligence</p>
-          </div>
-          <TradingModeToggle
-            mode={tradingMode}
-            onModeChange={handleModeChange}
-            dhanEnabled={dhanEnabled}
-          />
-        </div>
+    <div className="h-full bg-surface-1 p-4 overflow-auto">
+      <div className="max-w-[1600px] mx-auto space-y-3">
 
-        {/* Error display */}
         {error && (
-          <div className="mb-6 p-4 bg-bear/10 border border-bear/20 rounded text-bear text-sm">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined">error</span>
-              <span>{error}</span>
-            </div>
+          <div className="p-3 bg-bear-dim border border-bear/20 rounded-xl text-bear text-sm flex items-center gap-2">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 flex-shrink-0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span>{error}</span>
           </div>
         )}
 
-        {/* Top Stats Row - 4 columns */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <StatCard
-            label="Market Sentiment"
-            value={directionStats.direction}
-            icon="psychology"
-            accent={getDirectionColor(directionStats.direction)}
-            trend={true}
-            trendValue={directionStats.conviction}
-          />
-          <StatCard
-            label="Consensus Score"
-            value={formatPercent(directionStats.consensusScore)}
-            icon="verified_user"
-            accent="text-primary"
-          />
-          <StatCard
-            label="Active Signals"
-            value={activeSignalCount}
-            icon="bolt"
-            accent="text-neutral-bright"
-          />
-          <StatCard
-            label="P&L Today"
-            value={formatINR(todayPnl)}
-            icon="account_balance_wallet"
-            accent={todayPnl >= 0 ? 'text-bull' : 'text-bear'}
-            trend={true}
-            trendValue={tradingSummary?.total_return_pct || 0}
-          />
+        <HeroBanner
+          direction={directionStats.direction}
+          conviction={directionStats.conviction}
+          consensusScore={directionStats.consensusScore}
+          todayPnl={todayPnl}
+          tradingMode={tradingMode}
+          onModeChange={handleModeChange}
+          dhanEnabled={dhanEnabled}
+          isSimulating={isLoading}
+        />
+
+        <div className="grid grid-cols-12 gap-3">
+          <div className="col-span-8">
+            <AgentGrid completedAgents={completedAgents} result={result} />
+          </div>
+
+          <div className="col-span-4 flex flex-col gap-3">
+            <button
+              onClick={() => simulate()}
+              disabled={isLoading}
+              className={`w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                isLoading
+                  ? 'bg-primary/10 text-primary cursor-wait'
+                  : 'bg-primary text-white hover:bg-secondary hover:shadow-card active:scale-[0.98]'
+              }`}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  Round {currentRound} · {Object.keys(completedAgents).length}/8 Agents
+                </span>
+              ) : (
+                '▶ RUN SIMULATION'
+              )}
+            </button>
+            <div className="terminal-card p-3">
+              <div className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest mb-2">Quick Scenario</div>
+              <QuickScenarios onSelect={(id) => simulate({ scenario: id })} />
+            </div>
+          </div>
         </div>
 
-        {/* Main Grid Layout - 12 cols */}
-        <div className="grid grid-cols-12 gap-4 mb-6">
-          {/* Left Column - Scenario Panel (3 cols) */}
-          <div className="col-span-3">
-            <ScenarioPanel result={result} />
-          </div>
+        <PnLStrip summary={tradingSummary} pnlData={tradingPnl} isLoading={tradesLoading} />
 
-          {/* Center Column - Agent Pressures + Insights (6 cols) */}
-          <div className="col-span-6 space-y-4">
+        <div className="grid grid-cols-12 gap-3">
+          <div className="col-span-5">
             <PressurePanel result={result} aggregation={aggregation} />
+          </div>
+          <div className="col-span-4">
+            <SignalIntelSection result={result} isLoading={isLoading} />
+          </div>
+          <div className="col-span-3">
             <InsightsPanel result={result} aggregation={aggregation} />
           </div>
+        </div>
 
-          {/* Right Column - P&L Breakdown + Signal Intel + Accuracy + Feedback (3 cols) */}
-          <div className="col-span-3 space-y-4">
-            <PnLBreakdown
-              summary={tradingSummary}
-              pnlData={tradingPnl}
-              isLoading={tradesLoading}
-            />
-            <SignalIntelSection result={result} events={events} isLoading={isLoading} />
+        <div className="grid grid-cols-12 gap-3">
+          <div className="col-span-5">
+            <ScenarioPanel result={result} />
+          </div>
+          <div className="col-span-4">
             <AccuracyPanel result={result} />
+          </div>
+          <div className="col-span-3">
             <FeedbackPanel result={result} onFeedbackSubmit={fetchTradingData} />
           </div>
         </div>
-
-        {/* Bottom Row - Trades Table (7 cols) + Charts (5 cols) */}
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-7">
-            <TradesTable
-              trades={tradingTrades}
-              tradingMode={tradingMode}
-              isLoading={tradesLoading}
-            />
-          </div>
-          <div className="col-span-5 space-y-4">
-            <DailyPnLChart pnlData={tradingPnl} isLoading={tradesLoading} />
-            <EquityCurveChart pnlData={tradingPnl} isLoading={tradesLoading} />
-          </div>
-        </div>
-
-        {/* Simulation Status Indicator */}
-        {isLoading && (
-          <div className="fixed bottom-6 right-6 terminal-card p-4 flex items-center gap-3">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <div>
-              <div className="text-xs font-mono text-primary-glow">Simulation Running</div>
-              <div className="text-xs text-onSurfaceDim">
-                Round {currentRound} • {Object.keys(completedAgents).length} agents active
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

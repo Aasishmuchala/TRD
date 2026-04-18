@@ -4,11 +4,11 @@ import { agents as agentColors, agentLabels } from '../utils/colors'
 import { AGENT_ORDER } from '../constants/agents'
 
 const DIRECTION_COLORS = {
-  STRONG_BUY: '#00FF88',
-  BUY: '#00E676',
-  HOLD: '#FFC107',
-  SELL: '#FF1744',
-  STRONG_SELL: '#FF3D71',
+  STRONG_BUY: '#059669',
+  BUY: '#059669',
+  HOLD: '#D97706',
+  SELL: '#DC2626',
+  STRONG_SELL: '#DC2626',
 }
 
 const ROUND_LABELS = {
@@ -70,7 +70,7 @@ export default function SimulationStream({
                     ? 'bg-primary/15 border-primary/30 text-primary'
                     : r === currentRound && isStreaming
                     ? 'bg-primary/10 border-primary/40 text-primary animate-pulse'
-                    : 'bg-surface-2 border-[rgba(255,255,255,0.06)] text-onSurfaceDim'
+                    : 'bg-surface-1 border-gray-100 text-onSurfaceDim'
                 }`}
               >
                 {r}
@@ -92,7 +92,7 @@ export default function SimulationStream({
 
         if (roundSkipped) {
           return (
-            <div key={roundNum} className="px-3 py-2 bg-surface-2/50 rounded-lg border border-[rgba(255,255,255,0.04)]">
+            <div key={roundNum} className="px-3 py-2 bg-surface-1 rounded-lg border border-gray-100">
               <span className="text-[10px] font-mono text-onSurfaceDim">
                 ROUND 3 SKIPPED — Consensus reached in Round 2
               </span>
@@ -124,7 +124,7 @@ export default function SimulationStream({
             <div className="grid grid-cols-3 gap-2">
               {AGENT_ORDER.map((agentName) => {
                 const agentResult = roundAgents.find((e) => e.agent_name === agentName)
-                const color = agentColors[agentName] || '#00D4E0'
+                const color = agentColors[agentName] || '#CC152B'
                 const label = agentLabels[agentName] || agentName
                 const isPending = isCurrentRound && !agentResult
 
@@ -132,20 +132,20 @@ export default function SimulationStream({
                   return (
                     <div
                       key={agentName}
-                      className="px-3 py-2.5 rounded-lg bg-surface-2/50 border border-[rgba(255,255,255,0.04)] animate-pulse"
+                      className="px-3 py-2.5 rounded-lg bg-surface-1 border border-gray-100 animate-pulse"
                     >
                       <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, opacity: 0.4 }} />
                         <span className="text-[10px] font-mono text-onSurfaceDim">{label}</span>
                       </div>
-                      <div className="mt-1.5 h-2 bg-surface-3 rounded-full w-2/3" />
+                      <div className="mt-1.5 h-2 bg-surface-2 rounded-full w-2/3" />
                     </div>
                   )
                 }
 
                 if (!agentResult) return null
 
-                const dirColor = DIRECTION_COLORS[agentResult.direction] || '#FFC107'
+                const dirColor = DIRECTION_COLORS[agentResult.direction] || '#D97706'
 
                 const cardKey = `${roundNum}-${agentName}`
                 const isExpanded = expandedAgent === cardKey
@@ -153,7 +153,7 @@ export default function SimulationStream({
                 return (
                   <div
                     key={agentName}
-                    className={`px-3 py-2.5 rounded-lg bg-surface-2 border transition-all duration-300 cursor-pointer hover:border-primary/30 ${isExpanded ? 'col-span-3' : ''}`}
+                    className={`px-3 py-2.5 rounded-lg bg-surface-1 border transition-all duration-300 cursor-pointer hover:border-primary/30 ${isExpanded ? 'col-span-3' : ''}`}
                     style={{ borderColor: isExpanded ? `${color}40` : `${color}20` }}
                     onClick={() => setExpandedAgent(isExpanded ? null : cardKey)}
                   >
@@ -182,7 +182,7 @@ export default function SimulationStream({
 
                     {/* Conviction bar */}
                     <div className="mt-1.5 flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
@@ -199,14 +199,14 @@ export default function SimulationStream({
 
                     {/* Direction change indicator (Round 2+) */}
                     {agentResult.direction_changed && (
-                      <div className="mt-1 text-[8px] font-mono text-neutral-bright">
+                      <div className="mt-1 text-[8px] font-mono text-neutral">
                         Changed from {agentResult.previous_direction}
                       </div>
                     )}
 
                     {/* Expanded reasoning section */}
                     {isExpanded && (
-                      <div className="mt-3 pt-3 border-t border-[rgba(255,255,255,0.06)] space-y-2">
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
                         {/* Reasoning */}
                         {agentResult.reasoning && (
                           <div>

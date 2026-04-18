@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Layout from '../components/Layout'
+// Layout provided by App.jsx
 import { apiClient } from '../api/client'
 import { AGENT_ORDER, AGENT_DISPLAY_NAMES, AGENT_COLORS, AGENT_WEIGHTS } from '../constants/agents'
 
@@ -82,17 +82,17 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center h-[calc(100vh-2.5rem)]">
+      <>
+        <div className="flex items-center justify-center h-full">
           <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING SETTINGS...</span>
         </div>
-      </Layout>
+      </>
     )
   }
 
   return (
-    <Layout>
-      <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
+    <>
+      <div className="p-4 h-full overflow-y-auto">
         <div className="max-w-3xl">
           {fetchError && (
             <div className="terminal-card p-3 border-l-2 border-bear mb-4">
@@ -124,7 +124,7 @@ export default function Settings() {
                       <div className="flex items-center gap-2">
                         <div
                           className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: AGENT_COLORS[agentId] || '#928F9F' }}
+                          style={{ backgroundColor: AGENT_COLORS[agentId] || '#9CA3AF' }}
                         />
                         <span className="text-[11px] font-mono text-onSurface">
                           {AGENT_DISPLAY_NAMES[agentId] || agentId}
@@ -141,13 +141,16 @@ export default function Settings() {
                       step="0.01"
                       value={weight}
                       onChange={(e) => handleWeightChange(agentId, e.target.value)}
-                      className="w-full h-1 bg-surface-3 rounded-full appearance-none cursor-pointer accent-primary"
+                      className="w-full h-1 bg-surface-2 rounded-full appearance-none cursor-pointer accent-primary"
                     />
                   </div>
                 )
               })}
             </div>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 my-5" />
 
           {/* Quant / LLM Balance */}
           <div className="terminal-card p-4 mb-4">
@@ -166,7 +169,7 @@ export default function Settings() {
                 step="5"
                 value={quantLlmBalance}
                 onChange={(e) => { setQuantLlmBalance(parseInt(e.target.value)); setSaved(false) }}
-                className="w-full h-1 bg-surface-3 rounded-full appearance-none cursor-pointer accent-primary"
+                className="w-full h-1 bg-surface-2 rounded-full appearance-none cursor-pointer accent-primary"
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[9px] font-mono text-onSurfaceDim">Pure Quant</span>
@@ -177,6 +180,9 @@ export default function Settings() {
               Flag conflicts when quant-LLM disagreement exceeds 30%
             </p>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 my-5" />
 
           {/* Simulation Parameters */}
           <div className="terminal-card p-4 mb-4">
@@ -224,7 +230,7 @@ export default function Settings() {
                   step="0.05"
                   value={simParams.temperature}
                   onChange={(e) => handleSimParamChange('temperature', e.target.value)}
-                  className="w-full h-1 bg-surface-3 rounded-full appearance-none cursor-pointer accent-primary mt-2"
+                  className="w-full h-1 bg-surface-2 rounded-full appearance-none cursor-pointer accent-primary mt-2"
                 />
                 <p className="text-[9px] text-onSurfaceDim mt-1">Low = deterministic, High = creative</p>
               </div>
@@ -236,7 +242,7 @@ export default function Settings() {
             <button
               onClick={handleSave}
               disabled={saving || !weightsValid}
-              className={`flex-1 font-mono text-xs tracking-wider py-2.5 rounded-lg transition-all ${
+              className={`flex-1 font-mono text-xs tracking-wider py-2.5 rounded-pill transition-all ${
                 saved
                   ? 'bg-bull/20 text-bull border border-bull/30'
                   : 'btn-primary'
@@ -250,6 +256,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   )
 }

@@ -37,7 +37,7 @@ export default function EquityCurve({ days = [], onDayClick }) {
 
   // Dynamic line color based on final cumulative P&L
   const lastCumPnl = chartData[chartData.length - 1]?.cumPnl ?? 0
-  const lineColor = lastCumPnl > 0 ? '#00E676' : lastCumPnl < 0 ? '#FF1744' : '#00D4E0'
+  const lineColor = lastCumPnl > 0 ? '#059669' : lastCumPnl < 0 ? '#DC2626' : '#CC152B'
 
   const handleChartClick = (data) => {
     if (data?.activePayload?.[0]?.payload?.rawDay) {
@@ -49,14 +49,14 @@ export default function EquityCurve({ days = [], onDayClick }) {
   const renderDot = (props) => {
     const { cx, cy, payload } = props
     const pnl = payload?.rawDay?.pnl_points ?? 0
-    const color = pnl > 0 ? '#00E676' : pnl < 0 ? '#FF1744' : '#FFC107'
+    const color = pnl > 0 ? '#059669' : pnl < 0 ? '#DC2626' : '#D97706'
     return <circle key={`dot-${payload.date}`} cx={cx} cy={cy} r={3} fill={color} strokeWidth={0} />
   }
 
   const renderActiveDot = (props) => {
     const { cx, cy, payload } = props
     const pnl = payload?.rawDay?.pnl_points ?? 0
-    const color = pnl > 0 ? '#00E676' : pnl < 0 ? '#FF1744' : '#FFC107'
+    const color = pnl > 0 ? '#059669' : pnl < 0 ? '#DC2626' : '#D97706'
     return (
       <circle
         key={`active-dot-${payload.date}`}
@@ -82,35 +82,35 @@ export default function EquityCurve({ days = [], onDayClick }) {
             onClick={handleChartClick}
             style={{ cursor: onDayClick ? 'pointer' : 'default' }}
           >
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+            <CartesianGrid stroke="rgba(0,0,0,0.06)" strokeDasharray="3 3" />
             <XAxis
               dataKey="date"
-              stroke="#5A6070"
-              style={{ fontSize: '9px', fontFamily: 'JetBrains Mono' }}
+              stroke="#9CA3AF"
+              style={{ fontSize: '9px', fontFamily: "'Geist Mono', monospace" }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="#5A6070"
-              style={{ fontSize: '9px', fontFamily: 'JetBrains Mono' }}
+              stroke="#9CA3AF"
+              style={{ fontSize: '9px', fontFamily: "'Geist Mono', monospace" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v) => `${v > 0 ? '+' : ''}${v}`}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(14,14,19,0.95)',
-                border: '1px solid rgba(0,212,224,0.2)',
-                borderRadius: '8px',
+                backgroundColor: '#fff',
+                border: '1px solid #E5E7EB',
+                borderRadius: '12px',
                 fontSize: '11px',
-                fontFamily: 'JetBrains Mono',
+                fontFamily: "'Geist Mono', monospace",
               }}
-              labelStyle={{ color: '#8B95A5' }}
+              labelStyle={{ color: '#6B7280' }}
               formatter={(value) => [`${value > 0 ? '+' : ''}${value} pts`, 'Cum. P&L']}
             />
             <ReferenceLine
               y={0}
-              stroke="rgba(255,255,255,0.15)"
+              stroke="rgba(0,0,0,0.1)"
               strokeDasharray="3 3"
             />
             <Line

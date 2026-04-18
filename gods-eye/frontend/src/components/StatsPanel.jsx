@@ -78,7 +78,7 @@ export default function StatsPanel({ days }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="bg-surface-2 rounded-lg p-3">
+          <div key={s.label} className="bg-surface-1 rounded-lg p-3">
             <p className="text-[10px] font-mono text-onSurfaceDim mb-1">{s.label}</p>
             <p className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</p>
           </div>

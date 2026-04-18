@@ -1,130 +1,230 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Geist Sans & Mono via CDN */
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts/geist-sans/Geist-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts/geist-sans/Geist-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Sans';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts/geist-sans/Geist-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts/geist-mono/GeistMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.2.0/dist/fonts/geist-mono/GeistMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
+  * {
+    @apply selection:bg-primary/20 selection:text-onSurface;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-surface-0 text-onSurface;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Geist Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  code, pre, .mono {
+    font-family: 'Geist Mono', 'SF Mono', monospace;
   }
 }
 
 @layer components {
-  /* ─── Terminal Cards ─── */
+  /* ─── Cards (Algon.iq: white bg, soft shadow, no colored borders) ─── */
   .terminal-card {
-    @apply bg-surface-1 rounded-xl border border-[rgba(255,255,255,0.06)] relative overflow-hidden;
+    @apply bg-white rounded-2xl border border-gray-100 relative overflow-hidden;
+    box-shadow: 0 7px 29px 0 rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.4s ease, transform 0.4s ease;
+  }
+
+  .terminal-card:hover {
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.12);
   }
 
   .terminal-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0,212,224,0.3), transparent);
+    display: none;
   }
 
   .terminal-card-lg {
-    @apply bg-surface-1 rounded-2xl border border-[rgba(255,255,255,0.06)] relative overflow-hidden;
+    @apply bg-white rounded-2xl border border-gray-100 relative overflow-hidden;
+    box-shadow: 0 7px 29px 0 rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.4s ease, transform 0.4s ease;
+  }
+
+  .terminal-card-lg:hover {
+    box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.15);
   }
 
   .terminal-card-lg::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0,212,224,0.3), transparent);
+    display: none;
   }
 
-  /* Legacy glass-card aliases */
+  /* Legacy aliases */
   .glass-card {
     @apply terminal-card;
   }
-
   .glass-card-lg {
     @apply terminal-card-lg;
   }
 
-  /* ─── Gradients ─── */
+  /* ─── Gradients (Algon: solid red, not gradients) ─── */
   .gradient-primary {
-    background: linear-gradient(135deg, #00F0FF 0%, #00D4E0 50%, #00A8B3 100%);
+    background: #CC152B;
   }
 
   .gradient-primary-text {
-    background: linear-gradient(135deg, #00F0FF 0%, #00D4E0 100%);
+    background: linear-gradient(135deg, #CC152B 0%, #E8192F 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-bull {
-    background: linear-gradient(135deg, #00FF88 0%, #00E676 100%);
+    background: linear-gradient(135deg, #059669 0%, #16A34A 100%);
   }
 
   .gradient-bear {
-    background: linear-gradient(135deg, #FF3D71 0%, #FF1744 100%);
+    background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
   }
 
-  /* ─── Navigation ─── */
+  /* ─── Navigation (Algon: clean, minimal, dot indicators) ─── */
   .nav-item {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-onSurfaceMuted hover:text-onSurface hover:bg-surface-2 transition-all duration-150 relative text-sm;
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-onSurfaceMuted hover:text-onSurface hover:bg-surface-2 transition-all duration-200 relative text-sm;
+    font-family: 'Geist Sans', sans-serif;
+  }
+
+  .nav-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+    border-radius: 0 3px 3px 0;
+    transition: all 200ms ease;
+  }
+
+  .nav-item:hover::before {
+    background: rgba(204, 21, 43, 0.15);
   }
 
   .nav-item-active {
-    @apply text-primary bg-surface-2;
-    box-shadow: inset 3px 0 0 #00D4E0;
+    @apply text-primary bg-primary/5 font-medium;
+    box-shadow: inset 3px 0 0 #CC152B;
   }
 
-  /* ─── Buttons ─── */
+  .nav-item-active::before {
+    background: #CC152B;
+  }
+
+  /* ─── Buttons (Algon: pill shape, red accent, dark hover) ─── */
   .btn-primary {
-    @apply px-5 py-2.5 rounded-lg font-semibold text-surface-0 text-sm transition-all duration-200;
-    background: linear-gradient(135deg, #00F0FF 0%, #00D4E0 100%);
+    @apply px-6 py-2.5 rounded-pill font-semibold text-white text-sm transition-all duration-300;
+    background: #CC152B;
+    font-family: 'Geist Sans', sans-serif;
+    font-weight: 600;
   }
 
   .btn-primary:hover {
-    box-shadow: 0 0 20px rgba(0,212,224,0.3);
-    filter: brightness(1.1);
+    background: #141010;
+    box-shadow: 0 4px 16px rgba(20, 16, 16, 0.3);
+    transform: translateY(-1px);
   }
 
   .btn-primary:active {
-    transform: scale(0.98);
+    transform: scale(0.98) translateY(0);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 rounded-lg font-medium text-onSurface text-sm border border-[rgba(255,255,255,0.1)] hover:bg-surface-2 hover:border-[rgba(255,255,255,0.2)] transition-all duration-150;
+    @apply px-5 py-2 rounded-pill font-medium text-onSurface text-sm border border-gray-200 hover:bg-secondary hover:text-white hover:border-secondary transition-all duration-300;
+    font-family: 'Geist Sans', sans-serif;
+  }
+
+  .btn-secondary:hover {
+    box-shadow: 0 4px 12px rgba(20, 16, 16, 0.15);
   }
 
   .btn-ghost {
-    @apply px-4 py-2 rounded-lg font-medium text-onSurfaceMuted text-sm hover:text-onSurface hover:bg-surface-2 transition-all duration-150;
+    @apply px-4 py-2 rounded-xl font-medium text-onSurfaceMuted text-sm hover:text-onSurface hover:bg-surface-2 transition-all duration-200;
+    font-family: 'Geist Sans', sans-serif;
   }
 
-  /* ─── Inputs ─── */
+  /* ─── Inputs (clean, light borders) ─── */
   .input-field {
-    @apply w-full px-4 py-2.5 bg-surface-2 border border-[rgba(255,255,255,0.06)] rounded-lg text-onSurface placeholder-onSurfaceDim text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all duration-150;
+    @apply w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-onSurface placeholder-onSurfaceDim text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all duration-200;
+    font-family: 'Geist Sans', sans-serif;
+    caret-color: #CC152B;
+  }
+
+  .input-field::placeholder {
+    @apply text-onSurfaceDim;
   }
 
   /* ─── Data Display ─── */
   .data-value {
     @apply font-mono text-onSurface tabular-nums;
+    font-family: 'Geist Mono', monospace;
   }
 
   .data-label {
     @apply text-xs uppercase tracking-wider text-onSurfaceMuted font-medium;
+    font-family: 'Geist Mono', monospace;
   }
 
   .stat-value {
-    @apply text-3xl font-bold font-mono tabular-nums;
+    @apply text-3xl font-bold tabular-nums;
+    font-family: 'Geist Mono', monospace;
   }
 
   .stat-label {
     @apply text-xs uppercase tracking-wider text-onSurfaceMuted font-medium;
+    font-family: 'Geist Mono', monospace;
   }
 
   /* ─── Pressure Bar ─── */
@@ -132,53 +232,103 @@
     @apply h-1 bg-surface-3 rounded-full overflow-hidden;
   }
 
-  /* ─── Tags / Chips ─── */
+  /* ─── Tags / Chips (softer on light bg) ─── */
   .tag-bull {
-    @apply px-2.5 py-1 rounded-md text-xs font-semibold font-mono bg-bull/10 text-bull border border-bull/20;
+    @apply px-2.5 py-1 rounded-pill text-xs font-semibold bg-bull-dim text-bull border border-bull/20;
+    font-family: 'Geist Mono', monospace;
   }
 
   .tag-bear {
-    @apply px-2.5 py-1 rounded-md text-xs font-semibold font-mono bg-bear/10 text-bear border border-bear/20;
+    @apply px-2.5 py-1 rounded-pill text-xs font-semibold bg-bear-dim text-bear border border-bear/20;
+    font-family: 'Geist Mono', monospace;
   }
 
   .tag-neutral {
-    @apply px-2.5 py-1 rounded-md text-xs font-semibold font-mono bg-neutral/10 text-neutral border border-neutral/20;
+    @apply px-2.5 py-1 rounded-pill text-xs font-semibold bg-neutral-dim text-neutral border border-neutral/20;
+    font-family: 'Geist Mono', monospace;
   }
 
   .tag-primary {
-    @apply px-2.5 py-1 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/20;
-  }
-
-  /* ─── Glow Effects ─── */
-  .glow-border {
-    border: 1px solid rgba(0,212,224,0.2);
-    box-shadow: 0 0 12px rgba(0,212,224,0.08), inset 0 0 12px rgba(0,212,224,0.04);
-  }
-
-  .glow-text {
-    text-shadow: 0 0 8px rgba(0,212,224,0.4);
+    @apply px-2.5 py-1 rounded-pill text-xs font-semibold bg-primary/5 text-primary border border-primary/20;
+    font-family: 'Geist Mono', monospace;
   }
 
   /* ─── Section Headers ─── */
   .section-header {
-    @apply flex items-center gap-2 text-xs uppercase tracking-widest text-onSurfaceMuted font-semibold mb-4;
+    @apply flex items-center gap-3 text-xs uppercase tracking-widest text-onSurfaceMuted font-semibold mb-4;
+    font-family: 'Geist Mono', monospace;
   }
 
   .section-header::before {
     content: '';
-    @apply w-1 h-3 bg-primary rounded-full;
+    @apply w-1.5 h-1.5 bg-primary rounded-full;
   }
 
   /* ─── Dividers ─── */
   .divider {
-    @apply border-t border-[rgba(255,255,255,0.06)];
+    @apply border-t border-gray-100;
+  }
+
+  .divider-dashed {
+    @apply border-t border-dashed border-gray-200;
+  }
+
+  /* ─── Neural Badge (rebranded for light theme) ─── */
+  .neural-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill text-xs font-semibold bg-primary/5 text-primary border border-primary/15;
+    font-family: 'Geist Mono', monospace;
+  }
+
+  .neural-badge::before {
+    content: '';
+    @apply w-1.5 h-1.5 bg-primary rounded-full;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* ─── Market Status ─── */
+  .market-open {
+    @apply text-bull font-semibold;
+  }
+  .market-closed {
+    @apply text-onSurfaceDim;
+  }
+  .market-pulse {
+    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* ─── Glow Effects (softened for light theme) ─── */
+  .glow-border {
+    border: 1px solid rgba(204, 21, 43, 0.15);
+    box-shadow: 0 0 0 3px rgba(204, 21, 43, 0.05);
+  }
+
+  .glow-shadow {
+    box-shadow: 0 7px 29px 0 rgba(0, 0, 0, 0.08);
+  }
+
+  .glow-text {
+    /* No glow on light theme — use color instead */
+    color: #CC152B;
+  }
+
+  /* ─── Dot grid background (subtle on white) ─── */
+  .neural-lattice-bg {
+    background-image:
+      radial-gradient(circle at 2px 2px, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: 0 0;
   }
 }
 
-/* ─── Scrollbar ─── */
+/* ─── Scrollbar (subtle gray) ─── */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -186,16 +336,52 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0,212,224,0.2);
-  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,212,224,0.4);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-/* ─── Selection ─── */
-::selection {
-  background: rgba(0,212,224,0.3);
-  color: #E8ECF1;
+::-webkit-scrollbar-thumb:active {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Firefox Scrollbar ─── */
+* {
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+  scrollbar-width: thin;
+}
+
+/* ─── Focus Styles (red accent) ─── */
+*:focus-visible {
+  outline: 2px solid #CC152B;
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #CC152B;
+  outline-offset: 2px;
+}
+
+/* ─── Typography ─── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Geist Sans', 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mono, code, pre {
+  font-family: 'Geist Mono', 'SF Mono', monospace;
+}
+
+/* ─── Algon-style 3D card hover ─── */
+.card-3d {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+.card-3d:hover {
+  transform: perspective(600px) rotateX(-2deg) translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
 }

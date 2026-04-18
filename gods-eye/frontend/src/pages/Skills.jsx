@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Layout from '../components/Layout'
+// Layout provided by App.jsx
 import { apiClient } from '../api/client'
 import { AGENTS, AGENT_COLORS, AGENT_DISPLAY_NAMES } from '../constants/agents'
 
@@ -53,8 +53,8 @@ export default function Skills() {
   }
 
   return (
-    <Layout>
-      <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
+    <>
+      <div className="p-4 h-full overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -66,10 +66,10 @@ export default function Skills() {
           <button
             onClick={handleToggle}
             disabled={toggling || loading}
-            className={`font-mono text-[10px] tracking-wider px-3 py-1.5 rounded-lg border transition-all ${
+            className={`font-mono text-[10px] tracking-wider px-3 py-1.5 rounded-pill border transition-all ${
               learningEnabled
                 ? 'bg-bull/10 text-bull border-bull/20 hover:bg-bull/20'
-                : 'bg-surface-2 text-onSurfaceDim border-[rgba(255,255,255,0.06)] hover:bg-surface-3'
+                : 'bg-surface-1 text-onSurfaceDim border-gray-100 hover:bg-surface-3'
             } disabled:opacity-50`}
           >
             {toggling ? '...' : learningEnabled ? 'LEARNING ON' : 'LEARNING OFF'}
@@ -162,6 +162,6 @@ export default function Skills() {
           </div>
         )}
       </div>
-    </Layout>
+    </>
   )
 }

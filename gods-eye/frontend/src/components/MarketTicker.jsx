@@ -36,7 +36,7 @@ export default function MarketTicker() {
 
   if (loading) {
     return (
-      <div className="h-8 bg-surface-0 border-b border-[rgba(255,255,255,0.04)] px-4 flex items-center">
+      <div className="h-8 bg-white border-b border-gray-100 px-4 flex items-center">
         <span className="text-[10px] font-mono text-onSurfaceDim animate-pulse">
           CONNECTING TO MARKET FEED...
         </span>
@@ -46,7 +46,7 @@ export default function MarketTicker() {
 
   if (!data) {
     return (
-      <div className="h-8 bg-surface-0 border-b border-[rgba(255,255,255,0.04)] px-4 flex items-center justify-between">
+      <div className="h-8 bg-white border-b border-gray-100 px-4 flex items-center justify-between">
         <span className="text-[10px] font-mono text-bear">
           MARKET FEED OFFLINE — retrying...
         </span>
@@ -87,19 +87,19 @@ export default function MarketTicker() {
     positive ? 'text-bull' : 'text-bear'
 
   return (
-    <div className="h-8 bg-surface-0 border-b border-[rgba(255,255,255,0.04)] px-4 flex items-center justify-between">
+    <div className="h-8 bg-white border-b border-gray-100 px-4 flex items-center justify-between">
       <div className="flex items-center gap-5 text-[10px] font-mono">
 
         {/* Source indicator */}
         <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-bull animate-pulse' : 'bg-neutral-muted'}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-bull animate-pulse' : 'bg-[#D97706]'}`} />
           <span className="text-onSurfaceDim uppercase tracking-wider">
             {isLive ? 'LIVE' : 'CACHED'}
           </span>
         </div>
 
         {/* Divider */}
-        <span className="text-[rgba(255,255,255,0.06)]">│</span>
+        <span className="text-gray-200">│</span>
 
         {/* Nifty 50 */}
         <div className="flex items-center gap-1.5">
@@ -110,7 +110,7 @@ export default function MarketTicker() {
           </span>
         </div>
 
-        <span className="text-[rgba(255,255,255,0.06)]">│</span>
+        <span className="text-gray-200">│</span>
 
         {/* Bank Nifty */}
         <div className="flex items-center gap-1.5">
@@ -125,12 +125,12 @@ export default function MarketTicker() {
           )}
         </div>
 
-        <span className="text-[rgba(255,255,255,0.06)]">│</span>
+        <span className="text-gray-200">│</span>
 
         {/* VIX */}
         <div className="flex items-center gap-1.5">
           <span className="text-onSurfaceMuted">VIX</span>
-          <span className={`font-bold ${data.india_vix > 20 ? 'text-bear' : data.india_vix > 14 ? 'text-neutral-bright' : 'text-bull'}`}>
+          <span className={`font-bold ${data.india_vix > 20 ? 'text-bear' : data.india_vix > 14 ? 'text-neutral' : 'text-bull'}`}>
             {formatNum(data.india_vix, 2)}
           </span>
           <span className={pctClass(!vixUp)}>
@@ -138,7 +138,7 @@ export default function MarketTicker() {
           </span>
         </div>
 
-        <span className="text-[rgba(255,255,255,0.06)]">│</span>
+        <span className="text-gray-200">│</span>
 
         {/* FII */}
         <div className="flex items-center gap-1.5">
@@ -156,7 +156,7 @@ export default function MarketTicker() {
           </span>
         </div>
 
-        <span className="text-[rgba(255,255,255,0.06)]">│</span>
+        <span className="text-gray-200">│</span>
 
         {/* PCR */}
         {options && (
@@ -164,7 +164,7 @@ export default function MarketTicker() {
             <span className="text-onSurfaceMuted">PCR</span>
             <span className={`font-bold ${
               options.pcr > 1.2 ? 'text-bull' :
-              options.pcr < 0.8 ? 'text-bear' : 'text-neutral-bright'
+              options.pcr < 0.8 ? 'text-bear' : 'text-neutral'
             }`}>
               {formatNum(options.pcr, 3)}
             </span>

@@ -3,10 +3,10 @@
  */
 
 export const dirColor = (dir) => {
-  if (!dir) return '#FFC107'
-  if (dir.includes('BUY')) return '#00E676'
-  if (dir.includes('SELL')) return '#FF1744'
-  return '#FFC107'
+  if (!dir) return '#D97706'
+  if (dir.includes('BUY')) return '#059669'
+  if (dir.includes('SELL')) return '#DC2626'
+  return '#D97706'
 }
 
 export const dirLabel = (dir) => {

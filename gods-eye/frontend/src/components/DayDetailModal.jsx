@@ -21,7 +21,7 @@ function TierBadge({ tier }) {
   const styles = {
     strong: 'text-bull bg-bull/10 border-bull/20',
     moderate: 'text-primary bg-primary/10 border-primary/20',
-    skip: 'text-onSurfaceDim bg-surface-2 border-[rgba(255,255,255,0.08)]',
+    skip: 'text-onSurfaceDim bg-surface-1 border-gray-200',
   }
   const cls = styles[tier] ?? styles.skip
   return (
@@ -53,13 +53,13 @@ export default function DayDetailModal({ day, onClose }) {
   const predLabel = dirLabel(predicted_direction)
 
   const actualSign = actual_move_pct >= 0 ? '+' : ''
-  const actualColor = actual_move_pct >= 0 ? '#00E676' : '#FF1744'
+  const actualColor = actual_move_pct >= 0 ? '#059669' : '#DC2626'
 
   const pnlSign = pnl_points >= 0 ? '+' : ''
-  const pnlColor = pnl_points >= 0 ? '#00E676' : '#FF1744'
+  const pnlColor = pnl_points >= 0 ? '#059669' : '#DC2626'
 
   const cumSign = cumulative_pnl_points >= 0 ? '+' : ''
-  const cumColor = cumulative_pnl_points >= 0 ? '#00E676' : '#FF1744'
+  const cumColor = cumulative_pnl_points >= 0 ? '#059669' : '#DC2626'
 
   const agentEntries = per_agent_directions
     ? Object.entries(per_agent_directions).filter(([key]) => key in AGENT_LABELS)
@@ -67,11 +67,11 @@ export default function DayDetailModal({ day, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onClick={onClose}
     >
       <div
-        className="bg-surface-1 rounded-2xl border border-[rgba(255,255,255,0.08)] p-5 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl border border-gray-200 p-5 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -95,7 +95,7 @@ export default function DayDetailModal({ day, onClose }) {
 
         {/* Prediction vs Actual */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-surface-2 rounded-lg p-3">
+          <div className="bg-surface-1 rounded-lg p-3">
             <p className="text-[9px] font-mono text-onSurfaceDim uppercase tracking-wider mb-2">
               Predicted
             </p>
@@ -112,7 +112,7 @@ export default function DayDetailModal({ day, onClose }) {
             </p>
           </div>
 
-          <div className="bg-surface-2 rounded-lg p-3">
+          <div className="bg-surface-1 rounded-lg p-3">
             <p className="text-[9px] font-mono text-onSurfaceDim uppercase tracking-wider mb-2">
               Actual
             </p>
@@ -133,7 +133,7 @@ export default function DayDetailModal({ day, onClose }) {
         </div>
 
         {/* P&L row */}
-        <div className="bg-surface-2 rounded-lg p-3 mb-4 flex items-center justify-between">
+        <div className="bg-surface-1 rounded-lg p-3 mb-4 flex items-center justify-between">
           <div>
             <p className="text-[9px] font-mono text-onSurfaceDim uppercase tracking-wider mb-1">
               Day P&amp;L
@@ -160,7 +160,7 @@ export default function DayDetailModal({ day, onClose }) {
             </p>
             <div className="grid grid-cols-3 gap-2">
               {agentEntries.map(([key, dir]) => (
-                <div key={key} className="bg-surface-2 rounded-lg p-2">
+                <div key={key} className="bg-surface-1 rounded-lg p-2">
                   <p className="text-[9px] font-mono text-onSurfaceDim mb-1">
                     {AGENT_LABELS[key] ?? key}
                   </p>
@@ -182,7 +182,7 @@ export default function DayDetailModal({ day, onClose }) {
             <p className="text-[9px] font-mono text-onSurfaceDim uppercase tracking-wider mb-2">
               Signal Score
             </p>
-            <div className="bg-surface-2 rounded-lg p-3">
+            <div className="bg-surface-1 rounded-lg p-3">
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-2xl font-bold font-mono text-onSurface">
                   {signal_score.score}
@@ -219,7 +219,7 @@ export default function DayDetailModal({ day, onClose }) {
 
         {/* Nifty prices */}
         {typeof nifty_close === 'number' && typeof nifty_next_close === 'number' && (
-          <div className="border-t border-[rgba(255,255,255,0.06)] pt-3">
+          <div className="border-t border-gray-100 pt-3">
             <p className="text-[9px] font-mono text-onSurfaceDim uppercase tracking-wider mb-1">
               Nifty Close
             </p>

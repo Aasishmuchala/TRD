@@ -62,7 +62,7 @@ export default function AccuracyPanel() {
       ) : (
         <div className="space-y-3">
           {data.map((agent) => {
-            const color = agentColors[agent.key] || '#8B95A5'
+            const color = agentColors[agent.key] || '#9CA3AF'
             const pct = agent.accuracy_percent || 0
             const total = agent.total_predictions || 0
             const correct = agent.correct || 0
@@ -80,18 +80,18 @@ export default function AccuracyPanel() {
                     <span className="text-[10px] font-mono text-onSurfaceDim">
                       {correct}/{total}
                     </span>
-                    <span className="text-xs font-mono font-bold tabular-nums" style={{ color: pct >= 60 ? '#00E676' : pct >= 45 ? '#FFC107' : '#FF1744' }}>
+                    <span className="text-xs font-mono font-bold tabular-nums" style={{ color: pct >= 60 ? '#059669' : pct >= 45 ? '#D97706' : '#DC2626' }}>
                       {pct.toFixed(1)}%
                     </span>
                   </div>
                 </div>
                 {/* Accuracy bar */}
-                <div className="h-1 bg-surface-3 rounded-full overflow-hidden">
+                <div className="h-1 bg-surface-2 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{
                       width: `${Math.min(100, pct)}%`,
-                      backgroundColor: pct >= 60 ? '#00E676' : pct >= 45 ? '#FFC107' : '#FF1744',
+                      backgroundColor: pct >= 60 ? '#059669' : pct >= 45 ? '#D97706' : '#DC2626',
                     }}
                   />
                 </div>

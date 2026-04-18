@@ -35,7 +35,7 @@ export default function FeedbackPanel() {
         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-mono font-bold ${
           isActive
             ? 'bg-primary/10 text-primary border border-primary/20'
-            : 'bg-surface-3 text-onSurfaceDim border border-[rgba(255,255,255,0.06)]'
+            : 'bg-surface-2 text-onSurfaceDim border border-gray-100'
         }`}>
           <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-primary animate-pulse' : 'bg-onSurfaceDim'}`} />
           {isActive ? 'ACTIVE' : 'WARMING UP'}
@@ -43,7 +43,7 @@ export default function FeedbackPanel() {
       </div>
 
       {!isActive && (
-        <div className="mb-4 px-3 py-2 bg-surface-2 rounded-lg border border-[rgba(255,255,255,0.04)] text-[10px] font-mono text-onSurfaceDim">
+        <div className="mb-4 px-3 py-2 bg-surface-1 rounded-lg border border-gray-100 text-[10px] font-mono text-onSurfaceDim">
           Requires {minPredictions}+ predictions with recorded outcomes to activate self-tuning.
         </div>
       )}
@@ -74,7 +74,7 @@ export default function FeedbackPanel() {
 
                 {/* Arrow */}
                 <div className="flex items-center gap-1">
-                  <div className="w-6 h-px bg-surface-3" />
+                  <div className="w-6 h-px bg-surface-2" />
                   <svg viewBox="0 0 8 8" className="w-2 h-2 text-onSurfaceDim">
                     <path d="M0 4h6M4 1l3 3-3 3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -93,7 +93,7 @@ export default function FeedbackPanel() {
                   ? 'bg-bull/10 text-bull border border-bull/20'
                   : isDown
                   ? 'bg-bear/10 text-bear border border-bear/20'
-                  : 'bg-surface-3 text-onSurfaceDim border border-[rgba(255,255,255,0.06)]'
+                  : 'bg-surface-2 text-onSurfaceDim border border-gray-100'
               }`}>
                 {isUp ? '+' : ''}{changePct.toFixed(1)}%
               </span>

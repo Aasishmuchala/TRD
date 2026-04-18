@@ -23,13 +23,9 @@ export default function Welcome() {
     setLoading(true)
     setError('')
     try {
-      // Verify backend is reachable
       await apiClient.getHealth()
       localStorage.setItem('godsEyeApiKey', 'mock-mode')
-
-      // Kick off a quick simulation so dashboard has data
       apiClient.simulate({ scenario_id: 'rbi_rate_cut' }).catch(() => {})
-
       navigate('/dashboard')
     } catch (err) {
       setError('Backend not reachable. Start the server first.')
@@ -38,15 +34,15 @@ export default function Welcome() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-0 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-btn">
             <svg viewBox="0 0 24 24" fill="none" className="w-9 h-9">
-              <circle cx="12" cy="12" r="10" stroke="#0A0A0F" strokeWidth="2"/>
-              <circle cx="12" cy="12" r="4" fill="#0A0A0F"/>
-              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="#0A0A0F" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="4" fill="#fff"/>
+              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
         </div>
@@ -62,10 +58,10 @@ export default function Welcome() {
           {AGENTS.map((agent) => (
             <div
               key={agent.id}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-[8px] font-mono font-bold"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-[8px] font-mono font-bold border"
               style={{
-                backgroundColor: `${agent.color}15`,
-                border: `1px solid ${agent.color}30`,
+                backgroundColor: `${agent.color}08`,
+                borderColor: `${agent.color}20`,
                 color: agent.color
               }}
             >

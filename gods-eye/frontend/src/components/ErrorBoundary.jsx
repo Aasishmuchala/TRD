@@ -27,16 +27,16 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#e74c3c' }}>
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#DC2626' }}>
           <h2 style={{ marginBottom: '1rem' }}>Something went wrong</h2>
-          <p style={{ color: '#666', marginBottom: '1rem' }}>
+          <p style={{ color: '#9CA3AF', marginBottom: '1rem' }}>
             The application encountered an unexpected error.
           </p>
           <button
             onClick={this.handleRetry}
             style={{
               padding: '0.5rem 1.5rem',
-              background: '#3b82f6',
+              background: '#CC152B',
               color: 'white',
               border: 'none',
               borderRadius: '6px',

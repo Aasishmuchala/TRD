@@ -120,8 +120,8 @@ export default function CustomScenarioForm({ onSimulate, isLoading, onClose }) {
               onChange={(e) => handleChange(f.key, e.target.value)}
               aria-invalid={errors[f.key] ? 'true' : 'false'}
               aria-describedby={errors[f.key] ? `${f.key}-error` : undefined}
-              className={`w-full bg-surface-2 border rounded-md px-2.5 py-1.5 text-xs font-mono text-onSurface placeholder:text-onSurfaceDim/40 outline-none focus:border-primary/40 transition-colors ${
-                errors[f.key] ? 'border-bear/40' : 'border-[rgba(255,255,255,0.06)]'
+              className={`w-full bg-surface-1 border rounded-md px-2.5 py-1.5 text-xs font-mono text-onSurface placeholder:text-onSurfaceDim/40 outline-none focus:border-primary/40 transition-colors ${
+                errors[f.key] ? 'border-bear/40' : 'border-gray-200'
               }`}
             />
             {errors[f.key] && (
@@ -145,7 +145,7 @@ export default function CustomScenarioForm({ onSimulate, isLoading, onClose }) {
               className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition-all border ${
                 values.context === ctx
                   ? 'bg-primary/10 text-primary border-primary/20'
-                  : 'bg-surface-2 text-onSurfaceDim border-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)]'
+                  : 'bg-surface-1 text-onSurfaceDim border-gray-200 hover:border-gray-300'
               }`}
             >
               {ctx.replace(/_/g, ' ')}
@@ -177,7 +177,7 @@ export default function CustomScenarioForm({ onSimulate, isLoading, onClose }) {
         <button
           onClick={handleReset}
           aria-label="Reset all form fields to defaults"
-          className="px-4 h-10 rounded-lg text-[10px] font-mono text-onSurfaceDim border border-[rgba(255,255,255,0.06)] hover:bg-surface-2 transition-colors"
+          className="px-4 h-10 rounded-lg text-[10px] font-mono text-onSurfaceDim border border-gray-200 hover:bg-surface-1 transition-colors"
         >
           RESET
         </button>

@@ -49,12 +49,12 @@ export default function BacktestSummary({ summary }) {
     {
       label: 'Max Drawdown',
       value: `${(summary.max_drawdown_pct || 0).toFixed(1)}%`,
-      color: (summary.max_drawdown_pct || 0) <= 20 ? 'text-neutral-bright' : 'text-bear',
+      color: (summary.max_drawdown_pct || 0) <= 20 ? 'text-neutral' : 'text-bear',
     },
     {
       label: 'Sharpe Ratio',
       value: (summary.sharpe_ratio || 0).toFixed(2),
-      color: sharpeGood ? 'text-bull' : (summary.sharpe_ratio || 0) >= 0 ? 'text-neutral-bright' : 'text-bear',
+      color: sharpeGood ? 'text-bull' : (summary.sharpe_ratio || 0) >= 0 ? 'text-neutral' : 'text-bear',
     },
     {
       label: 'Total Trades',
@@ -75,7 +75,7 @@ export default function BacktestSummary({ summary }) {
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="bg-surface-2 rounded-lg p-3">
+          <div key={s.label} className="bg-surface-1 rounded-lg p-3">
             <p className="text-[10px] font-mono text-onSurfaceDim mb-1">{s.label}</p>
             <p className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</p>
           </div>
@@ -90,7 +90,7 @@ export default function BacktestSummary({ summary }) {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {extendedStats.map((s) => (
-              <div key={s.label} className="bg-surface-2 rounded-lg p-3">
+              <div key={s.label} className="bg-surface-1 rounded-lg p-3">
                 <p className="text-[10px] font-mono text-onSurfaceDim mb-1">{s.label}</p>
                 <p className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</p>
               </div>
@@ -101,7 +101,7 @@ export default function BacktestSummary({ summary }) {
 
       {/* Stop Loss Stats */}
       {summary.stop_loss_enabled && (
-        <div className="mt-3 pt-3 border-t border-[rgba(255,255,255,0.06)] flex items-center gap-4 flex-wrap">
+        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 flex-wrap">
           <span className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">Stop Loss</span>
           <span className="text-[11px] font-mono text-bear font-bold">
             {summary.total_stops_hit || 0} stops hit

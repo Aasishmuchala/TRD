@@ -23,7 +23,7 @@ export default function AgentAccuracyTable({ perAgentAccuracy }) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-[rgba(255,255,255,0.06)]">
+            <tr className="border-b border-gray-100">
               <th className="text-left pb-2 text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">
                 Agent
               </th>
@@ -40,7 +40,7 @@ export default function AgentAccuracyTable({ perAgentAccuracy }) {
               const pct = (row.accuracy * 100).toFixed(1)
               const isGood = row.accuracy >= 0.5
               return (
-                <tr key={row.key} className="border-b border-[rgba(255,255,255,0.04)] last:border-0">
+                <tr key={row.key} className="border-b border-gray-50 last:border-0">
                   <td className="py-2.5 pr-4">
                     <div className="flex items-center gap-2">
                       <span
@@ -52,7 +52,7 @@ export default function AgentAccuracyTable({ perAgentAccuracy }) {
                   </td>
                   <td className="py-2.5 pl-4">
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-surface-2 rounded h-1 min-w-[60px]">
+                      <div className="flex-1 bg-surface-1 rounded h-1 min-w-[60px]">
                         <div
                           className="h-1 rounded transition-all"
                           style={{

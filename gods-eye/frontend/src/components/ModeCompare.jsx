@@ -68,16 +68,16 @@ export default function ModeCompare({ quantResult, hybridResult }) {
       <div className="overflow-x-auto">
         <table className="w-full text-[10px] font-mono">
           <thead>
-            <tr className="text-onSurfaceDim border-b border-[rgba(255,255,255,0.06)]">
+            <tr className="text-onSurfaceDim border-b border-gray-100">
               <th className="text-left py-2 pr-4">Metric</th>
               <th className="text-right py-2 pr-4 text-primary">Rules Only</th>
-              <th className="text-right py-2 pr-4 text-[#a78bfa]">Hybrid</th>
+              <th className="text-right py-2 pr-4 text-primary">Hybrid</th>
               {qm && hm && <th className="text-right py-2">Delta</th>}
             </tr>
           </thead>
           <tbody>
             {rows.map(({ label, key, fmt: fmtFn, better }) => (
-              <tr key={key} className="border-b border-[rgba(255,255,255,0.03)]">
+              <tr key={key} className="border-b border-gray-50">
                 <td className="py-2 pr-4 text-onSurfaceDim">{label}</td>
                 <td className="py-2 pr-4 text-right text-onSurface font-bold">
                   {qm ? fmtFn(qm[key]) : '—'}

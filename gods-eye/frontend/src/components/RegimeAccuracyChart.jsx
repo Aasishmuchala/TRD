@@ -48,26 +48,26 @@ export default function RegimeAccuracyChart({ regimeAccuracy }) {
       </p>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={filteredData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
           <XAxis
             dataKey="regime"
-            tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'rgba(255,255,255,0.5)' }}
+            tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'rgba(0,0,0,0.4)' }}
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'rgba(255,255,255,0.5)' }}
+            tick={{ fontSize: 10, fontFamily: 'monospace', fill: 'rgba(0,0,0,0.4)' }}
             label={{
               value: 'Accuracy %',
               angle: -90,
               position: 'insideLeft',
-              style: { fontSize: 10, fontFamily: 'monospace', fill: 'rgba(255,255,255,0.4)' },
+              style: { fontSize: 10, fontFamily: 'monospace', fill: 'rgba(0,0,0,0.3)' },
             }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(20,20,30,0.95)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
+              backgroundColor: '#fff',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
               fontSize: '10px',
               fontFamily: 'monospace',
             }}

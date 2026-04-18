@@ -51,19 +51,19 @@ export default function PaperTrading() {
   }, [])
 
   const dirColor = (dir) => {
-    if (!dir) return '#FFC107'
-    if (dir.includes('BUY')) return '#00E676'
-    if (dir.includes('SELL')) return '#FF1744'
-    return '#FFC107'
+    if (!dir) return '#D97706'
+    if (dir.includes('BUY')) return '#059669'
+    if (dir.includes('SELL')) return '#DC2626'
+    return '#D97706'
   }
 
   const statusColor = (status) => {
     switch (status) {
-      case 'OPEN': return '#A89AFF'
-      case 'TARGET_HIT': return '#00E676'
-      case 'STOPPED': return '#FF1744'
-      case 'CLOSED_EOD': return '#FFC107'
-      default: return '#928F9F'
+      case 'OPEN': return '#CC152B'
+      case 'TARGET_HIT': return '#059669'
+      case 'STOPPED': return '#DC2626'
+      case 'CLOSED_EOD': return '#D97706'
+      default: return '#9CA3AF'
     }
   }
 
@@ -84,7 +84,7 @@ export default function PaperTrading() {
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center h-[calc(100vh-2.5rem)]">
+        <div className="flex items-center justify-center h-full">
           <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING PAPER TRADING...</span>
         </div>
     )
@@ -103,7 +103,15 @@ export default function PaperTrading() {
   const totalPnl = realizedPnl + unrealizedPnl
 
   return (
-      <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
+      <div className="p-4 h-full overflow-y-auto">
+        {/* Page header */}
+        <div className="mb-5">
+          <h1 className="text-xl font-bold text-onSurface">Paper Trading</h1>
+          <p className="text-[10px] font-mono text-onSurfaceDim mt-0.5">
+            Simulated options P&L — auto-trades from BUY/SELL signals
+          </p>
+        </div>
+
         {fetchError && (
           <div className="terminal-card p-3 border-l-2 border-bear mb-4">
             <p className="text-xs font-mono text-bear">
@@ -111,60 +119,63 @@ export default function PaperTrading() {
             </p>
           </div>
         )}
-        {/* ── P&L Summary Cards ─────────────────────────────────────── */}
-        <div className="grid grid-cols-6 gap-3 mb-5">
-          <div className="terminal-card p-4 text-center">
-            <span className="text-[10px] font-mono text-onSurfaceDim block">CAPITAL</span>
-            <span className="text-lg font-bold font-mono text-onSurface">₹{capital.toLocaleString('en-IN')}</span>
-          </div>
-          <div className="terminal-card p-4 text-center">
-            <span className="text-[10px] font-mono text-onSurfaceDim block">NET P&L</span>
-            <span className={`text-lg font-bold font-mono ${totalPnl >= 0 ? 'text-bull' : 'text-bear'}`}>
-              {formatINR(totalPnl)}
-            </span>
-            {unrealizedPnl !== 0 && (
-              <span className={`text-[9px] font-mono block ${unrealizedPnl >= 0 ? 'text-bull/70' : 'text-bear/70'}`}>
-                Unrealized: {formatINR(unrealizedPnl)}
+        {/* ── P&L Summary Strip ────────────────────────────────────── */}
+        <div className="terminal-card p-4 mb-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="text-center px-3">
+              <span className="text-[10px] font-mono text-onSurfaceDim block">CAPITAL</span>
+              <span className="text-lg font-bold font-mono text-onSurface">₹{capital.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="text-center px-3">
+              <span className="text-[10px] font-mono text-onSurfaceDim block">NET P&L</span>
+              <span className={`text-lg font-bold font-mono ${totalPnl >= 0 ? 'text-bull' : 'text-bear'}`}>
+                {formatINR(totalPnl)}
               </span>
-            )}
-            {liveSpot && (
-              <span className="text-[9px] font-mono text-onSurfaceDim block">
-                Spot: {liveSpot.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+              {unrealizedPnl !== 0 && (
+                <span className={`text-[9px] font-mono block ${unrealizedPnl >= 0 ? 'text-bull/70' : 'text-bear/70'}`}>
+                  Unrealized: {formatINR(unrealizedPnl)}
+                </span>
+              )}
+              {liveSpot && (
+                <span className="text-[9px] font-mono text-onSurfaceDim block">
+                  Spot: {liveSpot.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+                </span>
+              )}
+            </div>
+            <div className="text-center px-3">
+              <span className="text-[10px] font-mono text-onSurfaceDim block">TRADES</span>
+              <span className="text-lg font-bold font-mono text-onSurface">{totalTrades}</span>
+              <span className="text-[10px] font-mono text-onSurfaceDim block">
+                {pnl?.open_trades || 0} open
               </span>
-            )}
-          </div>
-          <div className="terminal-card p-4 text-center">
-            <span className="text-[10px] font-mono text-onSurfaceDim block">TRADES</span>
-            <span className="text-lg font-bold font-mono text-onSurface">{totalTrades}</span>
-            <span className="text-[10px] font-mono text-onSurfaceDim block">
-              {pnl?.open_trades || 0} open
-            </span>
-          </div>
-          <div className="terminal-card p-4 text-center">
-            <span className="text-[10px] font-mono text-onSurfaceDim block">WIN RATE</span>
-            <span className={`text-lg font-bold font-mono ${winRate >= 50 ? 'text-bull' : 'text-bear'}`}>
-              {winRate.toFixed(1)}%
-            </span>
-            <span className="text-[10px] font-mono text-onSurfaceDim block">
-              {pnl?.wins || 0}W / {pnl?.losses || 0}L
-            </span>
-          </div>          <div className="terminal-card p-4 text-center">
-            <span className="text-[10px] font-mono text-onSurfaceDim block">MAX DD</span>
-            <span className="text-lg font-bold font-mono text-bear">
-              {pnl?.max_drawdown_pct ? `-${pnl.max_drawdown_pct}%` : '--'}
-            </span>
-            <span className="text-[10px] font-mono text-onSurfaceDim block">
-              {pnl?.max_drawdown_inr ? `₹${Math.abs(pnl.max_drawdown_inr).toLocaleString('en-IN')}` : ''}
-            </span>
-          </div>
-          <div className="terminal-card p-4 text-center">
-            <span className="text-[10px] font-mono text-onSurfaceDim block">PROFIT FACTOR</span>
-            <span className={`text-lg font-bold font-mono ${(pnl?.profit_factor || 0) >= 1 ? 'text-bull' : 'text-bear'}`}>
-              {pnl?.profit_factor?.toFixed(2) || '--'}
-            </span>
-            <span className="text-[10px] font-mono text-onSurfaceDim block">
-              SL:{pnl?.stopped_count || 0} TGT:{pnl?.target_hit_count || 0} EOD:{pnl?.eod_close_count || 0}
-            </span>
+            </div>
+            <div className="text-center px-3">
+              <span className="text-[10px] font-mono text-onSurfaceDim block">WIN RATE</span>
+              <span className={`text-lg font-bold font-mono ${winRate >= 50 ? 'text-bull' : 'text-bear'}`}>
+                {winRate.toFixed(1)}%
+              </span>
+              <span className="text-[10px] font-mono text-onSurfaceDim block">
+                {pnl?.wins || 0}W / {pnl?.losses || 0}L
+              </span>
+            </div>
+            <div className="text-center px-3">
+              <span className="text-[10px] font-mono text-onSurfaceDim block">MAX DD</span>
+              <span className="text-lg font-bold font-mono text-bear">
+                {pnl?.max_drawdown_pct ? `-${pnl.max_drawdown_pct}%` : '--'}
+              </span>
+              <span className="text-[10px] font-mono text-onSurfaceDim block">
+                {pnl?.max_drawdown_inr ? `₹${Math.abs(pnl.max_drawdown_inr).toLocaleString('en-IN')}` : ''}
+              </span>
+            </div>
+            <div className="text-center px-3">
+              <span className="text-[10px] font-mono text-onSurfaceDim block">PROFIT FACTOR</span>
+              <span className={`text-lg font-bold font-mono ${(pnl?.profit_factor || 0) >= 1 ? 'text-bull' : 'text-bear'}`}>
+                {pnl?.profit_factor?.toFixed(2) || '--'}
+              </span>
+              <span className="text-[10px] font-mono text-onSurfaceDim block">
+                SL:{pnl?.stopped_count || 0} TGT:{pnl?.target_hit_count || 0} EOD:{pnl?.eod_close_count || 0}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -176,7 +187,7 @@ export default function PaperTrading() {
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 Open Positions
               </div>
-              {openTrades.length > 0 ? openTrades.map(trade => (                <div key={trade.trade_id} className="p-3 bg-surface-2 rounded-lg mb-2">
+              {openTrades.length > 0 ? openTrades.map(trade => (                <div key={trade.trade_id} className="p-3 bg-surface-1 rounded-lg mb-2">
                   <div className="flex items-center justify-between mb-2">
                     <span
                       className="text-xs font-mono font-bold px-2 py-0.5 rounded"
@@ -206,7 +217,7 @@ export default function PaperTrading() {
                     const curPrem = estimatePremium(trade, liveSpot)
                     const uPnl = getUnrealizedPnl(trade, liveSpot)
                     return curPrem != null ? (
-                      <div className="mt-2 pt-2 border-t border-[rgba(255,255,255,0.06)] flex items-center justify-between text-[10px] font-mono">
+                      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[10px] font-mono">
                         <div>
                           <span className="text-onSurfaceDim">Current: </span>
                           <span className="text-primary font-bold">₹{curPrem.toFixed(1)}</span>
@@ -257,7 +268,7 @@ export default function PaperTrading() {
               <div className="overflow-x-auto">
                 <table className="w-full text-[10px] font-mono">
                   <thead>
-                    <tr className="text-onSurfaceDim border-b border-[rgba(255,255,255,0.06)]">
+                    <tr className="text-onSurfaceDim border-b border-gray-100">
                       <th className="text-left py-2 px-2">TIME</th>
                       <th className="text-left py-2 px-2">SIGNAL</th>
                       <th className="text-left py-2 px-2">TYPE</th>
@@ -282,7 +293,7 @@ export default function PaperTrading() {
                       return (
                         <tr
                           key={trade.trade_id}
-                          className="border-b border-[rgba(255,255,255,0.03)] hover:bg-surface-2/50"
+                          className="border-b border-gray-50 hover:bg-surface-1"
                         >
                           <td className="py-2 px-2 text-onSurfaceDim">{dateStr}</td>
                           <td className="py-2 px-2">

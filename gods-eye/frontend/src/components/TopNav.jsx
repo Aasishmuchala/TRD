@@ -45,16 +45,16 @@ function ISTClock() {
 
 export default function TopNav() {
   return (
-    <div className="h-10 bg-surface-1 border-b border-[rgba(255,255,255,0.06)] px-6 flex items-center justify-between text-xs">
+    <div className="h-10 bg-white border-b border-gray-100 px-6 flex items-center justify-between text-xs">
       <div className="flex items-center gap-6">
         <ISTClock />
       </div>
 
       <div className="flex items-center gap-4 text-onSurfaceMuted">
         <span className="font-mono">NSE</span>
-        <span className="text-[rgba(255,255,255,0.06)]">|</span>
+        <span className="text-gray-200">|</span>
         <span className="font-mono">8 AGENTS</span>
-        <span className="text-[rgba(255,255,255,0.06)]">|</span>
+        <span className="text-gray-200">|</span>
         <span className="font-mono">3 ROUNDS</span>
       </div>
     </div>

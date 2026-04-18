@@ -17,9 +17,9 @@ function mapDirection(dir) {
 function SkeletonBar() {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-14 h-3 bg-surface-3 rounded animate-pulse" />
-      <div className="flex-1 h-2 bg-surface-3 rounded-full animate-pulse" />
-      <div className="w-8 h-3 bg-surface-3 rounded animate-pulse" />
+      <div className="w-14 h-3 bg-surface-2 rounded animate-pulse" />
+      <div className="flex-1 h-2 bg-surface-2 rounded-full animate-pulse" />
+      <div className="w-8 h-3 bg-surface-2 rounded animate-pulse" />
     </div>
   )
 }
@@ -27,11 +27,11 @@ function SkeletonBar() {
 function SkeletonGauge() {
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="w-28 h-28 bg-surface-3 rounded-full animate-pulse" />
-      <div className="w-20 h-3 bg-surface-3 rounded animate-pulse" />
+      <div className="w-28 h-28 bg-surface-2 rounded-full animate-pulse" />
+      <div className="w-20 h-3 bg-surface-2 rounded animate-pulse" />
       <div className="flex items-center gap-3 mt-1">
-        <div className="w-16 h-2 bg-surface-3 rounded animate-pulse" />
-        <div className="w-16 h-1 bg-surface-3 rounded-full animate-pulse" />
+        <div className="w-16 h-2 bg-surface-2 rounded animate-pulse" />
+        <div className="w-16 h-1 bg-surface-2 rounded-full animate-pulse" />
       </div>
     </div>
   )
@@ -102,7 +102,7 @@ export default function PressurePanel({ result = null, isLoading = false }) {
             {/* Quant-LLM Agreement */}
             <div className="flex items-center gap-3 mt-2">
               <span className="text-[10px] text-onSurfaceDim font-mono uppercase">Q/L Agreement</span>
-              <div className="w-16 h-1 bg-surface-3 rounded-full overflow-hidden">
+              <div className="w-16 h-1 bg-surface-2 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full bg-primary transition-all duration-500"
                   style={{ width: `${quantLLMAgreement * 100}%` }}

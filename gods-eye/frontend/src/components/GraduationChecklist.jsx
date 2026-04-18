@@ -28,13 +28,13 @@ export default function GraduationChecklist({ criteria = [] }) {
           <div
             key={idx}
             className={`flex items-center gap-2.5 p-2.5 rounded-lg ${
-              item.passed ? 'bg-bull/5 border border-bull/10' : 'bg-surface-2'
+              item.passed ? 'bg-bull/5 border border-bull/10' : 'bg-surface-1'
             }`}
           >
             <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${
-              item.passed ? 'bg-bull' : 'border border-[rgba(255,255,255,0.15)]'
+              item.passed ? 'bg-bull' : 'border border-gray-300'
             }`}>
-              {item.passed && <span className="text-[8px] text-black font-bold">OK</span>}
+              {item.passed && <span className="text-[8px] text-white font-bold">OK</span>}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-mono text-onSurface">{item.metric}</p>

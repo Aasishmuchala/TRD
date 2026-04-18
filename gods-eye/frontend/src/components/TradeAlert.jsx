@@ -17,7 +17,7 @@ const SCORE_FLOOR = 20
 
 function AlertBadge({ direction }) {
   const isBuy = direction === 'BUY' || direction === 'STRONG_BUY'
-  const color = isBuy ? 'bg-emerald-500' : 'bg-red-500'
+  const color = isBuy ? 'bg-bull' : 'bg-bear'
   const label = isBuy ? '▲ BUY SIGNAL' : '▼ SELL SIGNAL'
   return (
     <span className={`${color} text-white text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wide`}>
@@ -29,9 +29,9 @@ function AlertBadge({ direction }) {
 function Stat({ label, value, sub }) {
   return (
     <div className="flex flex-col">
-      <span className="text-xs text-gray-400 uppercase tracking-wide">{label}</span>
-      <span className="text-sm font-semibold text-white">{value}</span>
-      {sub && <span className="text-xs text-gray-500">{sub}</span>}
+      <span className="text-xs text-onSurfaceMuted uppercase tracking-wide">{label}</span>
+      <span className="text-sm font-semibold text-onSurface">{value}</span>
+      {sub && <span className="text-xs text-onSurfaceDim">{sub}</span>}
     </div>
   )
 }
@@ -99,16 +99,16 @@ export default function TradeAlert({ simulationResult, capital = 10000 }) {
   if (!isActive) return null
 
   const isBuy = direction === 'BUY' || direction === 'STRONG_BUY'
-  const borderColor = isBuy ? 'border-emerald-500' : 'border-red-500'
-  const glowColor = isBuy ? 'shadow-emerald-500/20' : 'shadow-red-500/20'
+  const borderColor = isBuy ? 'border-bull' : 'border-bear'
+  const glowColor = ''
 
   return (
-    <div className={`rounded-xl border-2 ${borderColor} bg-gray-900 shadow-lg ${glowColor} p-4 space-y-4`}>
+    <div className={`rounded-xl border-2 ${borderColor} bg-white shadow-lg ${glowColor} p-4 space-y-4`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">⚡</span>
-          <span className="text-white font-bold text-sm">TRADE ALERT</span>
+          <span className="text-onSurface font-bold text-sm">TRADE ALERT</span>
           <AlertBadge direction={direction} />
         </div>
         <div className="flex gap-4 text-right">
@@ -119,15 +119,15 @@ export default function TradeAlert({ simulationResult, capital = 10000 }) {
 
       {/* Stock screener candidates */}
       {loading && (
-        <div className="text-gray-400 text-xs animate-pulse">Scanning F&O universe…</div>
+        <div className="text-onSurfaceMuted text-xs animate-pulse">Scanning F&O universe…</div>
       )}
       {error && (
-        <div className="text-red-400 text-xs">{error}</div>
+        <div className="text-bear text-xs">{error}</div>
       )}
 
       {candidates && candidates.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs text-gray-400 uppercase tracking-wide">Top Candidates</div>
+          <div className="text-xs text-onSurfaceMuted uppercase tracking-wide">Top Candidates</div>
           <div className="flex gap-2 flex-wrap">
             {candidates.map((c) => {
               const aligned = c.direction_aligned
@@ -138,9 +138,9 @@ export default function TradeAlert({ simulationResult, capital = 10000 }) {
                   onClick={() => setSelectedSymbol(c.symbol)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
                     ${active
-                      ? isBuy ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}
-                    ${aligned ? 'ring-1 ring-white/20' : 'opacity-60'}`}
+                      ? isBuy ? 'bg-bull text-white' : 'bg-bear text-white'
+                      : 'bg-surface-1 text-onSurfaceMuted hover:bg-surface-2'}
+                    ${aligned ? 'ring-1 ring-primary/20' : 'opacity-60'}`}
                 >
                   <span className="font-bold">{c.symbol}</span>
                   <span className="ml-1 opacity-75">{c.rs_5d_pct > 0 ? '+' : ''}{c.rs_5d_pct}%</span>
@@ -154,7 +154,7 @@ export default function TradeAlert({ simulationResult, capital = 10000 }) {
             const c = candidates.find(x => x.symbol === selectedSymbol)
             if (!c) return null
             return (
-              <div className="grid grid-cols-4 gap-3 bg-gray-800/50 rounded-lg p-3">
+              <div className="grid grid-cols-4 gap-3 bg-surface-1 rounded-lg p-3">
                 <Stat label="RS 5d" value={`${c.rs_5d_pct > 0 ? '+' : ''}${c.rs_5d_pct}%`} />
                 <Stat label="Volume" value={`${c.volume_ratio}×`} sub="vs 20d avg" />
                 <Stat label="RSI" value={c.rsi} />
@@ -166,19 +166,19 @@ export default function TradeAlert({ simulationResult, capital = 10000 }) {
       )}
 
       {candidates && candidates.length === 0 && (
-        <div className="text-gray-500 text-xs">
+        <div className="text-onSurfaceMuted text-xs">
           No affordable F&O stocks found for ₹{capital.toLocaleString()} capital.
         </div>
       )}
 
       {/* Option suggestion */}
       {option && (
-        <div className="border border-gray-700 rounded-lg p-3 space-y-2">
+        <div className="border border-gray-200 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-white font-bold text-sm">
+            <span className="text-onSurface font-bold text-sm">
               {option.symbol} {option.suggested_strike} {option.option_type}
             </span>
-            <span className="text-xs text-gray-400">Expires {option.expiry} ({option.days_to_expiry}d)</span>
+            <span className="text-xs text-onSurfaceMuted">Expires {option.expiry} ({option.days_to_expiry}d)</span>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Stat
@@ -197,7 +197,7 @@ export default function TradeAlert({ simulationResult, capital = 10000 }) {
               sub={`Gain ₹${option.target_gain_inr.toLocaleString()}`}
             />
           </div>
-          <div className="text-xs text-gray-500 pt-1 border-t border-gray-700">
+          <div className="text-xs text-onSurfaceMuted pt-1 border-t border-gray-200">
             ⚠ {option.note}
           </div>
         </div>

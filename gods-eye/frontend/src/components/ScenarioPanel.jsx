@@ -14,11 +14,11 @@ const SCENARIO_ICONS = {
 }
 
 const DIRECTION_STYLES = {
-  STRONG_BUY: { color: '#00E676', bg: 'rgba(0,230,118,0.08)', border: 'rgba(0,230,118,0.2)' },
-  BUY: { color: '#00E676', bg: 'rgba(0,230,118,0.06)', border: 'rgba(0,230,118,0.15)' },
-  HOLD: { color: '#FFC107', bg: 'rgba(255,193,7,0.06)', border: 'rgba(255,193,7,0.15)' },
-  SELL: { color: '#FF1744', bg: 'rgba(255,23,68,0.06)', border: 'rgba(255,23,68,0.15)' },
-  STRONG_SELL: { color: '#FF1744', bg: 'rgba(255,23,68,0.08)', border: 'rgba(255,23,68,0.2)' },
+  STRONG_BUY: { color: '#059669', bg: 'rgba(5,150,105,0.08)', border: 'rgba(5,150,105,0.2)' },
+  BUY: { color: '#059669', bg: 'rgba(5,150,105,0.06)', border: 'rgba(5,150,105,0.15)' },
+  HOLD: { color: '#D97706', bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.15)' },
+  SELL: { color: '#DC2626', bg: 'rgba(220,38,38,0.06)', border: 'rgba(220,38,38,0.15)' },
+  STRONG_SELL: { color: '#DC2626', bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.2)' },
 }
 
 const fallbackScenarios = [
@@ -103,15 +103,15 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
 
       {/* Selected info */}
       {selected && (
-        <div className="mb-4 px-3 py-2.5 bg-surface-2 rounded-lg border border-primary/15">
+        <div className="mb-4 px-3 py-2.5 bg-surface-1 rounded-lg border border-primary/15">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Active</span>
             <span
               className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded"
               style={{
-                color: DIRECTION_STYLES[selected.expected_direction]?.color || '#FFC107',
-                backgroundColor: DIRECTION_STYLES[selected.expected_direction]?.bg || 'rgba(255,193,7,0.06)',
-                border: `1px solid ${DIRECTION_STYLES[selected.expected_direction]?.border || 'rgba(255,193,7,0.15)'}`,
+                color: DIRECTION_STYLES[selected.expected_direction]?.color || '#D97706',
+                backgroundColor: DIRECTION_STYLES[selected.expected_direction]?.bg || 'rgba(217,119,6,0.06)',
+                border: `1px solid ${DIRECTION_STYLES[selected.expected_direction]?.border || 'rgba(217,119,6,0.15)'}`,
               }}
             >
               {selected.expected_direction}
@@ -132,12 +132,12 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
             ? 'border-bull/25 bg-bull/5 hover:bg-bull/10'
             : marketOpen
               ? 'border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10'
-              : 'border-[rgba(255,255,255,0.06)] bg-surface-2 opacity-50'
+              : 'border-gray-100 bg-surface-1 opacity-50'
         }`}
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-md flex items-center justify-center text-[10px] font-mono font-bold flex-shrink-0 bg-bull/10 text-bull border border-bull/20">
-            <span className={`w-2 h-2 rounded-full ${liveAvailable ? 'bg-bull animate-pulse' : marketOpen ? 'bg-amber-500 animate-pulse' : 'bg-gray-500'}`} aria-hidden="true" />
+            <span className={`w-2 h-2 rounded-full ${liveAvailable ? 'bg-bull animate-pulse' : marketOpen ? 'bg-neutral-muted animate-pulse' : 'bg-onSurfaceDim'}`} aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-onSurface">Simulate Live Market</p>
@@ -159,9 +159,9 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
 
       {/* Preset Divider */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="flex-1 h-px bg-[rgba(255,255,255,0.06)]" />
+        <span className="flex-1 h-px bg-gray-200" />
         <span className="text-[9px] font-mono text-onSurfaceDim tracking-widest">OR PRESET</span>
-        <span className="flex-1 h-px bg-[rgba(255,255,255,0.06)]" />
+        <span className="flex-1 h-px bg-gray-200" />
       </div>
 
       {/* Scenario Grid */}
@@ -175,8 +175,8 @@ export default function ScenarioPanel({ onSimulate, isLoading }) {
               onClick={() => setSelected(s)}
               className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 border ${
                 isActive
-                  ? 'bg-surface-2 border-primary/20'
-                  : 'bg-transparent border-transparent hover:bg-surface-2 hover:border-[rgba(255,255,255,0.06)]'
+                  ? 'bg-surface-1 border-primary/20'
+                  : 'bg-transparent border-transparent hover:bg-surface-1 hover:border-gray-100'
               }`}
             >
               <div className="flex items-center gap-3">

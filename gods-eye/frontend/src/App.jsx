@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
-import AuthGate from './components/AuthGate'
+import Layout from './components/Layout'
 import Welcome from './pages/Welcome'
 import Dashboard from './pages/Dashboard'
 import AgentDetail from './pages/AgentDetail'
@@ -21,12 +21,9 @@ export default function App() {
     <ErrorBoundary>
       <Router>
         <Routes>
-          {/* Public route — no auth required */}
           <Route path="/welcome" element={<Welcome />} />
-
-          {/* Protected routes — AuthGate redirects to /welcome if unauthenticated */}
           <Route path="/*" element={
-            <AuthGate>
+            <Layout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -45,7 +42,7 @@ export default function App() {
                   </div>
                 } />
               </Routes>
-            </AuthGate>
+            </Layout>
           } />
         </Routes>
       </Router>

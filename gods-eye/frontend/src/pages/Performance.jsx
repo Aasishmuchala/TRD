@@ -43,31 +43,28 @@ export default function Performance() {
   const hasNeitherResult = !hasAnyResult && !isRunning && !quantError && !hybridError
 
   return (
-      <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
-        {/* Page header */}
-        <div className="mb-5">
+      <div className="p-4 h-full overflow-y-auto flex flex-col">
+        <div className="mb-3 flex-shrink-0">
           <h1 className="text-xl font-bold text-onSurface">Performance Comparison</h1>
           <p className="text-[10px] font-mono text-onSurfaceDim mt-0.5">
             Rules-Only vs Hybrid — same date range, side by side
           </p>
         </div>
 
-        {/* Control bar */}
-        <form onSubmit={handleRun} className="terminal-card p-4 mb-3">
-          <div className="flex flex-wrap items-end gap-3">
-            {/* Instrument selector */}
-            <div className="flex flex-col gap-1">
+        <form onSubmit={handleRun} className="terminal-card p-4 mb-3 flex-shrink-0">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">Instrument</label>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 {['NIFTY', 'BANKNIFTY'].map((inst) => (
                   <button
                     key={inst}
                     type="button"
                     onClick={() => setInstrument(inst)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                    className={`px-3 py-1.5 rounded-pill text-[10px] font-mono font-bold border transition-all ${
                       instrument === inst
-                        ? 'bg-primary/20 text-primary border-primary/40'
-                        : 'bg-surface-2 text-onSurfaceDim border-[rgba(255,255,255,0.08)] hover:border-primary/30'
+                        ? 'bg-primary/10 text-primary border-primary/30'
+                        : 'bg-surface-2 text-onSurfaceDim border-gray-200 hover:border-primary/30 hover:text-onSurface'
                     }`}
                   >
                     {inst}
@@ -76,49 +73,48 @@ export default function Performance() {
               </div>
             </div>
 
-            {/* From date */}
-            <div className="flex flex-col gap-1">
+            <div className="hidden sm:block w-px h-8 bg-gray-200" />
+
+            <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">From</label>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
                 required
-                className="text-onSurface bg-surface-2 border border-[rgba(255,255,255,0.08)] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-primary/50"
+                className="text-onSurface bg-surface-1 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-primary"
               />
             </div>
 
-            {/* To date */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-wider">To</label>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
                 required
-                className="text-onSurface bg-surface-2 border border-[rgba(255,255,255,0.08)] rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-primary/50"
+                className="text-onSurface bg-surface-1 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-primary"
               />
             </div>
 
-            {/* Run button */}
+            <div className="hidden sm:block w-px h-8 bg-gray-200" />
+
             <button
               type="submit"
               disabled={isRunning || !fromDate || !toDate}
-              className="px-4 py-2 rounded-lg text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="px-5 py-1.5 rounded-pill text-xs font-mono font-bold bg-primary text-white hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300"
             >
               {isRunning ? 'RUNNING...' : 'RUN COMPARISON'}
             </button>
           </div>
         </form>
 
-        {/* Hybrid timeout info banner */}
-        <p className="text-[10px] font-mono text-onSurfaceDim mb-5">
+        <p className="text-[10px] font-mono text-onSurfaceDim mb-4 flex-shrink-0">
           Note: Hybrid mode makes LLM calls per day — 1-month range may take up to 5 minutes.
         </p>
 
-        {/* Status row — loading indicators per mode */}
         {(quantLoading || hybridLoading) && (
-          <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex flex-wrap gap-3 mb-4 flex-shrink-0">
             {quantLoading && (
               <div className="terminal-card px-3 py-1.5">
                 <span className="text-[10px] font-mono text-primary animate-pulse">RULES ONLY: RUNNING...</span>
@@ -126,15 +122,14 @@ export default function Performance() {
             )}
             {hybridLoading && (
               <div className="terminal-card px-3 py-1.5">
-                <span className="text-[10px] font-mono text-[#a78bfa] animate-pulse">HYBRID: RUNNING...</span>
+                <span className="text-[10px] font-mono text-purple-600 animate-pulse">HYBRID: RUNNING...</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Error states — independent per mode */}
         {(quantError || hybridError) && (
-          <div className="flex flex-col gap-2 mb-4">
+          <div className="flex flex-col gap-2 mb-4 flex-shrink-0">
             {quantError && (
               <div className="terminal-card border-l-2 border-bear p-3">
                 <p className="text-[10px] font-mono text-bear">Rules-Only error: {quantError}</p>
@@ -148,9 +143,8 @@ export default function Performance() {
           </div>
         )}
 
-        {/* Empty state */}
         {hasNeitherResult && (
-          <div className="terminal-card p-8 flex flex-col items-center gap-2">
+          <div className="terminal-card p-8 flex flex-col items-center gap-2 flex-1 justify-center">
             <p className="text-xs font-mono text-onSurfaceDim">Set date range and run comparison</p>
             <p className="text-[10px] font-mono text-onSurfaceDim opacity-60">
               Both modes will run concurrently for the selected period
@@ -158,12 +152,9 @@ export default function Performance() {
           </div>
         )}
 
-        {/* Results area */}
         {hasAnyResult && (
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 min-h-0">
             <ModeCompare quantResult={quantResult} hybridResult={hybridResult} />
-
-            {/* Timing note — shown when both results are present */}
             {quantResult && hybridResult && (
               <p className="text-[10px] font-mono text-onSurfaceDim">
                 Rules-only: {quantResult.elapsed_seconds?.toFixed(1)}s | Hybrid: {hybridResult.elapsed_seconds?.toFixed(1)}s

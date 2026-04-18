@@ -48,7 +48,7 @@ export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
         </p>
 
         {scenario && (
-          <div className="bg-surface-2 rounded-lg p-3 mb-4 border border-[rgba(255,255,255,0.04)]">
+          <div className="bg-surface-1 rounded-lg p-3 mb-4 border border-gray-100">
             <p className="text-sm font-semibold text-onSurface">{scenario.name}</p>
             <p className="text-[11px] text-onSurfaceMuted mt-0.5">{scenario.description}</p>
           </div>
@@ -58,7 +58,7 @@ export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[10px] font-mono text-onSurfaceDim uppercase">Flow Data</div>
-            <span className={`text-[8px] font-mono ${dataSource === 'live' ? 'text-bull' : 'text-neutral-bright'}`}>
+            <span className={`text-[8px] font-mono ${dataSource === 'live' ? 'text-bull' : 'text-neutral'}`}>
               {dataSource === 'live' ? 'LIVE DATA' : 'RECENT ESTIMATES'}
             </span>
           </div>
@@ -78,7 +78,7 @@ export default function ScenarioModal({ scenario, onConfirm, onCancel }) {
                   value={flowData[key]}
                   onChange={(e) => setFlowData(prev => ({ ...prev, [key]: Number(e.target.value) || 0 }))}
                   placeholder={placeholder}
-                  className="w-full px-2 py-1 text-[11px] font-mono bg-surface-2 border border-[rgba(255,255,255,0.08)] rounded text-onSurface placeholder-onSurfaceDim focus:outline-none focus:border-primary/40"
+                  className="w-full px-2 py-1 text-[11px] font-mono bg-surface-1 border border-gray-200 rounded text-onSurface placeholder-onSurfaceDim focus:outline-none focus:border-primary/40"
                 />
               </div>
             ))}

@@ -1,7 +1,7 @@
 export default function DirectionGauge({ direction = 'neutral', magnitude = 0.5, confidence = 0.65 }) {
   const isBull = direction === 'bullish'
   const isBear = direction === 'bearish'
-  const color = isBull ? '#00E676' : isBear ? '#FF1744' : '#FFC107'
+  const color = isBull ? '#059669' : isBear ? '#DC2626' : '#D97706'
   const label = isBull ? 'BULLISH' : isBear ? 'BEARISH' : 'NEUTRAL'
   const pct = Math.round(magnitude * 100)
 
@@ -21,7 +21,7 @@ export default function DirectionGauge({ direction = 'neutral', magnitude = 0.5,
           <path
             d={`M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke="rgba(0,0,0,0.06)"
             strokeWidth="5"
             strokeLinecap="round"
           />
@@ -35,7 +35,6 @@ export default function DirectionGauge({ direction = 'neutral', magnitude = 0.5,
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             style={{
-              filter: `drop-shadow(0 0 6px ${color}50)`,
               transition: 'stroke-dashoffset 0.8s ease-out, stroke 0.3s ease',
             }}
           />
@@ -45,13 +44,12 @@ export default function DirectionGauge({ direction = 'neutral', magnitude = 0.5,
             cy={cy - radius * Math.sin(magnitude * Math.PI)}
             r="3"
             fill={color}
-            style={{ filter: `drop-shadow(0 0 4px ${color})` }}
           />
         </svg>
 
         {/* Center value */}
         <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center">
-          <span className="text-xl font-bold font-mono tabular-nums" style={{ color, textShadow: `0 0 12px ${color}40` }}>
+          <span className="text-xl font-bold font-mono tabular-nums" style={{ color }}>
             {pct}%
           </span>
         </div>
@@ -61,7 +59,7 @@ export default function DirectionGauge({ direction = 'neutral', magnitude = 0.5,
       <div className="text-center">
         <p
           className="text-xs font-bold font-mono tracking-widest"
-          style={{ color, textShadow: `0 0 8px ${color}30` }}
+          style={{ color }}
         >
           {label}
         </p>

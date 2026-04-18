@@ -36,39 +36,39 @@ export default function AccuracyChart({ history = [] }) {
     <div className="w-full h-48">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData}>
-          <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+          <CartesianGrid stroke="rgba(0,0,0,0.06)" strokeDasharray="3 3" />
           <XAxis
             dataKey="label"
-            stroke="#5A6070"
-            style={{ fontSize: '9px', fontFamily: 'JetBrains Mono' }}
+            stroke="#9CA3AF"
+            style={{ fontSize: '9px', fontFamily: "'Geist Mono', monospace" }}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="#5A6070"
-            style={{ fontSize: '9px', fontFamily: 'JetBrains Mono' }}
+            stroke="#9CA3AF"
+            style={{ fontSize: '9px', fontFamily: "'Geist Mono', monospace" }}
             domain={[0, 100]}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'rgba(14,14,19,0.95)',
-              border: '1px solid rgba(0,212,224,0.2)',
-              borderRadius: '8px',
+              backgroundColor: '#fff',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
               fontSize: '11px',
-              fontFamily: 'JetBrains Mono',
+              fontFamily: "'Geist Mono', monospace",
             }}
-            labelStyle={{ color: '#8B95A5' }}
+            labelStyle={{ color: '#6B7280' }}
             formatter={(value) => [`${value}%`, 'Conviction']}
           />
           <Line
             type="monotone"
             dataKey="conviction"
-            stroke="#00D4E0"
+            stroke="#CC152B"
             strokeWidth={2}
-            dot={{ fill: '#00D4E0', r: 3, strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: '#00F0FF' }}
+            dot={{ fill: '#CC152B', r: 3, strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: '#CC152B' }}
             isAnimationActive={true}
           />
         </LineChart>

@@ -10,9 +10,9 @@ function DirectionTag({ direction }) {
       ? 'text-bull bg-bull/10 border border-bull/20'
       : direction === 'SELL'
       ? 'text-bear bg-bear/10 border border-bear/20'
-      : 'text-neutral-bright bg-neutral/10 border border-neutral/20'
+      : 'text-neutral bg-neutral/10 border border-neutral/20'
   return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${cls}`}>
+    <span className={`px-2 py-0.5 rounded-pill text-[10px] font-mono font-bold uppercase ${cls}`}>
       {direction}
     </span>
   )
@@ -60,7 +60,7 @@ function QuantSection({ quant }) {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-[10px] font-mono">
             <thead>
-              <tr className="text-onSurfaceDim border-b border-[rgba(255,255,255,0.06)]">
+              <tr className="text-onSurfaceDim border-b border-gray-100">
                 <th className="text-left py-1.5 pr-4">Factor</th>
                 <th className="text-center py-1.5 pr-4">Threshold Hit</th>
                 <th className="text-center py-1.5 pr-4">Side</th>
@@ -69,7 +69,7 @@ function QuantSection({ quant }) {
             </thead>
             <tbody>
               {factors.map(([key, val]) => (
-                <tr key={key} className="border-b border-[rgba(255,255,255,0.03)]">
+                <tr key={key} className="border-b border-gray-50">
                   <td className="py-1.5 pr-4 text-onSurface capitalize">{key.replace(/_/g, ' ')}</td>
                   <td className="py-1.5 pr-4 text-center">
                     {val.threshold_hit ? (
@@ -153,7 +153,7 @@ function ValidatorSection({ verdict, reasoning }) {
       ? 'text-bull bg-bull/10 border-bull/20'
       : verdict === 'skip'
       ? 'text-bear bg-bear/10 border-bear/20'
-      : 'text-neutral-bright bg-neutral/10 border-neutral/20'
+      : 'text-neutral bg-neutral/10 border-neutral/20'
 
   return (
     <div className="terminal-card p-4">
@@ -254,7 +254,7 @@ export default function Signal() {
   }
 
   return (
-      <div className="p-5 h-[calc(100vh-2.5rem)] overflow-y-auto">
+      <div className="p-4 h-full overflow-y-auto">
         {/* Page header */}
         <div className="mb-5">
           <h1 className="text-xl font-bold text-onSurface">Signal</h1>
@@ -277,10 +277,10 @@ export default function Signal() {
                     key={inst}
                     type="button"
                     onClick={() => setInstrument(inst)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold border transition-all ${
+                    className={`px-3 py-1.5 rounded-pill text-[10px] font-mono font-bold border transition-all ${
                       instrument === inst
                         ? 'bg-primary/20 text-primary border-primary/40'
-                        : 'bg-surface-2 text-onSurfaceDim border-[rgba(255,255,255,0.08)] hover:border-primary/30'
+                        : 'bg-surface-1 text-onSurfaceDim border-gray-200 hover:border-primary/30'
                     }`}
                   >
                     {inst}
@@ -299,7 +299,7 @@ export default function Signal() {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="bg-surface-2 border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-2 text-xs font-mono text-onSurface focus:outline-none focus:border-primary/50"
+                className="bg-surface-1 border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono text-onSurface focus:outline-none focus:border-primary/50"
               />
             </div>
 
@@ -307,7 +307,7 @@ export default function Signal() {
             <button
               type="submit"
               disabled={loading || !date}
-              className="px-4 py-2 rounded-lg text-xs font-mono font-bold bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="px-4 py-2 rounded-pill text-xs font-mono font-bold bg-primary text-white hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               {loading ? 'COMPUTING...' : 'RUN SIGNAL'}
             </button>

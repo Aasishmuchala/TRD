@@ -1,8 +1,8 @@
 function SkeletonBlock({ h = 'h-20' }) {
   return (
-    <div className={`bg-surface-2 rounded-lg p-4 border border-[rgba(255,255,255,0.04)] ${h}`}>
-      <div className="w-16 h-2 bg-surface-3 rounded animate-pulse mb-3" />
-      <div className="w-24 h-4 bg-surface-3 rounded animate-pulse" />
+    <div className={`bg-surface-1 rounded-lg p-4 border border-gray-100 ${h}`}>
+      <div className="w-16 h-2 bg-surface-2 rounded animate-pulse mb-3" />
+      <div className="w-24 h-4 bg-surface-2 rounded animate-pulse" />
     </div>
   )
 }
@@ -11,26 +11,26 @@ function InsightsSkeleton() {
   return (
     <div className="flex-1 flex flex-col gap-4">
       <SkeletonBlock h="h-[72px]" />
-      <div className="bg-surface-2 rounded-lg p-4 border border-[rgba(255,255,255,0.04)]">
-        <div className="w-16 h-2 bg-surface-3 rounded animate-pulse mb-3" />
+      <div className="bg-surface-1 rounded-lg p-4 border border-gray-100">
+        <div className="w-16 h-2 bg-surface-2 rounded animate-pulse mb-3" />
         <div className="flex items-center justify-between">
-          <div className="w-20 h-3 bg-surface-3 rounded animate-pulse" />
-          <div className="w-12 h-3 bg-surface-3 rounded animate-pulse" />
+          <div className="w-20 h-3 bg-surface-2 rounded animate-pulse" />
+          <div className="w-12 h-3 bg-surface-2 rounded animate-pulse" />
         </div>
         <div className="mt-2 flex gap-1">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-1 flex-1 rounded-full bg-surface-3 animate-pulse" />
+            <div key={i} className="h-1 flex-1 rounded-full bg-surface-2 animate-pulse" />
           ))}
         </div>
       </div>
       <SkeletonBlock h="h-[56px]" />
       <SkeletonBlock h="h-[72px]" />
       <div className="mt-auto">
-        <div className="w-16 h-2 bg-surface-3 rounded animate-pulse mb-2" />
+        <div className="w-16 h-2 bg-surface-2 rounded animate-pulse mb-2" />
         <div className="flex gap-1.5">
-          <div className="w-16 h-5 bg-surface-3 rounded animate-pulse" />
-          <div className="w-20 h-5 bg-surface-3 rounded animate-pulse" />
-          <div className="w-14 h-5 bg-surface-3 rounded animate-pulse" />
+          <div className="w-16 h-5 bg-surface-2 rounded animate-pulse" />
+          <div className="w-20 h-5 bg-surface-2 rounded animate-pulse" />
+          <div className="w-14 h-5 bg-surface-2 rounded animate-pulse" />
         </div>
       </div>
     </div>
@@ -72,10 +72,10 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
 
   const data = getInsights()
   const dirColor = (dir) => {
-    if (!dir) return '#FFC107'
-    if (dir.includes('BUY')) return '#00E676'
-    if (dir.includes('SELL')) return '#FF1744'
-    return '#FFC107'
+    if (!dir) return '#D97706'
+    if (dir.includes('BUY')) return '#059669'
+    if (dir.includes('SELL')) return '#DC2626'
+    return '#D97706'
   }
 
   return (
@@ -87,12 +87,12 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
       ) : hasData && data ? (
         <div className="flex-1 flex flex-col gap-4">
           {/* Final Signal */}
-          <div className="bg-surface-2 rounded-lg p-4 border border-[rgba(255,255,255,0.04)]">
+          <div className="bg-surface-1 rounded-lg p-4 border border-gray-100">
             <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Final Signal</span>
             <div className="flex items-baseline gap-2 mt-1">
               <span
                 className="text-2xl font-bold font-mono"
-                style={{ color: dirColor(data.agg.final_direction), textShadow: `0 0 12px ${dirColor(data.agg.final_direction)}30` }}
+                style={{ color: dirColor(data.agg.final_direction) }}
               >
                 {data.agg.final_direction}
               </span>
@@ -103,7 +103,7 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
           </div>
 
           {/* Consensus */}
-          <div className="bg-surface-2 rounded-lg p-4 border border-[rgba(255,255,255,0.04)]">
+          <div className="bg-surface-1 rounded-lg p-4 border border-gray-100">
             <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Consensus</span>
             <div className="flex items-center justify-between mt-2">
               <span className={`text-xs font-mono font-bold ${
@@ -120,14 +120,14 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1 flex-1 rounded-full ${i < data.aligned ? 'bg-primary' : 'bg-surface-3'}`}
+                  className={`h-1 flex-1 rounded-full ${i < data.aligned ? 'bg-primary' : 'bg-surface-2'}`}
                 />
               ))}
             </div>
           </div>
 
           {/* Key Driver */}
-          <div className="bg-surface-2 rounded-lg p-4 border border-[rgba(255,255,255,0.04)]">
+          <div className="bg-surface-1 rounded-lg p-4 border border-gray-100">
             <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Key Driver</span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-sm font-semibold text-onSurface">{data.strongest.name || data.strongest.key}</span>
@@ -138,7 +138,7 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
           </div>
 
           {/* Quant vs LLM */}
-          <div className="bg-surface-2 rounded-lg p-4 border border-[rgba(255,255,255,0.04)]">
+          <div className="bg-surface-1 rounded-lg p-4 border border-gray-100">
             <span className="text-[10px] font-mono text-onSurfaceDim uppercase">Quant / LLM Split</span>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex-1">
@@ -147,7 +147,7 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
                   {data.agg.quant_consensus || '---'}
                 </p>
               </div>
-              <div className="w-px h-6 bg-surface-3" />
+              <div className="w-px h-6 bg-surface-2" />
               <div className="flex-1">
                 <span className="text-[10px] text-onSurfaceDim">LLM</span>
                 <p className="text-xs font-mono" style={{ color: dirColor(data.agg.llm_consensus) }}>

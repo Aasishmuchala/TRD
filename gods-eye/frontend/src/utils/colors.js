@@ -1,72 +1,72 @@
 /**
- * God's Eye — Trading Terminal Design System
+ * God's Eye — Algon.iq-Inspired Light Design System
  *
- * Bloomberg/TradingView-inspired dark theme with neon accents.
- * Dense data, monospace numbers, command-center feel.
+ * Clean whites, #CC152B red accent, Geist Sans typography.
+ * Professional, corporate, generous whitespace.
  */
 
 export const colors = {
-  // Core surfaces — pure blacks with slight blue undertone
+  // Core surfaces — white/cream
   surface: {
-    base: '#0A0A0F',     // Near-black canvas
-    1: '#0F1117',         // Card background
-    2: '#161922',         // Elevated surface
-    3: '#1C1F2B',         // Input/hover state
-    4: '#242836',         // Active state
+    base: '#FFFFFF',
+    1: '#FAFAFA',
+    2: '#F5F5F5',
+    3: '#EEEEEE',
+    4: '#E0E0E0',
   },
 
-  // Neon accent — electric cyan (primary action)
+  // Primary accent — Algon red
   primary: {
-    glow: '#00F0FF',      // Brightest — scanlines, active borders
-    DEFAULT: '#00D4E0',   // CTAs, active states
-    muted: '#00A8B3',     // Secondary emphasis
-    dim: '#007A82',       // Subtle indicators
+    glow: '#E8192F',
+    DEFAULT: '#CC152B',
+    muted: '#A81123',
+    dim: '#7A0C19',
   },
 
-  // Signal colors — trading standard
+  // Signal colors — trading standard (light-theme adjusted)
   bull: {
-    bright: '#00FF88',    // Neon green — strong buy
-    DEFAULT: '#00E676',   // Buy signal
-    muted: '#00C853',     // Confirmed bullish
-    dim: '#1B5E20',       // Background hint
+    bright: '#16A34A',
+    DEFAULT: '#059669',
+    muted: '#047857',
+    dim: '#ECFDF5',
   },
   bear: {
-    bright: '#FF3D71',    // Neon red — strong sell
-    DEFAULT: '#FF1744',   // Sell signal
-    muted: '#D50000',     // Confirmed bearish
-    dim: '#4A1525',       // Background hint
+    bright: '#EF4444',
+    DEFAULT: '#DC2626',
+    muted: '#B91C1C',
+    dim: '#FEF2F2',
   },
   neutral: {
-    bright: '#FFD740',    // Amber — hold/caution
-    DEFAULT: '#FFC107',   // Warning
-    muted: '#FF8F00',     // Active neutral
-    dim: '#3E2723',       // Background hint
+    bright: '#F59E0B',
+    DEFAULT: '#D97706',
+    muted: '#B45309',
+    dim: '#FFFBEB',
   },
 
-  // Text hierarchy
+  // Text hierarchy (dark on light)
   text: {
-    primary: '#E8ECF1',   // Primary text
-    secondary: '#8B95A5', // Labels, descriptions
-    muted: '#505A6B',     // Inactive, tertiary
-    data: '#C5CDD8',      // Data values (monospace)
+    primary: '#1A1A1A',
+    secondary: '#6B7280',
+    muted: '#9CA3AF',
+    data: '#374151',
   },
 
   // Borders
   border: {
-    DEFAULT: 'rgba(255,255,255,0.06)',
-    hover: 'rgba(255,255,255,0.12)',
-    active: 'rgba(0,212,224,0.3)',
+    DEFAULT: 'rgba(0,0,0,0.06)',
+    hover: 'rgba(0,0,0,0.12)',
+    active: 'rgba(204,21,43,0.3)',
   },
 }
 
-// Agent identity colors — each agent gets a unique neon identity
+// Agent identity colors — adjusted for light background contrast
 export const agents = {
-  FII:        '#FF6B6B',  // Coral red — foreign pressure
-  DII:        '#00E676',  // Neon green — domestic stability
-  RETAIL_FNO: '#FFD740',  // Amber — retail volatility
-  ALGO:       '#00D4E0',  // Cyan — machine precision
-  PROMOTER:   '#BB86FC',  // Purple — insider knowledge
-  RBI:        '#448AFF',  // Blue — policy authority
+  FII:        '#DC2626',
+  DII:        '#059669',
+  RETAIL_FNO: '#D97706',
+  ALGO:       '#CC152B',
+  PROMOTER:   '#7C3AED',
+  RBI:        '#2563EB',
 }
 
 export const agentLabels = {
@@ -79,7 +79,7 @@ export const agentLabels = {
 }
 
 export const sentiment = {
-  bullish: '#00E676',
-  bearish: '#FF1744',
-  neutral: '#FFC107',
+  bullish: '#059669',
+  bearish: '#DC2626',
+  neutral: '#D97706',
 }

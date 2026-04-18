@@ -1,29 +1,28 @@
 import { agents as agentColors } from '../utils/colors'
 
 export default function AgentPressureBar({ agentKey, label, pressure = 0.5, direction = 'neutral', conviction = 50 }) {
-  const color = agentColors[agentKey] || '#8B95A5'
+  const color = agentColors[agentKey] || '#9CA3AF'
   const pct = Math.max(0, Math.min(100, pressure * 100))
   const dirLabel = direction === 'bullish' ? 'BUY' : direction === 'bearish' ? 'SELL' : 'HOLD'
-  const dirColor = direction === 'bullish' ? '#00E676' : direction === 'bearish' ? '#FF1744' : '#FFC107'
+  const dirColor = direction === 'bullish' ? '#059669' : direction === 'bearish' ? '#DC2626' : '#D97706'
 
   return (
     <div className="group flex items-center gap-3">
       {/* Agent dot + name */}
       <div className="flex items-center gap-2 w-24 flex-shrink-0">
-        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}40` }}/>
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}/>
         <span className="text-xs font-medium text-onSurfaceMuted group-hover:text-onSurface transition-colors truncate">
           {label}
         </span>
       </div>
 
       {/* Bar */}
-      <div className="flex-1 h-1.5 bg-surface-3 rounded-full overflow-hidden relative">
+      <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden relative">
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
           style={{
             width: `${pct}%`,
             background: `linear-gradient(90deg, ${dirColor}80, ${dirColor})`,
-            boxShadow: `0 0 8px ${dirColor}30`,
           }}
         />
       </div>
