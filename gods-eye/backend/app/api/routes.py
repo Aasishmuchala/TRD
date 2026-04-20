@@ -597,6 +597,26 @@ async def start_login(request: Request, provider: str = "openai"):
             "message": "Mock mode: Device code flow bypassed",
         }
 
+    # Direct API key mode: backend already has LLM_API_KEY configured and the
+    # provider has no device-code endpoint (e.g. "anthropic"). Short-circuit
+    # the OAuth flow with an immediate "authorized" response so the frontend
+    # stops trying to poll. The auth middleware accepts any non-empty Bearer
+    # token when LLM_API_KEY is set, so we mint a local pseudo-token.
+    try:
+        from app.auth.device_auth import DEVICE_AUTH_PROVIDERS
+        provider_cfg = DEVICE_AUTH_PROVIDERS.get(provider, {})
+    except Exception:
+        provider_cfg = {}
+    if config.LLM_API_KEY and not provider_cfg.get("device_code_endpoint"):
+        import secrets
+        return {
+            "status": "authorized",
+            "access_token": f"direct-{secrets.token_urlsafe(16)}",
+            "provider": provider,
+            "mode": "direct_api_key",
+            "message": f"Authenticated via direct API key mode ({provider}). Backend has LLM_API_KEY configured — no OAuth needed.",
+        }
+
     try:
         auth = DeviceAuthManager(provider=provider)
         device_info = await auth.request_device_code()
