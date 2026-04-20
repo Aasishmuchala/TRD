@@ -244,9 +244,16 @@ class HistoricalStore:
         # yfinance end date is exclusive — add 1 day to include to_date
         end = (datetime.strptime(to_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
         ticker = yf.Ticker(ticker_sym)
-        hist = ticker.history(start=from_date, end=end, auto_adjust=True)
+        try:
+            hist = ticker.history(start=from_date, end=end, auto_adjust=True)
+        except Exception as e:
+            # yfinance raises YFRateLimitError and other exceptions; wrap them so callers
+            # that catch DhanFetchError can fall back to cached data gracefully.
+            raise DhanFetchError(
+                f"yfinance error for {ticker_sym}: {type(e).__name__}: {e}"
+            ) from e
 
-        if hist.empty:
+        if hist is None or hist.empty:
             raise DhanFetchError(
                 f"yfinance returned no data for {ticker_sym} ({from_date} → {to_date}). "
                 "Possible rate-limit — try again in a few minutes."
@@ -290,9 +297,20 @@ class HistoricalStore:
         if instrument not in ("NIFTY", "BANKNIFTY"):
             raise ValueError(f"get_ohlcv only supports NIFTY/BANKNIFTY, got {instrument!r}")
 
-        # Fetch from Dhan if cache is stale or empty
+        # Fetch from upstream if cache is stale or empty.
+        # If upstream fails (yfinance rate-limit, etc.) but we have cached rows,
+        # serve the cached data with a warning instead of returning 5xx.
         if not self._is_cache_fresh(instrument):
-            await self._fetch_and_store(instrument)
+            try:
+                await self._fetch_and_store(instrument)
+            except Exception as e:
+                if self._count_rows(instrument) > 0:
+                    logger.warning(
+                        "Upstream fetch failed for %s (%s); serving stale cached data",
+                        instrument, e,
+                    )
+                else:
+                    raise
 
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row

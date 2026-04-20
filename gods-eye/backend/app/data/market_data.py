@@ -412,7 +412,27 @@ class MarketDataService:
         return result
 
     async def _fetch_options_chain(self, symbol: str = "NIFTY") -> Dict[str, Any]:
-        """Fetch options chain and compute PCR, max pain, top OI."""
+        """Fetch options chain and compute PCR, max pain, top OI.
+
+        Strategy:
+          1. Prefer Dhan /optionchain (IDX_I) — works from Railway, tokenised
+          2. Fall back to NSE public option-chain-indices (often 403 from cloud IPs)
+          3. Fall back to hardcoded defaults (sentinel)
+        """
+        # ── Strategy 1: Dhan options chain (preferred) ──
+        if symbol.upper() == "NIFTY" and dhan_client.is_configured:
+            try:
+                dhan_parsed = await self._fetch_options_from_dhan()
+                if dhan_parsed:
+                    logger.debug(
+                        "Options chain from Dhan: underlying=%s pcr=%s",
+                        dhan_parsed.get("underlying"), dhan_parsed.get("pcr"),
+                    )
+                    return dhan_parsed
+            except Exception as e:
+                logger.warning("Dhan options chain fetch failed: %s — falling back to NSE", e)
+
+        # ── Strategy 2: NSE public API ──
         data = await self._nse.get(
             f"{NSE_API}/option-chain-indices?symbol={symbol}"
         )
@@ -494,6 +514,94 @@ class MarketDataService:
             "top_put_oi_strikes": [
                 {"strike": s, "oi": oi} for s, oi in top_put_strikes
             ],
+        }
+
+    async def _fetch_options_from_dhan(self) -> Optional[Dict[str, Any]]:
+        """Fetch and parse the NIFTY option chain via Dhan /v2/optionchain.
+
+        Response shape (confirmed):
+          {"data": {"last_price": 24353.55, "oc": {"24300.000000": {"ce": {...}, "pe": {...}}, ...}}}
+
+        Returns None on failure so the caller can fall back to NSE.
+        """
+        # Use security id 13 for Nifty. get_option_chain resolves expiry via get_expiry_list.
+        data = await dhan_client.get_option_chain(under_security_id="13")
+        if not data or not isinstance(data, dict):
+            return None
+
+        inner = data.get("data") if isinstance(data.get("data"), dict) else None
+        if not inner:
+            return None
+
+        oc = inner.get("oc")
+        if not isinstance(oc, dict) or not oc:
+            return None
+
+        underlying = float(inner.get("last_price", 0) or 0) or 0
+        total_call_oi = 0
+        total_put_oi = 0
+        strike_pain: Dict[float, Dict[str, int]] = {}
+
+        for strike_str, opts in oc.items():
+            if not isinstance(opts, dict):
+                continue
+            try:
+                strike = float(strike_str)
+            except (ValueError, TypeError):
+                continue
+            ce = opts.get("ce") or {}
+            pe = opts.get("pe") or {}
+            ce_oi = int(ce.get("oi", 0) or 0) if isinstance(ce, dict) else 0
+            pe_oi = int(pe.get("oi", 0) or 0) if isinstance(pe, dict) else 0
+            total_call_oi += ce_oi
+            total_put_oi += pe_oi
+            strike_pain[strike] = {"ce_oi": ce_oi, "pe_oi": pe_oi}
+
+        if total_call_oi == 0 and total_put_oi == 0:
+            # OI can legitimately be 0 outside trading hours for many strikes,
+            # but zero across the entire chain means the response is stale/empty.
+            return None
+
+        pcr = round(total_put_oi / total_call_oi, 3) if total_call_oi > 0 else 1.0
+        max_pain = self._compute_max_pain({int(k): v for k, v in strike_pain.items()})
+
+        top_call_strikes = sorted(
+            [(s, d["ce_oi"]) for s, d in strike_pain.items()],
+            key=lambda x: x[1], reverse=True,
+        )[:5]
+        top_put_strikes = sorted(
+            [(s, d["pe_oi"]) for s, d in strike_pain.items()],
+            key=lambda x: x[1], reverse=True,
+        )[:5]
+
+        # Resolve expiry + DTE from the nearest expiry in Dhan's response metadata
+        expiry = None
+        dte = 5
+        try:
+            # get_expiry_list is cached 1h; nearest expiry is first
+            exps = await dhan_client.get_expiry_list("13")
+            if exps:
+                expiry = exps[0]  # YYYY-MM-DD
+                try:
+                    exp_dt = datetime.strptime(expiry, "%Y-%m-%d")
+                    dte = max(0, (exp_dt - datetime.now()).days)
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+
+        return {
+            "symbol": "NIFTY",
+            "expiry": expiry,
+            "dte": dte,
+            "underlying": underlying,
+            "pcr": pcr,
+            "max_pain": float(max_pain),
+            "total_call_oi": total_call_oi,
+            "total_put_oi": total_put_oi,
+            "top_call_oi_strikes": [{"strike": s, "oi": oi} for s, oi in top_call_strikes],
+            "top_put_oi_strikes": [{"strike": s, "oi": oi} for s, oi in top_put_strikes],
+            "source": "dhan",
         }
 
     async def _fetch_sector_indices(self) -> List[Dict[str, Any]]:

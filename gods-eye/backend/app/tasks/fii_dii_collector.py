@@ -76,6 +76,7 @@ class FiiDiiCollector:
                 if activity and not activity.get("error"):
                     fii_net = activity.get("fii_net_value", 0.0)
                     dii_net = activity.get("dii_net_value", 0.0)
+                    src = activity.get("source") or "nse_api"
 
                     # Only store if we got real data (not both zero)
                     if fii_net != 0 or dii_net != 0:
@@ -87,12 +88,12 @@ class FiiDiiCollector:
                             fii_sell_cr=activity.get("fii_sell_value", 0.0),
                             dii_buy_cr=activity.get("dii_buy_value", 0.0),
                             dii_sell_cr=activity.get("dii_sell_value", 0.0),
-                            source="nse_api",
+                            source=src,
                         )
                         self._last_stored_date = today
                         logger.info(
-                            "Stored FII/DII for %s: FII=%+.0f Cr, DII=%+.0f Cr",
-                            today, fii_net, dii_net,
+                            "Stored FII/DII for %s: FII=%+.0f Cr, DII=%+.0f Cr (src=%s)",
+                            today, fii_net, dii_net, src,
                         )
                     else:
                         logger.debug("FII/DII both zero for %s — skipping store", today)
@@ -137,6 +138,7 @@ class FiiDiiCollector:
         if activity and not activity.get("error"):
             fii_net = activity.get("fii_net_value", 0.0)
             dii_net = activity.get("dii_net_value", 0.0)
+            src = activity.get("source") or "nse_api"
 
             if fii_net != 0 or dii_net != 0:
                 fii_dii_store.store_daily(
@@ -147,10 +149,10 @@ class FiiDiiCollector:
                     fii_sell_cr=activity.get("fii_sell_value", 0.0),
                     dii_buy_cr=activity.get("dii_buy_value", 0.0),
                     dii_sell_cr=activity.get("dii_sell_value", 0.0),
-                    source="nse_api",
+                    source=src,
                 )
                 self._last_stored_date = today
-                logger.info("Force-stored FII/DII for %s", today)
+                logger.info("Force-stored FII/DII for %s (src=%s)", today, src)
                 return True
 
         return False

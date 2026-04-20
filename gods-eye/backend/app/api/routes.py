@@ -1,5 +1,6 @@
 """FastAPI routes for God's Eye."""
 
+import logging
 import os
 import sqlite3
 import time
@@ -7,6 +8,8 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 import httpx
+
+logger = logging.getLogger("gods_eye.routes")
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from app.auth.middleware import require_auth
@@ -799,9 +802,13 @@ async def get_historical_data(
     except DhanFetchError as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"Dhan API error: {exc}",
+            detail=f"Upstream data error: {exc}",
         )
-    except Exception:
+    except Exception as exc:
+        logger.exception(
+            "Historical endpoint failed for %s from=%s to=%s: %s",
+            instrument_upper, from_date, to_date, exc,
+        )
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
     return {
