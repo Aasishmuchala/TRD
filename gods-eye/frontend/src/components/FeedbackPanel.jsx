@@ -2,23 +2,43 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '../api/client'
 import { agents as agentColors, agentLabels } from '../utils/colors'
 
-export default function FeedbackPanel() {
+export default function FeedbackPanel({ refreshKey }) {
   const [weights, setWeights] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setFetchError(null)
     apiClient.getFeedbackWeights(90)
-      .then(setWeights)
-      .catch(() => null)
-      .finally(() => setLoading(false))
-  }, [])
+      .then(data => { if (!cancelled) setWeights(data) })
+      .catch(err => { if (!cancelled) setFetchError(err?.message || 'Failed to load feedback weights') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [refreshKey])
 
   if (loading) {
     return (
       <div className="terminal-card-lg p-5">
         <div className="section-header">Feedback Engine</div>
-        <div className="flex items-center justify-center h-32">
+        <div className="flex items-center justify-center h-32" role="status" aria-live="polite">
           <span className="text-xs font-mono text-onSurfaceDim animate-pulse">LOADING...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (fetchError && !weights) {
+    return (
+      <div className="terminal-card-lg p-5">
+        <div className="section-header">Feedback Engine</div>
+        <div className="flex flex-col items-center justify-center gap-2 h-32 px-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 text-amber-500" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <span className="text-[10px] font-mono text-onSurfaceDim text-center">Feedback weights unavailable</span>
+          <span className="text-[9px] font-mono text-onSurfaceDim text-center opacity-70">{fetchError}</span>
         </div>
       </div>
     )

@@ -6,28 +6,49 @@ import { AGENT_ORDER } from '../constants/agents'
 // FE-L5: Use canonical AGENT_ORDER from constants instead of hardcoded list
 const AGENT_KEYS = AGENT_ORDER
 
-export default function AccuracyPanel() {
+export default function AccuracyPanel({ refreshKey }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
 
   useEffect(() => {
+    let cancelled = false
     const fetchAll = async () => {
+      setLoading(true)
+      setFetchError(null)
       try {
         const results = await Promise.all(
           AGENT_KEYS.map(async (key) => {
-            const acc = await apiClient.getAgentAccuracy(key, 90)
-            return { key, ...acc }
+            try {
+              const acc = await apiClient.getAgentAccuracy(key, 90)
+              return { key, ...acc }
+            } catch (err) {
+              // Per-agent fallback so one 404 doesn't break the whole panel
+              return {
+                key,
+                accuracy_percent: 0,
+                total_predictions: 0,
+                correct: 0,
+                calibration_score: 0,
+                recent_streak: 0,
+                strongest_context: 'unknown',
+                _error: err?.message || 'fetch failed',
+              }
+            }
           })
         )
-        setData(results)
+        if (!cancelled) setData(results)
       } catch (err) {
-        console.error('Failed to fetch accuracy:', err)
+        if (!cancelled) {
+          setFetchError(err?.message || 'Failed to load accuracy data')
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchAll()
-  }, [])
+    return () => { cancelled = true }
+  }, [refreshKey])
 
   if (loading) {
     return (
@@ -41,15 +62,33 @@ export default function AccuracyPanel() {
   }
 
   const totalPredictions = data?.reduce((sum, a) => sum + a.total_predictions, 0) || 0
+  const partialErrors = data?.filter(a => a._error).length || 0
 
   return (
     <div className="terminal-card-lg p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="section-header mb-0">Agent Accuracy</div>
-        <span className="text-[10px] font-mono text-onSurfaceDim">
-          {totalPredictions} total predictions
-        </span>
+        <div className="flex items-center gap-2">
+          {partialErrors > 0 && (
+            <span
+              title={`${partialErrors} agent accuracy endpoint(s) returned an error — showing zeros for those.`}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-50 text-amber-800 border border-amber-300"
+            >
+              <span className="w-1 h-1 rounded-full bg-amber-500" aria-hidden="true" />
+              {partialErrors} unavailable
+            </span>
+          )}
+          <span className="text-[10px] font-mono text-onSurfaceDim">
+            {totalPredictions} total predictions
+          </span>
+        </div>
       </div>
+
+      {fetchError && (
+        <div className="mb-3 px-3 py-2 bg-bear-dim rounded-lg border border-bear/20 text-[10px] font-mono text-bear">
+          {fetchError}
+        </div>
+      )}
 
       {totalPredictions === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 gap-2">

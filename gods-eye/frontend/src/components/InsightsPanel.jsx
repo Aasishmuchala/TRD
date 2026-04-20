@@ -45,6 +45,7 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
 
     const agg = result.aggregator_result
     const agents = result.agents_output
+    const totalAgents = Object.keys(agents).length
 
     // Strongest agent
     let strongest = { key: '', conviction: 0, direction: '' }
@@ -67,7 +68,7 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
       ? agents[strongest.key].key_triggers.slice(0, 3)
       : []
 
-    return { agg, strongest, aligned, triggers }
+    return { agg, strongest, aligned, triggers, totalAgents }
   }
 
   const data = getInsights()
@@ -113,11 +114,11 @@ export default function InsightsPanel({ result = null, isLoading = false }) {
                 {data.agg.conflict_level?.replace(/_/g, ' ')}
               </span>
               <span className="text-xs font-mono text-onSurfaceMuted">
-                {data.aligned}/6 aligned
+                {data.aligned}/{data.totalAgents} aligned
               </span>
             </div>
             <div className="mt-2 flex gap-1">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: data.totalAgents }).map((_, i) => (
                 <div
                   key={i}
                   className={`h-1 flex-1 rounded-full ${i < data.aligned ? 'bg-primary' : 'bg-surface-2'}`}
