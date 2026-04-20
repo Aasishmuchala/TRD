@@ -139,8 +139,9 @@ class LLMClient:
         # Use the minimum viable thinking budget — agents produce structured JSON,
         # not essays. 128 tokens is enough for the model to orient on direction +
         # conviction before writing output. Lower budget = faster time-to-first-token.
-        THINKING_BUDGET = int(os.getenv("GODS_EYE_THINKING_BUDGET", "128"))
-        effective_max_tokens = max(max_tokens, THINKING_BUDGET + 500)
+        THINKING_BUDGET = int(os.getenv("GODS_EYE_THINKING_BUDGET", "1024"))
+        MIN_TEXT_TOKENS = 3072  # enough for any agent JSON response
+        effective_max_tokens = max(max_tokens, THINKING_BUDGET + MIN_TEXT_TOKENS)
 
         payload = {
             "model": model,
@@ -209,6 +210,8 @@ class LLMClient:
 
                         if not got_error:
                             # Consume SSE stream, extracting text deltas
+                            block_types_seen = []
+                            stop_reason = None
                             async for raw_line in stream.aiter_lines():
                                 line = raw_line.strip()
                                 if not line or not line.startswith("data: "):
@@ -221,8 +224,15 @@ class LLMClient:
                                 except json.JSONDecodeError:
                                     continue
                                 evt_type = evt.get("type", "")
-                                if evt_type == "content_block_start":
+                                if evt_type == "message_start":
+                                    msg = evt.get("message", {})
+                                    stop_reason = msg.get("stop_reason")
+                                elif evt_type == "message_delta":
+                                    delta = evt.get("delta", {})
+                                    stop_reason = delta.get("stop_reason", stop_reason)
+                                elif evt_type == "content_block_start":
                                     block = evt.get("content_block", {})
+                                    block_types_seen.append(block.get("type", "unknown"))
                                     if block.get("type") == "text":
                                         current_text = block.get("text", "")
                                 elif evt_type == "content_block_delta":
@@ -243,7 +253,14 @@ class LLMClient:
                         text_parts.append(current_text)
 
                     if not text_parts:
-                        raise RuntimeError(f"No text content in Anthropic streaming response")
+                        logger.error(
+                            f"No text in SSE response: blocks_seen={block_types_seen}, "
+                            f"stop_reason={stop_reason}, model={model}"
+                        )
+                        raise RuntimeError(
+                            f"No text content in Anthropic streaming response "
+                            f"(blocks: {block_types_seen}, stop_reason: {stop_reason})"
+                        )
 
                     result = "\n".join(text_parts)
                     logger.info(

@@ -100,6 +100,7 @@ class DhanClient:
         self._last_refresh_attempt: float = 0.0  # epoch — throttle refresh calls
         self._refresh_lock: Optional[asyncio.Lock] = None
         self._breaker = _CircuitBreaker()
+        self._refresh_consecutive_failures: int = 0  # for exponential backoff
 
     @property
     def _access_token(self) -> str:
@@ -108,6 +109,10 @@ class DhanClient:
 
     @property
     def is_configured(self) -> bool:
+        # Kill switch: set GODS_EYE_DHAN_DISABLED=true to force-disable Dhan data
+        # fetching without losing credentials (useful when TOTP is broken).
+        if os.getenv("GODS_EYE_DHAN_DISABLED", "").lower() in ("1", "true", "yes"):
+            return False
         return bool(self._access_token and self._client_id)
 
     def _get_lock(self) -> asyncio.Lock:
@@ -140,19 +145,35 @@ class DhanClient:
     async def _refresh_token_on_401(self) -> bool:
         """Trigger token refresh via DhanTokenManager. Returns True if new token obtained.
 
-        Throttled: at most once per _MIN_REFRESH_INTERVAL seconds.
+        Throttled with exponential backoff: base _MIN_REFRESH_INTERVAL, doubled on
+        each consecutive failure, capped at 30 minutes. This prevents the 35s TOTP
+        sleep from being hit repeatedly when credentials are broken (HTTP 400/DH-901).
+
         Serialized: only one refresh at a time (asyncio.Lock).
         """
         now = time.monotonic()
-        if now - self._last_refresh_attempt < _MIN_REFRESH_INTERVAL:
-            logger.debug("Dhan 401 refresh throttled (last attempt %.0fs ago)", now - self._last_refresh_attempt)
+        # Exponential backoff on consecutive refresh failures: 120s, 240s, 480s, 960s, capped at 1800s
+        backoff = min(
+            _MIN_REFRESH_INTERVAL * (2 ** self._refresh_consecutive_failures),
+            1800,
+        )
+        if now - self._last_refresh_attempt < backoff:
+            logger.debug(
+                "Dhan 401 refresh throttled (%.0fs ago, need %.0fs, failures=%d)",
+                now - self._last_refresh_attempt, backoff, self._refresh_consecutive_failures,
+            )
             return False
 
         lock = self._get_lock()
         if lock.locked():
-            # Another coroutine is already refreshing — wait for it
-            async with lock:
-                return bool(self._access_token)
+            # Another coroutine is already refreshing — wait for it (with timeout)
+            try:
+                async with asyncio.timeout(5):
+                    async with lock:
+                        return bool(self._access_token)
+            except asyncio.TimeoutError:
+                logger.warning("Dhan refresh lock timeout — another refresh is taking too long")
+                return False
 
         async with lock:
             self._last_refresh_attempt = time.monotonic()
@@ -164,15 +185,21 @@ class DhanClient:
                 if success:
                     new_token = self._access_token
                     logger.info("Dhan token refreshed successfully (new token starts: %s...)", new_token[:20])
+                    self._refresh_consecutive_failures = 0  # reset backoff
                     # Force httpx client rebuild on next call
                     if self._http is not None:
                         await self._http.aclose()
                         self._http = None
                     return True
                 else:
-                    logger.error("Dhan token refresh failed — all strategies exhausted")
+                    self._refresh_consecutive_failures = min(self._refresh_consecutive_failures + 1, 4)
+                    logger.error(
+                        "Dhan token refresh failed — backoff will extend (next attempt in %.0fs)",
+                        min(_MIN_REFRESH_INTERVAL * (2 ** self._refresh_consecutive_failures), 1800),
+                    )
                     return False
             except Exception as e:
+                self._refresh_consecutive_failures = min(self._refresh_consecutive_failures + 1, 4)
                 logger.error("Dhan token refresh error: %s", e)
                 return False
 
