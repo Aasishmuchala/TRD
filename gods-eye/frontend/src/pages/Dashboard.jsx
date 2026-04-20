@@ -190,12 +190,12 @@ const AgentGrid = ({ completedAgents, result }) => {
 
 const QuickScenarios = ({ onSelect }) => {
   const scenarios = [
-    { id: 'normal_day', label: 'Normal', icon: '☀' },
-    { id: 'expiry_day', label: 'Expiry', icon: '⏰' },
-    { id: 'budget_session', label: 'Budget', icon: '📊' },
-    { id: 'rbi_policy', label: 'RBI', icon: '🏦' },
-    { id: 'flash_crash', label: 'Crash', icon: '⚡' },
-    { id: 'global_selloff', label: 'Selloff', icon: '🌍' },
+    { id: 'rbi_rate_cut', label: 'RBI', icon: '🏦' },
+    { id: 'expiry_carnage', label: 'Expiry', icon: '⏰' },
+    { id: 'budget_bull', label: 'Budget', icon: '📊' },
+    { id: 'fii_exodus', label: 'FII Exit', icon: '⚡' },
+    { id: 'global_contagion', label: 'Global', icon: '🌍' },
+    { id: 'election_day', label: 'Election', icon: '🗳' },
   ]
 
   return (
@@ -400,7 +400,7 @@ export default function Dashboard() {
 
           <div className="col-span-4 flex flex-col gap-3">
             <button
-              onClick={() => simulate()}
+              onClick={() => simulate({ scenario_id: 'rbi_rate_cut' })}
               disabled={isLoading}
               className={`w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
                 isLoading
@@ -419,7 +419,7 @@ export default function Dashboard() {
             </button>
             <div className="terminal-card p-3">
               <div className="text-[10px] font-mono text-onSurfaceDim uppercase tracking-widest mb-2">Quick Scenario</div>
-              <QuickScenarios onSelect={(id) => simulate({ scenario: id })} />
+              <QuickScenarios onSelect={(id) => simulate({ scenario_id: id })} />
             </div>
           </div>
         </div>
