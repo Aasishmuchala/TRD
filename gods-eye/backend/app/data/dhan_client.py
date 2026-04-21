@@ -81,6 +81,16 @@ class _CircuitBreaker:
                 self._consecutive_failures, self._cooldown,
             )
 
+    def reset(self) -> None:
+        """Manually clear the breaker (used after a forced token renewal succeeds)."""
+        if self._consecutive_failures > 0:
+            logger.info(
+                "Dhan circuit breaker RESET (was %d consecutive failures, tripped=%s)",
+                self._consecutive_failures, self._consecutive_failures >= self._threshold,
+            )
+        self._consecutive_failures = 0
+        self._tripped_at = 0.0
+
     @property
     def failure_count(self) -> int:
         return self._consecutive_failures

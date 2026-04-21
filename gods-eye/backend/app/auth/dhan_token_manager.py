@@ -455,15 +455,19 @@ class DhanTokenManager:
 
     # ─── Proactive Health Check ─────────────────────────────────────────
 
-    HEALTH_CHECK_INTERVAL = 300  # 5 minutes during market hours
-    HEALTH_CHECK_INTERVAL_OFF = 900  # 15 minutes outside market hours
+    HEALTH_CHECK_INTERVAL = 300       # 5 minutes during market hours
+    HEALTH_CHECK_INTERVAL_OFF = 900   # 15 minutes outside market hours
+    HEALTH_CHECK_INTERVAL_BROKEN = 60 # 60 seconds while data is not flowing
 
     async def _health_check_loop(self):
-        """Background task that proactively verifies token health.
+        """Background task that proactively verifies Dhan data is flowing.
 
-        Every 5 minutes during market hours (9:00-16:00 IST), pings Dhan
-        with a lightweight LTP call. If it returns 401, immediately refreshes.
-        This catches token expiry BEFORE a real simulation hits it.
+        Normal cadence: 5 min during market hours, 15 min off-hours.
+        Broken cadence: 60 s while data is not flowing (breaker open, 5xx, 401,
+        timeouts, etc.). On ANY non-healthy state the loop forces a token
+        renewal via Strategy 2 and resets the circuit breaker on success —
+        so a stuck data feed unblocks itself within ~60 seconds without
+        waiting for the next scheduled (08:30 / 16:00 IST) slot.
         """
         await asyncio.sleep(60)  # Wait 1 min after startup before first check
         while True:
@@ -472,23 +476,62 @@ class DhanTokenManager:
                 hour = now_ist.hour
                 # More frequent checks during/around market hours (8:30-16:30)
                 is_market_time = 8 <= hour <= 16 and now_ist.weekday() < 5
-                interval = self.HEALTH_CHECK_INTERVAL if is_market_time else self.HEALTH_CHECK_INTERVAL_OFF
+                normal_interval = (
+                    self.HEALTH_CHECK_INTERVAL if is_market_time
+                    else self.HEALTH_CHECK_INTERVAL_OFF
+                )
 
                 from app.data.dhan_client import dhan_client
                 result = await dhan_client.health_check()
+                healthy = bool(result.get("healthy"))
+                reason = result.get("reason", "")
 
-                if result.get("healthy"):
+                if healthy:
                     logger.debug("Dhan health check OK")
-                elif result.get("reason") == "token_expired":
-                    logger.warning("Dhan health check: token expired — refreshing proactively")
-                    await self.ensure_valid_token()
-                elif result.get("reason") == "circuit_breaker_open":
-                    logger.warning("Dhan health check: circuit breaker open (%d failures)",
-                                   result.get("consecutive_failures", 0))
-                elif result.get("reason") == "not_configured":
-                    pass  # Nothing to do
+                    interval = normal_interval
+                elif reason == "not_configured":
+                    interval = normal_interval  # nothing to fix
                 else:
-                    logger.warning("Dhan health check failed: %s", result.get("reason", "unknown"))
+                    # ── Any non-healthy, configured state → force renewal ──
+                    # Covers: token_expired (401), circuit_breaker_open,
+                    # http_5xx, http_403, network timeouts/errors, etc.
+                    logger.warning(
+                        "Dhan data not flowing (reason=%s, failures=%s) — "
+                        "forcing token renewal to self-heal",
+                        reason, result.get("consecutive_failures", "n/a"),
+                    )
+                    renewed = False
+                    try:
+                        renewed = await self.ensure_valid_token()
+                    except Exception as e:
+                        logger.error("Forced renewal raised: %s", e)
+
+                    if renewed:
+                        # Unstick the breaker immediately so the next request
+                        # actually reaches Dhan with the fresh token rather
+                        # than being short-circuited by the cooldown.
+                        try:
+                            dhan_client._breaker.reset()
+                        except Exception:
+                            pass
+                        # Persist the refreshed token to the Railway volume
+                        # so a container restart mid-recovery keeps the gain.
+                        try:
+                            self._save_token_to_disk()
+                        except Exception:
+                            pass
+                        logger.info(
+                            "Dhan self-heal succeeded (reason was %s) — "
+                            "breaker reset, token persisted.", reason,
+                        )
+                    else:
+                        logger.warning(
+                            "Dhan self-heal FAILED (reason was %s) — will "
+                            "retry in %ds.", reason,
+                            self.HEALTH_CHECK_INTERVAL_BROKEN,
+                        )
+                    # Poll fast until data is flowing again
+                    interval = self.HEALTH_CHECK_INTERVAL_BROKEN
 
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
