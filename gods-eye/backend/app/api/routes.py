@@ -1406,6 +1406,14 @@ async def admin_dhan_rotate_token(payload: _DhanTokenRotateBody):
         dhan_token_manager._token_expiry = datetime.utcfromtimestamp(int(exp_ts))
     os.environ["DHAN_ACCESS_TOKEN"] = token
 
+    # Persist to Railway volume so the token survives container restarts.
+    # Silent on failure — admin can retry, and the token_manager itself
+    # logs disk errors via its own logger.
+    try:
+        dhan_token_manager._save_token_to_disk()
+    except Exception:
+        pass
+
     try:
         dhan_client._breaker.record_success()
     except Exception:

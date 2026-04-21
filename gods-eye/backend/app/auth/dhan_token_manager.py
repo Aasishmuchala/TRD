@@ -70,6 +70,24 @@ def _generate_totp(secret_base32: str, time_step: int = 30, digits: int = 6, cou
     return str(code % (10 ** digits)).zfill(digits)
 
 
+def _jwt_exp_utc(token: str) -> Optional[datetime]:
+    """Best-effort decode of an unsigned JWT's `exp` claim → UTC datetime."""
+    if not token or token.count(".") != 2:
+        return None
+    try:
+        import base64
+        import json as _json
+        _, body_b64, _ = token.split(".")
+        body_b64 += "=" * (-len(body_b64) % 4)
+        claims = _json.loads(base64.urlsafe_b64decode(body_b64))
+        exp = claims.get("exp")
+        if exp:
+            return datetime.utcfromtimestamp(int(exp))
+    except Exception:
+        pass
+    return None
+
+
 # ─── Token Manager ───────────────────────────────────────────────────────────
 
 class DhanTokenManager:
@@ -87,9 +105,99 @@ class DhanTokenManager:
         self.pin: str = os.getenv("DHAN_PIN", "")
         self.totp_secret: str = os.getenv("DHAN_TOTP_SECRET", "")
         self._access_token: str = os.getenv("DHAN_ACCESS_TOKEN", "")
-        self._token_expiry: Optional[datetime] = None
+        # Seed expiry from JWT if possible — so load-from-disk can compare freshness.
+        self._token_expiry: Optional[datetime] = _jwt_exp_utc(self._access_token)
         self._renewal_task: Optional[asyncio.Task] = None
         self._http: Optional[httpx.AsyncClient] = None
+
+        # Disk persistence path — lives on the Railway volume by default so
+        # renewed tokens survive container restarts/redeploys. A fresher token
+        # on disk always wins over the env-var token at boot time.
+        self.token_store_path: str = os.getenv(
+            "DHAN_TOKEN_STORE_PATH", "/app/data/dhan_token.json"
+        )
+        self._load_persisted_token()
+
+    # ─── Disk persistence (survives container restarts) ───────────────────
+
+    def _load_persisted_token(self) -> None:
+        """Load token from disk if the file is present and fresher than env var.
+
+        Compared against ``self._token_expiry`` (set from env JWT's ``exp`` claim).
+        A disk token that is already expired is ignored.
+        """
+        try:
+            import json as _json
+            if not os.path.exists(self.token_store_path):
+                return
+            with open(self.token_store_path, "r") as f:
+                data = _json.load(f)
+            disk_token = (data.get("access_token") or "").strip()
+            if not disk_token:
+                return
+
+            disk_exp: Optional[datetime] = None
+            exp_str = data.get("expires_at")
+            if exp_str:
+                try:
+                    disk_exp = datetime.fromisoformat(exp_str.replace("Z", ""))
+                except Exception:
+                    disk_exp = None
+            if disk_exp is None:
+                disk_exp = _jwt_exp_utc(disk_token)
+
+            # Skip if already expired.
+            if disk_exp and datetime.utcnow() >= disk_exp:
+                logger.info(
+                    "Persisted Dhan token at %s is expired (%s) — ignoring",
+                    self.token_store_path, disk_exp,
+                )
+                return
+
+            # Prefer disk token if fresher than env var's JWT exp.
+            env_exp = self._token_expiry
+            if env_exp and disk_exp and disk_exp <= env_exp:
+                logger.info(
+                    "Persisted Dhan token (exp %s) is not fresher than env var (exp %s) — keeping env var",
+                    disk_exp, env_exp,
+                )
+                return
+
+            logger.info(
+                "Loaded Dhan token from disk %s (expires %s)",
+                self.token_store_path, disk_exp,
+            )
+            self._access_token = disk_token
+            self._token_expiry = disk_exp
+            # Keep os.environ in sync so any subprocess / re-init picks it up.
+            os.environ["DHAN_ACCESS_TOKEN"] = disk_token
+        except Exception as e:
+            logger.warning("Failed to load persisted Dhan token: %s", e)
+
+    def _save_token_to_disk(self) -> None:
+        """Atomically write current token + expiry to disk. Silent on failure."""
+        if not self._access_token:
+            return
+        try:
+            import json as _json
+            directory = os.path.dirname(self.token_store_path) or "."
+            os.makedirs(directory, exist_ok=True)
+            payload = {
+                "access_token": self._access_token,
+                "expires_at": (self._token_expiry.isoformat() + "Z")
+                              if self._token_expiry else None,
+                "saved_at": datetime.utcnow().isoformat() + "Z",
+            }
+            tmp = self.token_store_path + ".tmp"
+            with open(tmp, "w") as f:
+                _json.dump(payload, f)
+            os.replace(tmp, self.token_store_path)
+            logger.info(
+                "Persisted Dhan token to %s (expires %s)",
+                self.token_store_path, self._token_expiry,
+            )
+        except Exception as e:
+            logger.warning("Failed to persist Dhan token to disk: %s", e)
 
     @property
     def access_token(self) -> str:
@@ -244,6 +352,7 @@ class DhanTokenManager:
                 self._token_expiry = datetime.utcnow() + timedelta(hours=24)
 
             logger.info(f"Dhan token renewed successfully. Expires: {self._token_expiry}")
+            self._save_token_to_disk()
             return True
 
         except Exception as e:
