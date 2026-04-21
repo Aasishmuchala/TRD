@@ -1519,6 +1519,50 @@ async def admin_dhan_status():
     }
 
 
+@admin_router.delete("/admin/paper-trades")
+async def admin_wipe_paper_trades(confirm: str = ""):
+    """One-shot wipe of the paper_trades table.
+
+    Double-gated: require_auth (Bearer PIN) + require_admin_auth
+    (X-Admin-Secret) + `?confirm=YES_WIPE_ALL_PAPER_TRADES` query param to
+    prevent a fat-fingered DELETE from obliterating live trading data.
+
+    Context: paper trades opened before 09:15 IST used a hardcoded 23500
+    fallback spot (market_data.py build_market_input) whenever Dhan's
+    pre-market feed returned 0. That fallback now returns 0 (scheduler
+    skips cleanly), but historical rows are still polluted. This endpoint
+    lets us wipe and restart the log with clean data.
+    """
+    import sqlite3
+
+    if confirm != "YES_WIPE_ALL_PAPER_TRADES":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Refusing to wipe without explicit confirmation. Retry with "
+                "?confirm=YES_WIPE_ALL_PAPER_TRADES"
+            ),
+        )
+
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM paper_trades")
+        before = cursor.fetchone()[0]
+        cursor.execute("DELETE FROM paper_trades")
+        conn.commit()
+        cursor.execute("SELECT COUNT(*) FROM paper_trades")
+        after = cursor.fetchone()[0]
+    finally:
+        conn.close()
+
+    return {
+        "deleted": before - after,
+        "rows_before": before,
+        "rows_after": after,
+    }
+
+
 # ─── Stock Screener Endpoints ─────────────────────────────────────────────────
 
 @protected_router.get("/screener/stocks")

@@ -244,7 +244,20 @@ class MarketDataService:
 
         nifty_spot = snapshot.get("nifty_spot", 0)
         if nifty_spot <= 0:
-            nifty_spot = 23500  # Fallback
+            # CRITICAL: do NOT fabricate a phantom spot here. Downstream code
+            # (paper_trader) computes entry_premium and stop/target levels
+            # deterministically from this number, so a fallback like 23500
+            # silently produces phantom trades whenever the Dhan feed is
+            # down (e.g. pre-market 08:45 scheduler slot before 09:15 open).
+            # Return 0 — the scheduler's existing `if nifty_spot <= 0: skip`
+            # guard in tasks/simulation_scheduler.py will abort the run
+            # cleanly, which is the correct failure mode.
+            logger.warning(
+                "build_market_input: Dhan NIFTY spot unavailable (snapshot=%s) — "
+                "refusing to fabricate. Caller must handle nifty_spot=0.",
+                snapshot.get("data_source"),
+            )
+            nifty_spot = 0
 
         # Fetch forex data in parallel
         usd_inr_task = self._fetch_usd_inr()
