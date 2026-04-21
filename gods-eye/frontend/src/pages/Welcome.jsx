@@ -4,31 +4,30 @@ import { apiClient } from '../api/client'
 import { AGENTS } from '../constants/agents'
 
 export default function Welcome() {
-  const [apiKey, setApiKey] = useState('')
+  const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!apiKey.trim()) {
-      setError('API key is required')
+    const trimmed = pin.trim()
+    if (!trimmed) {
+      setError('PIN is required')
       return
     }
-    localStorage.setItem('godsEyeApiKey', apiKey)
-    navigate('/dashboard')
-  }
-
-  const handleMockMode = async () => {
     setLoading(true)
-    setError('')
+    // Store optimistically so the next request includes the PIN as Bearer,
+    // then round-trip a protected endpoint to verify the PIN is correct.
+    localStorage.setItem('godsEyeApiKey', trimmed)
     try {
-      await apiClient.getHealth()
-      localStorage.setItem('godsEyeApiKey', 'mock-mode')
-      apiClient.simulate({ scenario_id: 'rbi_rate_cut' }).catch(() => {})
+      await apiClient.getPresets()
       navigate('/dashboard')
     } catch (err) {
-      setError('Backend not reachable. Start the server first.')
+      localStorage.removeItem('godsEyeApiKey')
+      setError(err?.message?.toLowerCase().includes('pin') || err?.message?.toLowerCase().includes('invalid')
+        ? 'Wrong PIN'
+        : `Unable to verify PIN: ${err?.message || 'unknown error'}`)
       setLoading(false)
     }
   }
@@ -74,37 +73,31 @@ export default function Welcome() {
         <form onSubmit={handleSubmit} className="space-y-3 mb-4">
           <div>
             <label className="block text-[10px] font-mono text-onSurfaceMuted uppercase tracking-wider mb-1.5">
-              Anthropic API Key
+              Access PIN
             </label>
             <input
               type="password"
-              value={apiKey}
-              onChange={(e) => { setApiKey(e.target.value); setError('') }}
-              placeholder="sk-ant-..."
-              className="input-field font-mono text-sm"
+              inputMode="numeric"
+              autoComplete="off"
+              value={pin}
+              onChange={(e) => { setPin(e.target.value); setError('') }}
+              placeholder="••••"
+              className="input-field font-mono text-sm tracking-widest text-center"
+              autoFocus
             />
           </div>
-          <button type="submit" className="w-full btn-primary font-mono text-xs tracking-wider">
-            CONNECT
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full btn-primary font-mono text-xs tracking-wider disabled:opacity-50"
+          >
+            {loading ? 'VERIFYING...' : 'ENTER'}
           </button>
         </form>
-
-        {/* Mock mode */}
-        <button
-          onClick={handleMockMode}
-          disabled={loading}
-          className="w-full btn-secondary font-mono text-xs tracking-wider disabled:opacity-50"
-        >
-          {loading ? 'CONNECTING...' : 'ENTER MOCK MODE'}
-        </button>
 
         {error && (
           <p className="text-center text-[10px] text-bear font-mono mt-3">{error}</p>
         )}
-
-        <p className="text-center text-[10px] font-mono text-onSurfaceDim mt-6">
-          Mock mode uses deterministic responses. No API key required.
-        </p>
       </div>
     </div>
   )

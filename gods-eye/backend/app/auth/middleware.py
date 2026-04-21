@@ -36,8 +36,12 @@ async def require_auth(
     if config.MOCK_MODE:
         return "mock_token"
 
-    # Direct API key mode: backend already has the LLM key configured,
-    # still require a non-empty Bearer token (single-user tool — any token accepted)
+    # Direct API key mode: backend already has the LLM key configured.
+    # Gate behaviour depends on whether GODS_EYE_USER_PIN is set:
+    #   * PIN set → Bearer must equal PIN (constant-time compare). Locks
+    #     the public Railway URL to a single-user shared secret.
+    #   * PIN unset → any non-empty Bearer (single-user dev convenience,
+    #     backward compatible with the previous behaviour).
     if config.LLM_API_KEY:
         if not credentials or not credentials.credentials:
             raise HTTPException(
@@ -45,6 +49,17 @@ async def require_auth(
                 detail="Missing or invalid Authorization header",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        expected_pin = os.getenv("GODS_EYE_USER_PIN", "").strip()
+        if expected_pin:
+            provided = (credentials.credentials or "").strip()
+            if not provided or not hmac.compare_digest(provided, expected_pin):
+                # Don't log the provided value — near-miss of the real PIN
+                logger.warning("User auth failed: Bearer did not match PIN")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid PIN",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
         return credentials.credentials
 
     # If no credentials provided, return 401

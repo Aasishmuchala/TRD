@@ -9,31 +9,37 @@ export default function AuthGate({ children }) {
 
   useEffect(() => {
     const key = localStorage.getItem('godsEyeApiKey')
-    if (key) {
-      // Already have a key stored — proceed
-      setAuthed(true)
+    if (!key) {
+      navigate('/welcome', { replace: true })
       setChecked(true)
       return
     }
 
-    // No key in localStorage — probe the backend.
-    // If the backend has LLM_API_KEY configured it will respond 200
-    // without any Bearer token (api_key_mode). In that case, auto-auth.
-    apiClient.getHealth()
+    // Have a PIN stored — verify it against a protected endpoint.
+    // Any 401 means the PIN is wrong (either rotated server-side or user
+    // tampered with localStorage). Bounce to /welcome so they re-enter it.
+    apiClient.getPresets()
       .then(() => {
-        localStorage.setItem('godsEyeApiKey', 'server-managed')
         setAuthed(true)
         setChecked(true)
       })
-      .catch(() => {
-        // Backend unreachable or requires a key — send to welcome
+      .catch((err) => {
+        // Only clear on auth-style errors, not transient network issues —
+        // otherwise a flaky connection logs the user out.
+        const msg = (err?.message || '').toLowerCase()
+        if (msg.includes('invalid') || msg.includes('pin') || msg.includes('unauthorized') || msg.includes('401')) {
+          localStorage.removeItem('godsEyeApiKey')
+          navigate('/welcome', { replace: true })
+        } else {
+          // Network error — let the user in; individual pages will surface
+          // the error on their own API calls.
+          setAuthed(true)
+        }
         setChecked(true)
-        navigate('/welcome', { replace: true })
       })
   }, [navigate])
 
   if (!checked) {
-    // Still probing backend — show nothing to avoid flash
     return null
   }
 
