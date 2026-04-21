@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
-from app.auth.middleware import require_auth
+from app.auth.middleware import require_auth, require_admin_auth
 from app.auth.device_auth import DeviceAuthManager, DeviceCodeResponse, AuthTokens, get_auth_manager
 from app.learning.skill_store import get_skill_store
 from app.limiter import limiter
@@ -54,6 +54,15 @@ router = APIRouter(prefix="/api", tags=["health", "auth"])
 
 # Protected router for all other endpoints
 protected_router = APIRouter(prefix="/api", tags=["simulation"], dependencies=[Depends(require_auth)])
+
+# Admin router — stacks require_auth (Bearer) + require_admin_auth (shared
+# secret via X-Admin-Secret header).  Endpoints mounted here can rotate the
+# Dhan token, wipe caches, and reseed the DB, so the second layer matters.
+admin_router = APIRouter(
+    prefix="/api",
+    tags=["admin"],
+    dependencies=[Depends(require_auth), Depends(require_admin_auth)],
+)
 
 # Initialize components
 tracker = PredictionTracker()
@@ -1184,7 +1193,7 @@ async def run_quant_backtest(body: QuantBacktestRequest):
     )
 
 
-@protected_router.post("/admin/clear-historical-cache")
+@admin_router.post("/admin/clear-historical-cache")
 async def clear_historical_cache():
     """Delete cached NIFTY + VIX rows so the next get_ohlcv() re-fetches from Dhan.
 
@@ -1203,7 +1212,7 @@ async def clear_historical_cache():
     return {"status": "ok", "nifty_rows_deleted": nifty_deleted, "vix_rows_deleted": vix_deleted}
 
 
-@protected_router.post("/admin/seed-fii-dii")
+@admin_router.post("/admin/seed-fii-dii")
 async def seed_fii_dii_data(years: int = 2):
     """Seed synthetic FII/DII historical data into the database.
 
@@ -1274,7 +1283,7 @@ class SeedNiftyBulkRequest(BaseModel):
     rows: List[NiftyOHLCVRow] = Field(..., min_length=1, max_length=5000)
 
 
-@protected_router.post("/admin/seed-nifty-bulk")
+@admin_router.post("/admin/seed-nifty-bulk")
 async def seed_nifty_bulk(body: SeedNiftyBulkRequest):
     """Accept bulk NIFTY OHLCV rows and upsert into historical_prices.
 
@@ -1307,7 +1316,7 @@ async def seed_nifty_bulk(body: SeedNiftyBulkRequest):
     return {"status": "ok", "seeded": len(params), "date_range": f"{min(dates)} → {max(dates)}"}
 
 
-@protected_router.post("/admin/seed-nifty-yfinance")
+@admin_router.post("/admin/seed-nifty-yfinance")
 async def seed_nifty_yfinance(years: int = 3):
     """Seed NIFTY historical OHLCV data from yfinance (^NSEI ticker).
 
@@ -1379,7 +1388,7 @@ def _decode_jwt_claims(token: str) -> dict:
     return _json.loads(base64.urlsafe_b64decode(body_b64))
 
 
-@protected_router.post("/admin/dhan/token")
+@admin_router.post("/admin/dhan/token")
 async def admin_dhan_rotate_token(payload: _DhanTokenRotateBody):
     """Install a fresh Dhan JWT access token at runtime."""
     from app.auth.dhan_token_manager import dhan_token_manager
@@ -1437,7 +1446,7 @@ async def admin_dhan_rotate_token(payload: _DhanTokenRotateBody):
     return result
 
 
-@protected_router.post("/admin/dhan/renew")
+@admin_router.post("/admin/dhan/renew")
 @limiter.limit("1 per 5 minutes")
 async def admin_dhan_renew(request: Request):
     """Manually trigger Strategy 2 renewal (GET /v2/RenewToken).
@@ -1467,7 +1476,7 @@ async def admin_dhan_renew(request: Request):
     }
 
 
-@protected_router.get("/admin/dhan/status")
+@admin_router.get("/admin/dhan/status")
 async def admin_dhan_status():
     """Return current Dhan token + circuit breaker status."""
     from app.auth.dhan_token_manager import dhan_token_manager

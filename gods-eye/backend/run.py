@@ -20,7 +20,7 @@ from starlette.responses import StreamingResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from app.limiter import limiter
-from app.api.routes import router, protected_router
+from app.api.routes import router, protected_router, admin_router
 from app.api.schemas import MarketInput
 from app.auth.middleware import require_auth
 from app.engine.streaming_orchestrator import StreamingOrchestrator
@@ -72,6 +72,7 @@ app.add_middleware(
 # Include routes
 app.include_router(router)
 app.include_router(protected_router)
+app.include_router(admin_router)
 
 
 # ─── SSE endpoint — works through any HTTP proxy/tunnel ───
