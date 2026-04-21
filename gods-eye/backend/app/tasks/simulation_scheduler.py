@@ -476,7 +476,10 @@ class SimulationScheduler:
         so the scheduler loop's 30-second poll cadence is preserved.
         """
         def _snapshot() -> Dict[str, Any]:
-            stamp = datetime.now().strftime("%Y-%m-%d")
+            # Use IST to match the scheduler's notion of "today" — otherwise
+            # a backup kicked off at 23:30 IST from a UTC container could
+            # land on the wrong date near the day boundary.
+            stamp = _get_ist_now().strftime("%Y-%m-%d")
             backup_dir = Path(BACKUP_DIR)
             backup_dir.mkdir(parents=True, exist_ok=True)
 
@@ -487,8 +490,28 @@ class SimulationScheduler:
             )
             db_copied = False
             if os.path.exists(db_src_path):
-                with sqlite3.connect(db_src_path) as src, sqlite3.connect(str(db_dest)) as dst:
+                # Clean up any stale dest + sidecar files from a prior same-day
+                # run so we don't append/merge onto a half-written snapshot.
+                for ext in ("", "-shm", "-wal", "-journal"):
+                    p = Path(str(db_dest) + ext)
+                    if p.exists():
+                        try:
+                            p.unlink()
+                        except OSError:
+                            pass
+
+                # Force DELETE journal mode on the destination so SQLite does
+                # not leave .db-shm / .db-wal artifacts next to the snapshot.
+                # Explicit close() (not relying on context-manager exit, which
+                # only commits) ensures the WAL is checkpointed + files freed.
+                src = sqlite3.connect(db_src_path)
+                dst = sqlite3.connect(str(db_dest))
+                try:
+                    dst.execute("PRAGMA journal_mode=DELETE")
                     src.backup(dst)
+                finally:
+                    dst.close()
+                    src.close()
                 db_copied = True
             else:
                 logger.warning("Backup: DB not found at %s — skipping", db_src_path)
@@ -504,12 +527,25 @@ class SimulationScheduler:
                 logger.info("Backup: skills dir %s absent — skipping", SKILLS_DIR)
 
             # 3. Prune anything older than BACKUP_RETENTION_DAYS.
-            cutoff = datetime.now().timestamp() - (BACKUP_RETENTION_DAYS * 86400)
+            # Match only our own snapshot filenames so an operator who drops
+            # an unrelated file into the backup dir doesn't lose it silently.
+            # Includes .db-shm / .db-wal / -journal siblings for safety, even
+            # though journal_mode=DELETE should prevent them being created.
+            import time as _time
+            cutoff = _time.time() - (BACKUP_RETENTION_DAYS * 86400)
             pruned = 0
             for f in backup_dir.iterdir():
                 if not f.is_file():
                     continue
-                if not (f.name.startswith("gods_eye_") or f.name.startswith("skills_")):
+                name = f.name
+                is_snapshot = (
+                    (name.startswith("gods_eye_") and (
+                        name.endswith(".db") or name.endswith(".db-shm")
+                        or name.endswith(".db-wal") or name.endswith(".db-journal")
+                    ))
+                    or (name.startswith("skills_") and name.endswith(".tar.gz"))
+                )
+                if not is_snapshot:
                     continue
                 try:
                     if f.stat().st_mtime < cutoff:
