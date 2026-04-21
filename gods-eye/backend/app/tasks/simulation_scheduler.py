@@ -3,13 +3,21 @@
 Runs hourly during IST market hours (pre-market 8:45 + every hour from 10:15-14:15)
 and auto-records outcomes at 15:45 after market close.
 
+Also takes a nightly SQLite + skills snapshot at 23:30 IST, 7 days a week,
+regardless of ``SCHEDULER_ENABLED`` — paper-trading history and learned
+skills need to survive volume mishaps even when the simulation loop is off.
+
 Uses the same asyncio background-task pattern as PCRCollector for lifecycle management.
 """
 
 import asyncio
 import logging
+import os
+import sqlite3
+import tarfile
 import uuid
 from datetime import datetime, time, timezone, timedelta
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from app.config import config
@@ -55,6 +63,16 @@ SCHEDULE_TOLERANCE_SECONDS = 120  # 2-minute window
 # Main loop poll interval
 POLL_INTERVAL_SECONDS = 30
 
+# ── Nightly Backup ──────────────────────────────────────────────────────────
+# Snapshot SQLite + learned skills at 23:30 IST, 7 days a week regardless of
+# SCHEDULER_ENABLED so paper-trading history and the SkillStore survive
+# volume mishaps (accidental drop, container rebuild without volume mount,
+# bad migration). Single-volume only — not offsite.
+BACKUP_TIME = time(23, 30)
+BACKUP_DIR = os.getenv("GODS_EYE_BACKUP_DIR", "/app/data/backups")
+BACKUP_RETENTION_DAYS = 7
+SKILLS_DIR = os.getenv("GODS_EYE_LEARNING_SKILL_DIR", "/app/skills")
+
 def _get_ist_now() -> datetime:
     """Get current time in IST."""
     return datetime.now(IST)
@@ -89,6 +107,7 @@ class SimulationScheduler:
         self._today_runs: Dict[str, str] = {}  # time_key → prediction_id
         self._today_date: Optional[str] = None
         self._outcome_recorded_today: bool = False
+        self._backed_up_today: bool = False
         self._tracker = PredictionTracker()
         self._last_status: str = "idle"
         self._total_runs: int = 0
@@ -169,7 +188,24 @@ class SimulationScheduler:
                     self._today_date = today
                     self._outcome_recorded_today = False
                     self._eod_settled_today = False
+                    self._backed_up_today = False
                     logger.info("Scheduler: new day %s — resetting daily state", today)
+
+                current_time_for_backup = now.time()
+                # ── Nightly Backup ─────────────────────────────────────────
+                # Runs 7 days/week regardless of _enabled or weekday — this
+                # MUST stay above the enabled/weekday gate or weekends break
+                # the backup chain and the volume is one bad deploy from
+                # losing a week of trade history.
+                if not self._backed_up_today:
+                    if _time_diff_seconds(current_time_for_backup, BACKUP_TIME) <= SCHEDULE_TOLERANCE_SECONDS:
+                        logger.info("Scheduler: nightly backup time")
+                        try:
+                            await self._run_backup()
+                            self._backed_up_today = True
+                        except Exception as e:
+                            logger.error("Scheduler: backup failed: %s", e)
+
                 if not self._enabled or not _is_weekday():
                     self._last_status = "waiting" if not _is_weekday() else "disabled"
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
@@ -426,6 +462,75 @@ class SimulationScheduler:
             "recorded": recorded,
             "failed": failed,
         }
+
+    # ── Backup ────────────────────────────────────────────────────────────
+
+    async def _run_backup(self) -> None:
+        """Snapshot SQLite + skills to the Railway volume, prune old copies.
+
+        Uses ``sqlite3.Connection.backup()`` (the online-backup API) instead
+        of copying the DB file, so a backup taken mid-write still yields a
+        consistent snapshot without blocking the live connection.
+
+        The snapshot is offloaded to a worker thread via asyncio.to_thread
+        so the scheduler loop's 30-second poll cadence is preserved.
+        """
+        def _snapshot() -> Dict[str, Any]:
+            stamp = datetime.now().strftime("%Y-%m-%d")
+            backup_dir = Path(BACKUP_DIR)
+            backup_dir.mkdir(parents=True, exist_ok=True)
+
+            # 1. SQLite snapshot via online backup API (consistent under load).
+            db_dest = backup_dir / f"gods_eye_{stamp}.db"
+            db_src_path = getattr(config, "DATABASE_PATH", None) or os.getenv(
+                "GODS_EYE_DB_PATH", "/app/data/gods_eye.db"
+            )
+            db_copied = False
+            if os.path.exists(db_src_path):
+                with sqlite3.connect(db_src_path) as src, sqlite3.connect(str(db_dest)) as dst:
+                    src.backup(dst)
+                db_copied = True
+            else:
+                logger.warning("Backup: DB not found at %s — skipping", db_src_path)
+
+            # 2. Skills tarball (learned patterns — not regeneratable).
+            skills_dest = backup_dir / f"skills_{stamp}.tar.gz"
+            skills_copied = False
+            if os.path.isdir(SKILLS_DIR):
+                with tarfile.open(str(skills_dest), mode="w:gz") as tar:
+                    tar.add(SKILLS_DIR, arcname=os.path.basename(SKILLS_DIR))
+                skills_copied = True
+            else:
+                logger.info("Backup: skills dir %s absent — skipping", SKILLS_DIR)
+
+            # 3. Prune anything older than BACKUP_RETENTION_DAYS.
+            cutoff = datetime.now().timestamp() - (BACKUP_RETENTION_DAYS * 86400)
+            pruned = 0
+            for f in backup_dir.iterdir():
+                if not f.is_file():
+                    continue
+                if not (f.name.startswith("gods_eye_") or f.name.startswith("skills_")):
+                    continue
+                try:
+                    if f.stat().st_mtime < cutoff:
+                        f.unlink()
+                        pruned += 1
+                except OSError as e:
+                    logger.warning("Backup prune failed for %s: %s", f, e)
+
+            return {
+                "stamp": stamp,
+                "db": db_copied,
+                "skills": skills_copied,
+                "pruned": pruned,
+                "dir": str(backup_dir),
+            }
+
+        result = await asyncio.to_thread(_snapshot)
+        logger.info(
+            "Backup done: db=%s skills=%s pruned=%d dir=%s",
+            result["db"], result["skills"], result["pruned"], result["dir"],
+        )
 
     # ── Helpers ───────────────────────────────────────────────────────────
 

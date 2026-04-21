@@ -1438,8 +1438,15 @@ async def admin_dhan_rotate_token(payload: _DhanTokenRotateBody):
 
 
 @protected_router.post("/admin/dhan/renew")
-async def admin_dhan_renew():
-    """Manually trigger Strategy 2 renewal (GET /v2/RenewToken)."""
+@limiter.limit("1 per 5 minutes")
+async def admin_dhan_renew(request: Request):
+    """Manually trigger Strategy 2 renewal (GET /v2/RenewToken).
+
+    Rate-limited to 1 call per 5 minutes per IP. Every invocation hits
+    Dhan's RenewToken endpoint — without this limit a misfire loop or a
+    retry storm from the UI would burn through Dhan's own rate limit and
+    trip the circuit breaker, taking the data feed down.
+    """
     from app.auth.dhan_token_manager import dhan_token_manager
     from app.data.dhan_client import dhan_client
 

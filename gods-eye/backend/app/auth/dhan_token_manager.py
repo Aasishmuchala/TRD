@@ -100,6 +100,11 @@ class DhanTokenManager:
     # alive: once before market open, once after close.
     RENEWAL_SCHEDULE_IST = ["08:30", "16:00"]
 
+    # Number of consecutive failed self-heal attempts before we page out via
+    # the webhook.  3 cycles at the market-hours interval (5 min) = 15 min
+    # of broken data feed — enough to be real, not noise.
+    SELF_HEAL_ALERT_THRESHOLD = 3
+
     def __init__(self):
         self.client_id: str = os.getenv("DHAN_CLIENT_ID", "")
         self.pin: str = os.getenv("DHAN_PIN", "")
@@ -109,6 +114,12 @@ class DhanTokenManager:
         self._token_expiry: Optional[datetime] = _jwt_exp_utc(self._access_token)
         self._renewal_task: Optional[asyncio.Task] = None
         self._http: Optional[httpx.AsyncClient] = None
+        # Self-heal alerting state. Tracks consecutive health-check cycles
+        # where the reactive renewal failed — used to escalate to an
+        # outbound webhook alert after N strikes so silent failure stops
+        # being silent.  Deduplicated per incident: one alert, one all-clear.
+        self._consecutive_self_heal_failures: int = 0
+        self._alert_sent_for_current_incident: bool = False
 
         # Disk persistence path — lives on the Railway volume by default so
         # renewed tokens survive container restarts/redeploys. A fresher token
@@ -482,12 +493,30 @@ class DhanTokenManager:
                 )
 
                 from app.data.dhan_client import dhan_client
+                from app.alerts import send_alert
                 result = await dhan_client.health_check()
                 healthy = bool(result.get("healthy"))
                 reason = result.get("reason", "")
 
                 if healthy:
                     logger.debug("Dhan health check OK")
+                    # Recovery: if we paged out earlier this incident, send
+                    # an all-clear once data is flowing again.
+                    if self._alert_sent_for_current_incident:
+                        try:
+                            await send_alert(
+                                title="Dhan self-heal recovered",
+                                message=(
+                                    f"Data feed healthy again after "
+                                    f"{self._consecutive_self_heal_failures} "
+                                    f"failed cycles."
+                                ),
+                                severity="info",
+                            )
+                        except Exception as e:
+                            logger.error("Recovery alert failed: %s", e)
+                    self._consecutive_self_heal_failures = 0
+                    self._alert_sent_for_current_incident = False
                     interval = normal_interval
                 elif reason == "not_configured":
                     interval = normal_interval  # nothing to fix
@@ -524,12 +553,40 @@ class DhanTokenManager:
                             "Dhan self-heal succeeded (reason was %s) — "
                             "breaker reset, token persisted.", reason,
                         )
+                        # Do NOT reset the strike counter here — wait for
+                        # the next healthy probe as proof the fix stuck.
                     else:
+                        self._consecutive_self_heal_failures += 1
                         logger.warning(
-                            "Dhan self-heal FAILED (reason was %s) — will "
-                            "retry in %ds.", reason,
+                            "Dhan self-heal FAILED (reason was %s, "
+                            "consecutive=%d) — will retry in %ds.",
+                            reason,
+                            self._consecutive_self_heal_failures,
                             self.HEALTH_CHECK_INTERVAL_BROKEN,
                         )
+                        # Escalate once per incident when we cross the
+                        # threshold. Do not spam on every subsequent failure.
+                        if (
+                            self._consecutive_self_heal_failures
+                            >= self.SELF_HEAL_ALERT_THRESHOLD
+                            and not self._alert_sent_for_current_incident
+                        ):
+                            try:
+                                await send_alert(
+                                    title="Dhan self-heal failing",
+                                    message=(
+                                        f"reason={reason}, "
+                                        f"{self._consecutive_self_heal_failures} "
+                                        f"consecutive cycles.\n"
+                                        f"Manual action: check "
+                                        f"GET /api/admin/dhan/status and, if "
+                                        f"needed, POST /api/admin/dhan/renew."
+                                    ),
+                                    severity="critical",
+                                )
+                                self._alert_sent_for_current_incident = True
+                            except Exception as e:
+                                logger.error("Self-heal alert failed: %s", e)
                     # Poll fast until data is flowing again
                     interval = self.HEALTH_CHECK_INTERVAL_BROKEN
 
