@@ -1,6 +1,5 @@
 """FastAPI routes for God's Eye."""
 
-import logging
 import os
 import sqlite3
 import time
@@ -8,8 +7,6 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 import httpx
-
-logger = logging.getLogger("gods_eye.routes")
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from app.auth.middleware import require_auth
@@ -597,26 +594,6 @@ async def start_login(request: Request, provider: str = "openai"):
             "message": "Mock mode: Device code flow bypassed",
         }
 
-    # Direct API key mode: backend already has LLM_API_KEY configured and the
-    # provider has no device-code endpoint (e.g. "anthropic"). Short-circuit
-    # the OAuth flow with an immediate "authorized" response so the frontend
-    # stops trying to poll. The auth middleware accepts any non-empty Bearer
-    # token when LLM_API_KEY is set, so we mint a local pseudo-token.
-    try:
-        from app.auth.device_auth import DEVICE_AUTH_PROVIDERS
-        provider_cfg = DEVICE_AUTH_PROVIDERS.get(provider, {})
-    except Exception:
-        provider_cfg = {}
-    if config.LLM_API_KEY and not provider_cfg.get("device_code_endpoint"):
-        import secrets
-        return {
-            "status": "authorized",
-            "access_token": f"direct-{secrets.token_urlsafe(16)}",
-            "provider": provider,
-            "mode": "direct_api_key",
-            "message": f"Authenticated via direct API key mode ({provider}). Backend has LLM_API_KEY configured — no OAuth needed.",
-        }
-
     try:
         auth = DeviceAuthManager(provider=provider)
         device_info = await auth.request_device_code()
@@ -822,13 +799,9 @@ async def get_historical_data(
     except DhanFetchError as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"Upstream data error: {exc}",
+            detail=f"Dhan API error: {exc}",
         )
-    except Exception as exc:
-        logger.exception(
-            "Historical endpoint failed for %s from=%s to=%s: %s",
-            instrument_upper, from_date, to_date, exc,
-        )
+    except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
 
     return {
@@ -1386,6 +1359,142 @@ async def seed_nifty_yfinance(years: int = 3):
     return {"status": "ok", "seeded": len(rows), "date_range": date_range}
 
 
+# ─── Dhan Token Admin Endpoints ───────────────────────────────────────────────
+# Manual rotation + renewal path. Lets you install a fresh JWT access token
+# without redeploying via Railway CLI, and manually trigger Strategy 2
+# (GET /v2/RenewToken) to extend the current token by 24h.
+
+
+class _DhanTokenRotateBody(BaseModel):
+    access_token: str
+    skip_probe: bool = False
+
+
+def _decode_jwt_claims(token: str) -> dict:
+    """Decode unverified JWT claims. Best-effort — no signature check."""
+    import base64
+    import json as _json
+    _, body_b64, _ = token.split(".")
+    body_b64 += "=" * (-len(body_b64) % 4)
+    return _json.loads(base64.urlsafe_b64decode(body_b64))
+
+
+@protected_router.post("/admin/dhan/token")
+async def admin_dhan_rotate_token(payload: _DhanTokenRotateBody):
+    """Install a fresh Dhan JWT access token at runtime."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+    from app.data.dhan_client import dhan_client
+
+    token = (payload.access_token or "").strip()
+    if not token or token.count(".") != 2:
+        raise HTTPException(status_code=400, detail="access_token must be a JWT (three dot-separated segments)")
+
+    try:
+        claims = _decode_jwt_claims(token)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"invalid JWT: {exc}")
+
+    if claims.get("iss") != "dhan":
+        raise HTTPException(status_code=400, detail=f"JWT issuer must be 'dhan', got '{claims.get('iss')}'")
+
+    exp_ts = claims.get("exp")
+    iat_ts = claims.get("iat")
+    client_id = claims.get("dhanClientId", "")
+
+    dhan_token_manager._access_token = token
+    if exp_ts:
+        dhan_token_manager._token_expiry = datetime.utcfromtimestamp(int(exp_ts))
+    os.environ["DHAN_ACCESS_TOKEN"] = token
+
+    try:
+        dhan_client._breaker.record_success()
+    except Exception:
+        pass
+
+    result = {
+        "status": "ok",
+        "installed": True,
+        "client_id": client_id,
+        "issued_at": datetime.utcfromtimestamp(int(iat_ts)).isoformat() + "Z" if iat_ts else None,
+        "expires_at": datetime.utcfromtimestamp(int(exp_ts)).isoformat() + "Z" if exp_ts else None,
+        "hours_left": round((int(exp_ts) - time.time()) / 3600, 2) if exp_ts else None,
+    }
+
+    if not payload.skip_probe:
+        try:
+            result["probe"] = await dhan_client.health_check()
+        except Exception as exc:
+            result["probe"] = {"healthy": False, "error": str(exc)}
+
+    return result
+
+
+@protected_router.post("/admin/dhan/renew")
+async def admin_dhan_renew():
+    """Manually trigger Strategy 2 renewal (GET /v2/RenewToken)."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+    from app.data.dhan_client import dhan_client
+
+    ok = await dhan_token_manager.renew_token()
+    if ok:
+        try:
+            dhan_client._breaker.record_success()
+        except Exception:
+            pass
+
+    return {
+        "status": "ok" if ok else "failed",
+        "renewed": ok,
+        "expires_at": (
+            dhan_token_manager._token_expiry.isoformat() + "Z"
+            if dhan_token_manager._token_expiry else None
+        ),
+    }
+
+
+@protected_router.get("/admin/dhan/status")
+async def admin_dhan_status():
+    """Return current Dhan token + circuit breaker status."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+    from app.data.dhan_client import dhan_client
+
+    token = dhan_token_manager.access_token or ""
+    exp_iso = None
+    hours_left = None
+    client_id_claim = None
+    if token and token.count(".") == 2:
+        try:
+            claims = _decode_jwt_claims(token)
+            exp_ts = claims.get("exp")
+            if exp_ts:
+                exp_iso = datetime.utcfromtimestamp(int(exp_ts)).isoformat() + "Z"
+                hours_left = round((int(exp_ts) - time.time()) / 3600, 2)
+            client_id_claim = claims.get("dhanClientId")
+        except Exception:
+            pass
+
+    cb = {}
+    try:
+        cb_state = dhan_client._breaker
+        cb = {
+            "tripped": bool(cb_state.is_open),
+            "consecutive_failures": cb_state.failure_count,
+        }
+    except Exception:
+        cb = {"error": "unavailable"}
+
+    return {
+        "has_token": bool(token),
+        "token_prefix": token[:40] + "..." if token else None,
+        "client_id": client_id_claim,
+        "expires_at": exp_iso,
+        "hours_left": hours_left,
+        "totp_configured": dhan_token_manager.is_totp_configured,
+        "circuit_breaker": cb,
+        "renewal_schedule_ist": dhan_token_manager.RENEWAL_SCHEDULE_IST,
+    }
+
+
 # ─── Stock Screener Endpoints ─────────────────────────────────────────────────
 
 @protected_router.get("/screener/stocks")
@@ -1808,160 +1917,3 @@ async def get_trading_pnl(days: int = 30):
         }
     except Exception:
         raise safe_error_response(500, "OPERATION_FAILED", "An unexpected error occurred")
-
-
-
-
-# ─── Dhan Token Admin Endpoints ───────────────────────────────────────────────
-# Manual rotation + renewal path. Lets you install a fresh JWT access token
-# without redeploying via Railway CLI, and manually trigger Strategy 2
-# (GET /v2/RenewToken) to extend the current token by 24h.
-
-class _DhanTokenRotateBody(BaseModel):
-    access_token: str
-    # Optional: skip the smoke-test probe after install. Default False (always probe).
-    skip_probe: bool = False
-
-
-@protected_router.post("/admin/dhan/token")
-async def admin_dhan_rotate_token(payload: _DhanTokenRotateBody):
-    """Install a fresh Dhan JWT access token at runtime.
-
-    Persists it to the token manager + env + resets the Dhan client's circuit
-    breaker, then optionally probes `/optionchain/expirylist` to confirm the
-    token is accepted. Does NOT persist across a Railway redeploy — for that
-    you still need `railway variables --set DHAN_ACCESS_TOKEN=...`.
-    """
-    from app.auth.dhan_token_manager import dhan_token_manager
-    from app.data.dhan_client import dhan_client
-
-    token = (payload.access_token or "").strip()
-    if not token or token.count(".") != 2:
-        raise HTTPException(status_code=400, detail="access_token must be a JWT (three dot-separated segments)")
-
-    # Decode JWT exp to derive expiry (best-effort — no signature check)
-    import base64, json as _json
-    try:
-        _, body_b64, _ = token.split(".")
-        # pad base64 to multiple of 4
-        body_b64 += "=" * (-len(body_b64) % 4)
-        claims = _json.loads(base64.urlsafe_b64decode(body_b64))
-        exp_ts = claims.get("exp")
-        iat_ts = claims.get("iat")
-        client_id = claims.get("dhanClientId", "")
-        issuer = claims.get("iss", "")
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"invalid JWT: {exc}")
-
-    if issuer != "dhan":
-        raise HTTPException(status_code=400, detail=f"JWT issuer must be 'dhan', got '{issuer}'")
-
-    # Install
-    dhan_token_manager._access_token = token
-    if exp_ts:
-        dhan_token_manager._token_expiry = datetime.utcfromtimestamp(int(exp_ts))
-    os.environ["DHAN_ACCESS_TOKEN"] = token
-    # dhan_client._access_token is a property that reads from os.environ,
-    # so setting DHAN_ACCESS_TOKEN above is enough — on the next request
-    # _ensure_client() notices the token changed and rebuilds the httpx client.
-    # Reset the circuit breaker so queued failures don't block the next call.
-    try:
-        dhan_client._breaker.record_success()
-    except Exception:
-        pass
-
-    result = {
-        "status": "ok",
-        "installed": True,
-        "client_id": client_id,
-        "issued_at": datetime.utcfromtimestamp(int(iat_ts)).isoformat() + "Z" if iat_ts else None,
-        "expires_at": datetime.utcfromtimestamp(int(exp_ts)).isoformat() + "Z" if exp_ts else None,
-        "hours_left": round((int(exp_ts) - time.time()) / 3600, 2) if exp_ts else None,
-    }
-
-    if not payload.skip_probe:
-        try:
-            # Lightweight probe — same call the health check uses
-            probe = await dhan_client.health_check()
-            result["probe"] = probe
-        except Exception as exc:
-            result["probe"] = {"healthy": False, "error": str(exc)}
-
-    return result
-
-
-@protected_router.post("/admin/dhan/renew")
-async def admin_dhan_renew():
-    """Manually trigger Strategy 2 renewal (GET /v2/RenewToken).
-
-    Extends the current token by 24h. Only works while the current token is
-    still valid. This is exactly what the scheduled 08:30 IST / 16:00 IST
-    auto-renewal loop does — this endpoint just runs it on demand.
-    """
-    from app.auth.dhan_token_manager import dhan_token_manager
-    from app.data.dhan_client import dhan_client
-
-    ok = await dhan_token_manager.renew_token()
-    # renew_token() already updates os.environ — dhan_client reads from there
-    if ok:
-        try:
-            dhan_client._breaker.record_success()
-        except Exception:
-            pass
-
-    return {
-        "status": "ok" if ok else "failed",
-        "renewed": ok,
-        "expires_at": (
-            dhan_token_manager._token_expiry.isoformat() + "Z"
-            if dhan_token_manager._token_expiry else None
-        ),
-    }
-
-
-@protected_router.get("/admin/dhan/status")
-async def admin_dhan_status():
-    """Return current Dhan token + circuit breaker status for diagnostics."""
-    from app.auth.dhan_token_manager import dhan_token_manager
-    from app.data.dhan_client import dhan_client
-
-    token = dhan_token_manager.access_token or ""
-    # Decode exp from the token in-memory (no network call)
-    exp_iso = None
-    hours_left = None
-    client_id_claim = None
-    if token and token.count(".") == 2:
-        import base64, json as _json
-        try:
-            _, body_b64, _ = token.split(".")
-            body_b64 += "=" * (-len(body_b64) % 4)
-            claims = _json.loads(base64.urlsafe_b64decode(body_b64))
-            exp_ts = claims.get("exp")
-            if exp_ts:
-                exp_iso = datetime.utcfromtimestamp(int(exp_ts)).isoformat() + "Z"
-                hours_left = round((int(exp_ts) - time.time()) / 3600, 2)
-            client_id_claim = claims.get("dhanClientId")
-        except Exception:
-            pass
-
-    cb = {}
-    try:
-        cb_state = dhan_client._breaker
-        cb = {
-            "tripped": bool(cb_state.is_open),
-            "consecutive_failures": cb_state.failure_count,
-        }
-    except Exception:
-        cb = {"error": "unavailable"}
-
-    return {
-        "has_token": bool(token),
-        "token_prefix": token[:40] + "..." if token else None,
-        "client_id": client_id_claim,
-        "expires_at": exp_iso,
-        "hours_left": hours_left,
-        "totp_configured": dhan_token_manager.is_totp_configured,
-        "circuit_breaker": cb,
-        "renewal_schedule_ist": dhan_token_manager.RENEWAL_SCHEDULE_IST,
-    }
-
