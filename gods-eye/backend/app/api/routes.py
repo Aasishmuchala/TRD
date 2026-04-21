@@ -552,6 +552,73 @@ async def get_data_freshness():
     return check_data_freshness(live_timestamp=live_ts)
 
 
+@protected_router.get("/daily-summary")
+async def get_daily_summary(date: Optional[str] = None):
+    """Return the day's trading recap as persisted by the 16:00 IST job.
+
+    Query param `date` (YYYY-MM-DD) fetches a specific day; omitting it
+    returns the most recent non-empty row (which may be today if the 16:00
+    job has already run, else yesterday).
+
+    Returns 404 if no summary exists for the requested day, which is the
+    expected state pre-16:00 and on non-trading days with no prior history.
+    """
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        cur = conn.cursor()
+        # Be defensive — the table may not exist if the scheduler has never
+        # booted (fresh DB after a wipe). Treat as 404 rather than 500.
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='daily_summaries'"
+        )
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="daily_summaries table not yet initialised")
+
+        if date:
+            cur.execute("SELECT * FROM daily_summaries WHERE date_ist = ?", (date,))
+        else:
+            cur.execute("SELECT * FROM daily_summaries ORDER BY date_ist DESC LIMIT 1")
+        row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"no summary for {date or 'any date'}")
+    return dict(row)
+
+
+@protected_router.get("/daily-summary/history")
+async def get_daily_summary_history(days: int = 30):
+    """Return up to `days` recent daily summaries, newest first.
+
+    Used by the frontend to render a compact P&L-by-day strip and to
+    compute rolling win rate without hammering paper_trades directly.
+    """
+    if days < 1 or days > 365:
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+
+    conn = sqlite3.connect(config.DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='daily_summaries'"
+        )
+        if not cur.fetchone():
+            return {"summaries": [], "count": 0}
+
+        cur.execute(
+            "SELECT * FROM daily_summaries ORDER BY date_ist DESC LIMIT ?",
+            (days,),
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    return {"summaries": rows, "count": len(rows)}
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint — SEC-M2: redacted to avoid leaking internal config."""
@@ -1561,6 +1628,23 @@ async def admin_wipe_paper_trades(confirm: str = ""):
         "rows_before": before,
         "rows_after": after,
     }
+
+
+@admin_router.post("/admin/daily-summary/regenerate")
+async def admin_regenerate_daily_summary():
+    """Force-regenerate today's daily summary row (ignores the 16:00 flag).
+
+    Useful for:
+        - Smoke-testing the summary pipeline without waiting until 16:00 IST
+        - Patching a summary after a late prediction / outcome write
+        - Backfilling after a Railway restart that missed the 16:00 window
+    """
+    from app.tasks.simulation_scheduler import simulation_scheduler
+    try:
+        result = await simulation_scheduler._generate_daily_summary()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"summary generation failed: {e}")
+    return result
 
 
 # ─── Stock Screener Endpoints ─────────────────────────────────────────────────

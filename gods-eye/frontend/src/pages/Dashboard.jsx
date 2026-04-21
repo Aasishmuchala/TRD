@@ -7,6 +7,7 @@ import PressurePanel from '../components/PressurePanel'
 import InsightsPanel from '../components/InsightsPanel'
 import AccuracyPanel from '../components/AccuracyPanel'
 import FeedbackPanel from '../components/FeedbackPanel'
+import DailySummaryCard from '../components/DailySummaryCard'
 
 const formatINR = (value) => {
   if (value === null || value === undefined) return '₹0'
@@ -698,6 +699,8 @@ export default function Dashboard() {
           isLoading={tradesLoading}
           hasFetched={hasFetchedTrading}
         />
+
+        <DailySummaryCard />
 
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-5">

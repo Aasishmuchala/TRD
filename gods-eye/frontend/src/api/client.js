@@ -125,6 +125,13 @@ export const apiClient = {
   getAgentSkills: (agentId) => request(`${API_BASE}/learning/skills/${agentId}`),
   toggleLearning: (enabled) => request(`${API_BASE}/learning/toggle?enabled=${enabled}`, { method: 'POST' }),
 
+  // Daily Summary (generated at 16:00 IST by scheduler)
+  getDailySummary: (date) => request(
+    `${API_BASE}/daily-summary${date ? `?date=${date}` : ''}`
+  ),
+  getDailySummaryHistory: (days = 30) =>
+    request(`${API_BASE}/daily-summary/history?days=${days}`),
+
   // Paper Trading
   getPaperSummary: () => request(`${API_BASE}/paper-trades/summary`),
   getPaperTrades: (params = {}) => {

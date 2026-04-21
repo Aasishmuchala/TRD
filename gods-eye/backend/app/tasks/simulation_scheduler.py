@@ -27,6 +27,7 @@ from app.engine.aggregator import Aggregator
 from app.data.market_data import market_data_service
 from app.memory.prediction_tracker import PredictionTracker
 from app.engine.paper_trader import paper_trader
+from app.data import nse_holidays
 
 logger = logging.getLogger("gods_eye.scheduler")
 
@@ -49,6 +50,9 @@ ALL_RUN_TIMES = [PRE_MARKET_TIME] + HOURLY_RUN_TIMES
 
 # Outcome recording: 15 minutes after market close
 OUTCOME_RECORD_TIME = time(15, 45)
+
+# Daily summary: compile + persist the day's trading recap for the dashboard
+DAILY_SUMMARY_TIME = time(16, 0)
 
 # Paper trade EOD settlement: close all open positions at 15:25 IST (5 min before close)
 EOD_SETTLEMENT_TIME = time(15, 25)
@@ -79,8 +83,19 @@ def _get_ist_now() -> datetime:
 
 
 def _is_weekday() -> bool:
-    """Return True if today is a weekday (Mon-Fri)."""
+    """Return True if today is a weekday (Mon-Fri). Kept for back-compat."""
     return _get_ist_now().weekday() < 5
+
+
+def _is_trading_day() -> bool:
+    """Return True iff today is Mon-Fri AND not an NSE holiday.
+
+    NSE holidays come from nse_holidays.py, which caches a fetched list from
+    NSE's public API and falls back to a hardcoded calendar if the fetch
+    fails. Either way this call is in-memory and cheap.
+    """
+    today = _get_ist_now().date()
+    return nse_holidays.is_trading_day(today)
 
 
 def _time_diff_seconds(t1: time, t2: time) -> float:
@@ -108,16 +123,23 @@ class SimulationScheduler:
         self._today_date: Optional[str] = None
         self._outcome_recorded_today: bool = False
         self._backed_up_today: bool = False
+        self._summary_generated_today: bool = False
         self._tracker = PredictionTracker()
         self._last_status: str = "idle"
         self._total_runs: int = 0
         self._total_outcomes: int = 0
+        self._init_summary_table()
 
     # ── Public API ───────────────────────────────────────────────────────
 
     def start(self):
         """Start the scheduler background task."""
         if self._task is None or self._task.done():
+            # Kick off a holiday refresh in the background so the first
+            # trading-day decision after startup uses the API-fetched list
+            # rather than the hardcoded fallback. Fire-and-forget — the
+            # fallback is safe if the fetch is still in flight.
+            asyncio.create_task(nse_holidays.refresh_holidays())
             self._task = asyncio.create_task(self._scheduler_loop())
             logger.info(
                 "Simulation scheduler started (enabled=%s, schedule=%s)",
@@ -149,6 +171,7 @@ class SimulationScheduler:
         """Return current scheduler status."""
         now = _get_ist_now()
         next_run = self._next_scheduled_time(now.time())
+        today = now.date()
         return {
             "enabled": self._enabled,
             "running": self._task is not None and not self._task.done(),
@@ -158,8 +181,14 @@ class SimulationScheduler:
             "total_outcomes_recorded": self._total_outcomes,
             "today_predictions": list(self._today_runs.values()),
             "outcome_recorded_today": self._outcome_recorded_today,
-            "next_run": next_run.strftime("%H:%M") if next_run else None,            "current_time_ist": now.strftime("%H:%M:%S"),
+            "summary_generated_today": self._summary_generated_today,
+            "next_run": next_run.strftime("%H:%M") if next_run else None,
+            "current_time_ist": now.strftime("%H:%M:%S"),
             "is_weekday": _is_weekday(),
+            "is_trading_day": _is_trading_day(),
+            "is_nse_holiday": nse_holidays.is_trading_holiday(today),
+            "next_holiday": nse_holidays.next_holiday(today),
+            "holiday_cache": nse_holidays.get_cache_info(),
             "schedule": [t.strftime("%H:%M") for t in ALL_RUN_TIMES],
         }
 
@@ -189,7 +218,12 @@ class SimulationScheduler:
                     self._outcome_recorded_today = False
                     self._eod_settled_today = False
                     self._backed_up_today = False
+                    self._summary_generated_today = False
                     logger.info("Scheduler: new day %s — resetting daily state", today)
+                    # Refresh the NSE holiday list at day rollover so a
+                    # holiday added to NSE's calendar mid-year takes effect
+                    # without a redeploy. Fire-and-forget.
+                    asyncio.create_task(nse_holidays.refresh_holidays())
 
                 current_time_for_backup = now.time()
                 # ── Nightly Backup ─────────────────────────────────────────
@@ -206,8 +240,13 @@ class SimulationScheduler:
                         except Exception as e:
                             logger.error("Scheduler: backup failed: %s", e)
 
-                if not self._enabled or not _is_weekday():
-                    self._last_status = "waiting" if not _is_weekday() else "disabled"
+                if not self._enabled or not _is_trading_day():
+                    if not self._enabled:
+                        self._last_status = "disabled"
+                    elif not _is_weekday():
+                        self._last_status = "waiting:weekend"
+                    else:
+                        self._last_status = "waiting:nse_holiday"
                     await asyncio.sleep(POLL_INTERVAL_SECONDS)
                     continue
 
@@ -272,6 +311,20 @@ class SimulationScheduler:
                             self._outcome_recorded_today = True
                         except Exception as e:
                             logger.error("Scheduler: outcome recording failed: %s", e)
+
+                # ── Daily Summary ─────────────────────────────────────────
+                # At 16:00 IST (after outcomes have been recorded), compile
+                # a one-row recap of the day — P&L, trades, prediction
+                # consensus — and upsert into daily_summaries for the
+                # frontend dashboard widget.
+                if not self._summary_generated_today:
+                    if _time_diff_seconds(current_time, DAILY_SUMMARY_TIME) <= SCHEDULE_TOLERANCE_SECONDS:
+                        logger.info("Scheduler: daily summary time")
+                        try:
+                            await self._generate_daily_summary()
+                            self._summary_generated_today = True
+                        except Exception as e:
+                            logger.error("Scheduler: daily summary failed: %s", e)
 
                 await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
@@ -462,6 +515,249 @@ class SimulationScheduler:
             "recorded": recorded,
             "failed": failed,
         }
+
+    # ── Daily Summary ────────────────────────────────────────────────────
+
+    def _init_summary_table(self) -> None:
+        """Create the daily_summaries table if it doesn't exist.
+
+        Stores a one-row-per-day recap that the frontend dashboard widget
+        reads without having to re-aggregate paper_trades + predictions on
+        every page load.
+        """
+        try:
+            conn = sqlite3.connect(config.DATABASE_PATH)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS daily_summaries (
+                    date_ist TEXT PRIMARY KEY,
+                    is_trading_day INTEGER NOT NULL DEFAULT 1,
+                    nifty_open REAL,
+                    nifty_close REAL,
+                    nifty_move_pct REAL,
+                    actual_direction TEXT,
+                    predictions_count INTEGER NOT NULL DEFAULT 0,
+                    majority_direction TEXT,
+                    avg_conviction REAL,
+                    trades_opened INTEGER NOT NULL DEFAULT 0,
+                    trades_closed INTEGER NOT NULL DEFAULT 0,
+                    wins INTEGER NOT NULL DEFAULT 0,
+                    losses INTEGER NOT NULL DEFAULT 0,
+                    win_rate REAL,
+                    gross_pnl REAL NOT NULL DEFAULT 0,
+                    net_pnl REAL NOT NULL DEFAULT 0,
+                    top_agent TEXT,
+                    notes TEXT,
+                    generated_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_daily_summaries_date "
+                "ON daily_summaries(date_ist DESC)"
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            # Non-fatal: summary writes will fail later if the table can't
+            # be created, but that shouldn't block the scheduler loop.
+            logger.error("Scheduler: failed to init daily_summaries table: %s", e)
+
+    async def _generate_daily_summary(self) -> Dict[str, Any]:
+        """Aggregate today's paper trades + predictions into one recap row.
+
+        Idempotent via UPSERT on date_ist — running this twice yields the
+        same row, so a scheduler retry after 15:59 failure is safe.
+        """
+        def _compute() -> Dict[str, Any]:
+            today = _get_ist_now().date().isoformat()
+            conn = sqlite3.connect(config.DATABASE_PATH)
+            conn.row_factory = sqlite3.Row
+            try:
+                cur = conn.cursor()
+
+                # ── paper_trades aggregation ────────────────────────────
+                cur.execute(
+                    """
+                    SELECT
+                        COUNT(*) AS total,
+                        SUM(CASE WHEN status != 'OPEN' THEN 1 ELSE 0 END) AS closed,
+                        SUM(CASE WHEN status != 'OPEN' AND net_pnl > 0 THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN status != 'OPEN' AND net_pnl <= 0 THEN 1 ELSE 0 END) AS losses,
+                        COALESCE(SUM(gross_pnl), 0) AS gross_pnl,
+                        COALESCE(SUM(net_pnl), 0) AS net_pnl
+                    FROM paper_trades
+                    WHERE date_ist = ?
+                    """,
+                    (today,),
+                )
+                row = cur.fetchone()
+                trades_opened = int(row["total"] or 0)
+                trades_closed = int(row["closed"] or 0)
+                wins = int(row["wins"] or 0)
+                losses = int(row["losses"] or 0)
+                gross_pnl = float(row["gross_pnl"] or 0)
+                net_pnl = float(row["net_pnl"] or 0)
+                win_rate = (wins / trades_closed * 100) if trades_closed > 0 else None
+
+                # ── predictions consensus ───────────────────────────────
+                # Tolerate schema drift: if the predictions table doesn't
+                # exist yet, skip this section instead of dropping the row.
+                predictions_count = 0
+                majority_direction = None
+                avg_conviction = None
+                actual_direction = None
+                try:
+                    cur.execute(
+                        """
+                        SELECT
+                            predicted_direction AS direction,
+                            COUNT(*) AS n,
+                            AVG(predicted_conviction) AS avg_conv
+                        FROM predictions
+                        WHERE DATE(timestamp) = ?
+                        GROUP BY predicted_direction
+                        ORDER BY n DESC
+                        """,
+                        (today,),
+                    )
+                    buckets = cur.fetchall()
+                    if buckets:
+                        predictions_count = sum(int(b["n"]) for b in buckets)
+                        majority_direction = buckets[0]["direction"]
+                        total_conv = sum(
+                            float(b["avg_conv"] or 0) * int(b["n"]) for b in buckets
+                        )
+                        avg_conviction = total_conv / predictions_count if predictions_count else None
+
+                    cur.execute(
+                        "SELECT actual_direction FROM predictions "
+                        "WHERE DATE(timestamp) = ? AND actual_direction IS NOT NULL "
+                        "LIMIT 1",
+                        (today,),
+                    )
+                    ar = cur.fetchone()
+                    if ar:
+                        actual_direction = ar["actual_direction"]
+                except sqlite3.OperationalError as e:
+                    logger.debug("daily_summary: predictions aggregation skipped: %s", e)
+
+                # ── top agent (best agent_accuracy today) ────────────────
+                top_agent = None
+                try:
+                    cur.execute(
+                        """
+                        SELECT agent_id, AVG(CASE WHEN was_correct = 1 THEN 1.0 ELSE 0.0 END) AS acc
+                        FROM agent_accuracy
+                        WHERE DATE(timestamp) = ?
+                        GROUP BY agent_id
+                        ORDER BY acc DESC
+                        LIMIT 1
+                        """,
+                        (today,),
+                    )
+                    ta = cur.fetchone()
+                    if ta:
+                        top_agent = ta["agent_id"]
+                except sqlite3.OperationalError as e:
+                    logger.debug("daily_summary: agent_accuracy lookup skipped: %s", e)
+
+                # ── NIFTY open/close via prediction snapshot ──────────────
+                nifty_open = None
+                nifty_close = None
+                nifty_move_pct = None
+                try:
+                    cur.execute(
+                        """
+                        SELECT nifty_spot, timestamp
+                        FROM predictions
+                        WHERE DATE(timestamp) = ? AND nifty_spot > 0
+                        ORDER BY timestamp ASC
+                        """,
+                        (today,),
+                    )
+                    rows = cur.fetchall()
+                    if rows:
+                        nifty_open = float(rows[0]["nifty_spot"])
+                        nifty_close = float(rows[-1]["nifty_spot"])
+                        if nifty_open > 0:
+                            nifty_move_pct = (nifty_close - nifty_open) / nifty_open * 100
+                except sqlite3.OperationalError as e:
+                    logger.debug("daily_summary: nifty snapshot skipped: %s", e)
+
+                now_iso = datetime.now(IST).isoformat()
+                cur.execute(
+                    """
+                    INSERT INTO daily_summaries (
+                        date_ist, is_trading_day,
+                        nifty_open, nifty_close, nifty_move_pct, actual_direction,
+                        predictions_count, majority_direction, avg_conviction,
+                        trades_opened, trades_closed, wins, losses, win_rate,
+                        gross_pnl, net_pnl, top_agent, notes, generated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(date_ist) DO UPDATE SET
+                        is_trading_day=excluded.is_trading_day,
+                        nifty_open=excluded.nifty_open,
+                        nifty_close=excluded.nifty_close,
+                        nifty_move_pct=excluded.nifty_move_pct,
+                        actual_direction=excluded.actual_direction,
+                        predictions_count=excluded.predictions_count,
+                        majority_direction=excluded.majority_direction,
+                        avg_conviction=excluded.avg_conviction,
+                        trades_opened=excluded.trades_opened,
+                        trades_closed=excluded.trades_closed,
+                        wins=excluded.wins,
+                        losses=excluded.losses,
+                        win_rate=excluded.win_rate,
+                        gross_pnl=excluded.gross_pnl,
+                        net_pnl=excluded.net_pnl,
+                        top_agent=excluded.top_agent,
+                        notes=excluded.notes,
+                        generated_at=excluded.generated_at
+                    """,
+                    (
+                        today, 1 if _is_trading_day() else 0,
+                        nifty_open, nifty_close, nifty_move_pct, actual_direction,
+                        predictions_count, majority_direction, avg_conviction,
+                        trades_opened, trades_closed, wins, losses, win_rate,
+                        gross_pnl, net_pnl, top_agent, None, now_iso,
+                    ),
+                )
+                conn.commit()
+
+                return {
+                    "date_ist": today,
+                    "nifty_open": nifty_open,
+                    "nifty_close": nifty_close,
+                    "nifty_move_pct": nifty_move_pct,
+                    "actual_direction": actual_direction,
+                    "predictions_count": predictions_count,
+                    "majority_direction": majority_direction,
+                    "avg_conviction": avg_conviction,
+                    "trades_opened": trades_opened,
+                    "trades_closed": trades_closed,
+                    "wins": wins,
+                    "losses": losses,
+                    "win_rate": win_rate,
+                    "gross_pnl": gross_pnl,
+                    "net_pnl": net_pnl,
+                    "top_agent": top_agent,
+                }
+            finally:
+                conn.close()
+
+        result = await asyncio.to_thread(_compute)
+        logger.info(
+            "Daily summary [%s]: trades=%d/%d wins=%d pnl=₹%.0f net predictions=%d majority=%s",
+            result["date_ist"],
+            result["trades_opened"],
+            result["trades_closed"],
+            result["wins"],
+            result["net_pnl"],
+            result["predictions_count"],
+            result["majority_direction"],
+        )
+        return result
 
     # ── Backup ────────────────────────────────────────────────────────────
 
