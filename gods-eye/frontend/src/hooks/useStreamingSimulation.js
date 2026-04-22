@@ -88,8 +88,17 @@ export function useStreamingSimulation() {
           const jsonStr = line.slice(6) // Remove "data: " prefix
           if (!jsonStr.trim()) continue
 
+          let event
           try {
-            const event = JSON.parse(jsonStr)
+            event = JSON.parse(jsonStr)
+          } catch (parseErr) {
+            // Surface parse errors to console so we can debug malformed SSE frames
+            // (production: filter via DevTools instead of silently dropping)
+            // eslint-disable-next-line no-console
+            console.warn('useStreamingSimulation: failed to parse SSE frame', parseErr, jsonStr.slice(0, 200))
+            continue
+          }
+          try {
             allEvents = [...allEvents, event]
             // FE-M3: Cap events array to prevent unbounded memory growth
             // (unlikely in practice since simulations produce ~30 events, but guards against edge cases)
@@ -172,8 +181,68 @@ export function useStreamingSimulation() {
     setError(null)
   }, [])
 
+  /**
+   * Hydrate the hook from a /api/history row so the Dashboard can display the
+   * user's last simulation immediately on page load (rather than an empty
+   * canvas that only fills in after they press Run). No-op during an active
+   * stream to avoid stomping live state.
+   *
+   * Expected shape (from prediction_tracker.get_simulation_history):
+   *   { simulation_id, timestamp, market_input, agents_output,
+   *     aggregator_result: { final_direction, final_conviction },
+   *     execution_time_ms, model_used, feedback_active }
+   */
+  const loadHistory = useCallback((historyItem) => {
+    if (!historyItem) return
+    // Don't clobber an in-flight stream
+    if (abortRef.current) return
+
+    const agents = historyItem.agents_output || {}
+    const agentsArr = Array.isArray(agents) ? agents : Object.values(agents)
+
+    // Rehydrate completedAgents with BOTH the agent-only key (consumed by
+    // AgentGrid during streaming) and a synthetic round-1 key (consumed by
+    // the progress counter and round-specific lookups).
+    const seeded = {}
+    for (const data of agentsArr) {
+      if (!data?.agent_name) continue
+      seeded[data.agent_name] = data
+      seeded[`${data.agent_name}_r1`] = data
+    }
+
+    setCompletedAgents(seeded)
+    setCurrentRound(1)
+    setAggregation(
+      historyItem.aggregator_result
+        ? {
+            type: 'aggregation',
+            final_direction: historyItem.aggregator_result.final_direction,
+            final_conviction: historyItem.aggregator_result.final_conviction,
+            consensus_score: historyItem.aggregator_result.consensus_score || 0,
+            conflict_level: historyItem.aggregator_result.conflict_level,
+            quant_llm_agreement: historyItem.aggregator_result.quant_llm_agreement,
+            agent_breakdown: historyItem.aggregator_result.agent_breakdown,
+          }
+        : null,
+    )
+    setResult({
+      simulation_id: historyItem.simulation_id,
+      execution_time_ms: historyItem.execution_time_ms,
+      model_used: historyItem.model_used,
+      feedback_active: historyItem.feedback_active ?? false,
+      data_source: historyItem.market_input?.data_source || 'history',
+      agents_output: agents,
+      round_history: [],
+      aggregator_result: historyItem.aggregator_result || null,
+      is_history: true,
+    })
+    setStreamStatus('done')
+    setError(null)
+  }, [])
+
   return {
     simulate,
+    loadHistory,
     result,
     events,
     currentRound,

@@ -534,7 +534,7 @@ const SignalIntelSection = ({ result, isLoading }) => {
 // ─── Main Dashboard ─────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { simulate, result, events, currentRound, completedAgents, aggregation, streamStatus, isLoading, error, reset } = useStreamingSimulation()
+  const { simulate, loadHistory, result, events, currentRound, completedAgents, aggregation, streamStatus, isLoading, error, reset } = useStreamingSimulation()
 
   const [tradingMode, setTradingMode] = useState('paper')
   const [dhanEnabled, setDhanEnabled] = useState(false)
@@ -545,6 +545,25 @@ export default function Dashboard() {
   const [hasFetchedTrading, setHasFetchedTrading] = useState(false)
   const [notification, setNotification] = useState(null)
   const prevStreamStatus = useRef(streamStatus)
+  const hydratedFromHistoryRef = useRef(false)
+
+  // On first mount, fetch the user's most recent simulation from /api/history
+  // and hydrate the dashboard so they don't stare at an empty canvas. Idempotent
+  // via ref guard — never fires twice, and never runs on subsequent mounts.
+  useEffect(() => {
+    if (hydratedFromHistoryRef.current) return
+    hydratedFromHistoryRef.current = true
+    apiClient
+      .getHistory({ limit: 1 })
+      .then((data) => {
+        const last = data?.items?.[0]
+        if (last) loadHistory(last)
+      })
+      .catch(() => {
+        // Silent: a fresh user has no history; not worth a toast.
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     apiClient.getTradingMode()
@@ -620,14 +639,25 @@ export default function Dashboard() {
 
   const handleRunScenario = useCallback((id) => {
     if (isLoading) return
-    simulate({ scenario_id: id })
+    simulate({ scenario_id: id }).catch((err) => {
+      // The hook already sets `error` state for stream failures, but a request
+      // that throws before the stream opens (e.g., 401, network unreachable)
+      // also lands here — surface it explicitly so the user sees feedback.
+      setNotification({
+        variant: 'error',
+        message: `Failed to start simulation: ${err?.message || 'unknown error'}`,
+        ttl: 7000,
+      })
+    })
   }, [isLoading, simulate])
 
   const directionStats = (() => {
     if (!aggregation) return { direction: 'HOLD', conviction: 0, consensusScore: 0 }
+    // Backend sends `final_conviction` (0-100). The legacy `conviction_percent`
+    // key was a frontend-only typo that silently rendered 0% conviction.
     return {
       direction: aggregation.final_direction || 'HOLD',
-      conviction: aggregation.conviction_percent || 0,
+      conviction: aggregation.final_conviction ?? aggregation.conviction_percent ?? 0,
       consensusScore: aggregation.consensus_score || 0,
     }
   })()
@@ -637,6 +667,14 @@ export default function Dashboard() {
   const todayPnl = (latestPnlEntry?.date === todayStr) ? (latestPnlEntry?.pnl || 0) : 0
 
   const totalAgents = AGENTS.length
+  // The hook stores TWO keys per agent_result event (`AGENT` + `AGENT_rN`) so
+  // AgentGrid can show the latest snapshot regardless of round. To count agents
+  // *in the current round only*, filter on the round-specific suffix. Without
+  // this filter the counter ticked past the total (e.g., "12/8 Agents").
+  const roundForCounter = currentRound || 1
+  const completedThisRound = Object.keys(completedAgents).filter((k) =>
+    k.endsWith(`_r${roundForCounter}`),
+  ).length
   const simulationKey = result?.simulation_id || result?.run_id || streamStatus
 
   return (
@@ -680,7 +718,7 @@ export default function Dashboard() {
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-2 h-2 bg-primary rounded-full animate-pulse" aria-hidden="true" />
-                  Round {currentRound || 1} · {Object.keys(completedAgents).length}/{totalAgents} Agents
+                  Round {roundForCounter} · {completedThisRound}/{totalAgents} Agents
                 </span>
               ) : (
                 '▶ RUN SIMULATION'
