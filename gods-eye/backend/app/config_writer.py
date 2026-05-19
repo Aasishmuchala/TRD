@@ -54,8 +54,28 @@ def write_env_updates(updates: Dict[str, str]) -> None:
     Keys already present are replaced in place. Missing keys are appended at
     the bottom. Unknown keys are silently ignored — this is the allow-list
     that keeps the settings endpoint from being a generic env writer.
+
+    Values containing newlines, carriage returns, or NUL bytes are rejected
+    (raises ValueError). Without this check a request with
+    ``llm_api_key="abc\\nDHAN_PIN=1234"`` would inject an arbitrary KEY=value
+    line on the next line of the .env file and bypass _ALLOWED_KEYS entirely.
+
+    The file is written via tmp + os.replace() so a crash mid-write cannot
+    truncate the existing .env and destroy stored secrets.
     """
-    filtered = {k: v for k, v in updates.items() if k in _ALLOWED_KEYS}
+    filtered: Dict[str, str] = {}
+    for k, v in updates.items():
+        if k not in _ALLOWED_KEYS:
+            continue
+        if v is None:
+            continue
+        s = str(v)
+        if "\n" in s or "\r" in s or "\x00" in s:
+            raise ValueError(
+                f"Refusing to write {k}: value contains newline / NUL byte "
+                f"(possible .env injection attempt)"
+            )
+        filtered[k] = s
     if not filtered:
         return
 
@@ -77,7 +97,12 @@ def write_env_updates(updates: Dict[str, str]) -> None:
             new_lines.append(f"{key}={value}")
 
     _ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _ENV_PATH.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    # Atomic write: tmp file in same directory, then os.replace().
+    # Same-directory tmp guarantees os.replace is a rename (atomic on POSIX
+    # and on NTFS since Python 3.3 via ReplaceFileW).
+    tmp_path = _ENV_PATH.with_suffix(_ENV_PATH.suffix + ".tmp")
+    tmp_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    os.replace(tmp_path, _ENV_PATH)
 
     # Also update the live process environment so the running backend picks
     # up the new values immediately (config object is mutated by the caller).

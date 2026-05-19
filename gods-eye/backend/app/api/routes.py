@@ -561,6 +561,9 @@ async def update_settings(settings: SettingsUpdateRequest):
     if env_updates:
         try:
             write_env_updates(env_updates)
+        except ValueError as e:
+            # Injection attempt or malformed value — surface to the caller.
+            raise HTTPException(status_code=400, detail=str(e))
         except Exception:
             log_error_safely("Failed to persist .env updates")
 
@@ -635,12 +638,14 @@ async def test_llm_connection():
                 "model": config.MODEL,
                 "base_url": base_url,
             }
-        # Surface a redacted upstream error
-        body = resp.text[:300]
+        # Surface a redacted upstream error. We never return the raw upstream
+        # body because some misbehaving proxies / gateways reflect request
+        # auth headers in their error JSON, which would echo the API key back
+        # to the browser. Only the status code + a generic reason is returned.
         return {
             "ok": False,
             "status": resp.status_code,
-            "error": body or f"HTTP {resp.status_code}",
+            "error": f"HTTP {resp.status_code} from upstream ({base_url})",
             "provider": config.LLM_PROVIDER,
         }
     except httpx.HTTPError as e:
@@ -737,6 +742,8 @@ async def update_dhan_settings(payload: _DhanCredsUpdate):
     if env_updates:
         try:
             write_env_updates(env_updates)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except Exception:
             log_error_safely("Failed to persist Dhan .env updates")
 
