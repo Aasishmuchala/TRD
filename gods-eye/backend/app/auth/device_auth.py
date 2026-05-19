@@ -136,6 +136,25 @@ PROVIDERS = {
         "default_model": "claude-opus-4-6",
         "api_format": "anthropic",  # Uses /v1/messages instead of /chat/completions
     },
+    "claudeopus": {
+        "name": "ClaudeOpus (proxy)",
+        "auth_base": "",
+        "device_code_endpoint": "",
+        "token_endpoint": "",
+        "inference_base": "https://api.claudeopus.pro",
+        "client_id": "",
+        "scope": "",
+        "audience": "",
+        "grant_type": "",
+        "default_model": "claude-sonnet-4-6",
+        "api_format": "anthropic",  # Anthropic-compatible /v1/messages
+        "key_prefix": "sk-ant-co-",
+        "available_models": [
+            "claude-opus-4-6",
+            "claude-sonnet-4-6",
+            "claude-haiku-4-5",
+        ],
+    },
     "custom": {
         "name": "Custom Provider",
         "auth_base": "",

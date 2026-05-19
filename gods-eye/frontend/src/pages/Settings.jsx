@@ -13,6 +13,15 @@ export default function Settings() {
   const [quantLlmBalance, setQuantLlmBalance] = useState(45)
   const [mockMode, setMockMode] = useState(false)
   const [model, setModel] = useState('')
+  // LLM provider state
+  const [providers, setProviders] = useState([])
+  const [llmProvider, setLlmProvider] = useState('')
+  const [llmApiKey, setLlmApiKey] = useState('')           // user input (write-only)
+  const [llmApiKeyMasked, setLlmApiKeyMasked] = useState('') // server preview
+  const [llmApiKeySet, setLlmApiKeySet] = useState(false)
+  const [showKey, setShowKey] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -29,6 +38,10 @@ export default function Settings() {
         if (data.mock_mode != null) setMockMode(data.mock_mode)
         if (data.model) setModel(data.model)
         if (data.quant_llm_balance != null) setQuantLlmBalance(Math.round(data.quant_llm_balance * 100))
+        if (data.providers) setProviders(data.providers)
+        if (data.llm_provider) setLlmProvider(data.llm_provider)
+        if (data.llm_api_key_masked) setLlmApiKeyMasked(data.llm_api_key_masked)
+        if (data.llm_api_key_set != null) setLlmApiKeySet(data.llm_api_key_set)
       } catch (err) {
         setFetchError(err.message || 'Failed to load settings')
       } finally {
@@ -37,6 +50,46 @@ export default function Settings() {
     }
     fetchSettings()
   }, [])
+
+  const currentProvider = providers.find(p => p.id === llmProvider) || {}
+  const modelOptions = currentProvider.available_models && currentProvider.available_models.length
+    ? currentProvider.available_models
+    : (currentProvider.default_model ? [currentProvider.default_model] : [])
+
+  const handleProviderChange = (pid) => {
+    setLlmProvider(pid)
+    const p = providers.find(x => x.id === pid)
+    if (p && p.default_model) setModel(p.default_model)
+    setTestResult(null)
+    setSaved(false)
+  }
+
+  const handleTestKey = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      // Save first so the backend tests the current form values (provider/model/key)
+      await apiClient.updateSettings({
+        llm_provider: llmProvider || undefined,
+        model: model || undefined,
+        ...(llmApiKey ? { llm_api_key: llmApiKey } : {}),
+        mock_mode: false,
+      })
+      // Re-fetch to refresh masked key / mock_mode state
+      const fresh = await apiClient.getSettings()
+      if (fresh.llm_api_key_masked) setLlmApiKeyMasked(fresh.llm_api_key_masked)
+      if (fresh.llm_api_key_set != null) setLlmApiKeySet(fresh.llm_api_key_set)
+      if (fresh.mock_mode != null) setMockMode(fresh.mock_mode)
+      setLlmApiKey('') // clear input — server now holds it
+
+      const res = await apiClient.testLlmConnection()
+      setTestResult(res)
+    } catch (err) {
+      setTestResult({ ok: false, error: err.message || 'Test failed' })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const handleWeightChange = (agent, value) => {
     setAgentWeights(prev => ({ ...prev, [agent]: parseFloat(value) }))
@@ -63,7 +116,20 @@ export default function Settings() {
         interaction_rounds: simParams.interaction_rounds,
         temperature: simParams.temperature,
         quant_llm_balance: quantLlmBalance / 100,
+        llm_provider: llmProvider || undefined,
+        model: model || undefined,
+        ...(llmApiKey ? { llm_api_key: llmApiKey } : {}),
       })
+      // Refresh masked-key preview if a new key was sent
+      if (llmApiKey) {
+        try {
+          const fresh = await apiClient.getSettings()
+          if (fresh.llm_api_key_masked) setLlmApiKeyMasked(fresh.llm_api_key_masked)
+          if (fresh.llm_api_key_set != null) setLlmApiKeySet(fresh.llm_api_key_set)
+          if (fresh.mock_mode != null) setMockMode(fresh.mock_mode)
+        } catch { /* non-fatal */ }
+        setLlmApiKey('')
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -103,8 +169,121 @@ export default function Settings() {
           )}
           <h1 className="text-xl font-bold text-onSurface mb-1">Settings</h1>
           <p className="text-[10px] font-mono text-onSurfaceDim mb-5">
-            MODEL: {model} | MODE: {mockMode ? 'MOCK' : 'LIVE'}
+            MODEL: {model} | MODE: {mockMode ? 'MOCK' : 'LIVE'} | PROVIDER: {llmProvider || '—'}
           </p>
+
+          {/* LLM Provider */}
+          <div className="terminal-card p-4 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="section-header">LLM Provider</div>
+              <span className={`text-[10px] font-mono ${mockMode ? 'text-bear' : llmApiKeySet ? 'text-bull' : 'text-onSurfaceDim'}`}>
+                {mockMode ? 'MOCK MODE' : llmApiKeySet ? 'KEY: ' + (llmApiKeyMasked || 'set') : 'NO KEY'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-[10px] font-mono text-onSurfaceDim uppercase mb-1.5">
+                  Provider
+                </label>
+                <select
+                  value={llmProvider}
+                  onChange={(e) => handleProviderChange(e.target.value)}
+                  className="input-field font-mono text-sm w-full"
+                >
+                  {providers.length === 0 && <option value="">Loading…</option>}
+                  {providers.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {currentProvider.inference_base && (
+                  <p className="text-[9px] font-mono text-onSurfaceDim mt-1 truncate" title={currentProvider.inference_base}>
+                    {currentProvider.inference_base}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-onSurfaceDim uppercase mb-1.5">
+                  Model
+                </label>
+                {modelOptions.length > 0 ? (
+                  <select
+                    value={model}
+                    onChange={(e) => { setModel(e.target.value); setSaved(false) }}
+                    className="input-field font-mono text-sm w-full"
+                  >
+                    {!modelOptions.includes(model) && model && <option value={model}>{model} (custom)</option>}
+                    {modelOptions.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => { setModel(e.target.value); setSaved(false) }}
+                    placeholder="claude-opus-4-6"
+                    className="input-field font-mono text-sm w-full"
+                  />
+                )}
+                <p className="text-[9px] font-mono text-onSurfaceDim mt-1">
+                  {currentProvider.default_model ? `default: ${currentProvider.default_model}` : '\u00a0'}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-mono text-onSurfaceDim uppercase mb-1.5">
+                API Key {llmApiKeySet && <span className="text-onSurfaceDim normal-case">(currently: {llmApiKeyMasked})</span>}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={llmApiKey}
+                  onChange={(e) => { setLlmApiKey(e.target.value); setSaved(false); setTestResult(null) }}
+                  placeholder={currentProvider.key_prefix ? `${currentProvider.key_prefix}...` : (llmApiKeySet ? 'Leave blank to keep current key' : 'Paste your API key')}
+                  className="input-field font-mono text-sm flex-1"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(s => !s)}
+                  className="btn-secondary font-mono text-[10px] tracking-wider px-3"
+                >
+                  {showKey ? 'HIDE' : 'SHOW'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTestKey}
+                  disabled={testing || (!llmApiKey && !llmApiKeySet)}
+                  className="btn-secondary font-mono text-[10px] tracking-wider px-3 disabled:opacity-40"
+                >
+                  {testing ? 'TESTING…' : 'TEST'}
+                </button>
+              </div>
+              <p className="text-[9px] font-mono text-onSurfaceDim mt-1">
+                Stored in backend/.env on save. Never echoed back to the browser.
+              </p>
+
+              {testResult && (
+                <div className={`mt-3 p-2 border-l-2 ${testResult.ok ? 'border-bull bg-bull/5' : 'border-bear bg-bear/5'}`}>
+                  <p className={`text-[10px] font-mono ${testResult.ok ? 'text-bull' : 'text-bear'}`}>
+                    {testResult.ok
+                      ? `✓ CONNECTED — ${testResult.provider} · ${testResult.model}`
+                      : `✗ ${testResult.error || 'Test failed'}`}
+                  </p>
+                  {testResult.ok && testResult.base_url && (
+                    <p className="text-[9px] font-mono text-onSurfaceDim mt-0.5">{testResult.base_url}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 my-5" />
 
           {/* Agent Weights */}
           <div className="terminal-card p-4 mb-4">

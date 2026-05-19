@@ -91,6 +91,9 @@ export const apiClient = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings),
   }),
+  testLlmConnection: () => request(`${API_BASE}/settings/llm/test`, {
+    method: 'POST',
+  }, 0, 20000),
 
   // Outcome recording
   recordOutcome: (simulationId, actualDirection, notes = '') =>

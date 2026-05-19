@@ -455,6 +455,25 @@ async def get_failure_patterns(agent_id: str):
 @protected_router.get("/settings")
 async def get_settings():
     """Get current simulation settings."""
+    from app.auth.device_auth import PROVIDERS
+    from app.config_writer import mask_api_key
+
+    # ClaudeOpus-only build: the UI is locked to a single provider. Other entries
+    # in PROVIDERS are kept for legacy auth/test code paths but never surfaced.
+    _VISIBLE_PROVIDERS = {"claudeopus"}
+    providers_meta = [
+        {
+            "id": pid,
+            "name": p.get("name", pid),
+            "default_model": p.get("default_model", ""),
+            "available_models": p.get("available_models", []),
+            "key_prefix": p.get("key_prefix", ""),
+            "inference_base": p.get("inference_base", ""),
+        }
+        for pid, p in PROVIDERS.items()
+        if pid in _VISIBLE_PROVIDERS
+    ]
+
     return {
         "agent_weights": config.AGENT_WEIGHTS,
         "samples_per_agent": config.SAMPLES_PER_AGENT,
@@ -464,6 +483,10 @@ async def get_settings():
         "model": config.MODEL,
         "mock_mode": config.MOCK_MODE,
         "trading_mode": config.TRADING_MODE,
+        "llm_provider": config.LLM_PROVIDER,
+        "llm_api_key_masked": mask_api_key(config.LLM_API_KEY),
+        "llm_api_key_set": bool(config.LLM_API_KEY),
+        "providers": providers_meta,
     }
 
 
@@ -474,11 +497,19 @@ class SettingsUpdateRequest(BaseModel):
     interaction_rounds: Optional[int] = Field(default=None, ge=1, le=5)
     temperature: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     quant_llm_balance: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    # LLM provider settings — persisted to .env when set
+    llm_provider: Optional[str] = Field(default=None, max_length=32)
+    llm_api_key: Optional[str] = Field(default=None, max_length=512)
+    model: Optional[str] = Field(default=None, max_length=128)
+    mock_mode: Optional[bool] = None
 
 
 @protected_router.post("/settings")
 async def update_settings(settings: SettingsUpdateRequest):
     """Update simulation settings."""
+    from app.auth.device_auth import PROVIDERS
+    from app.config_writer import write_env_updates, mask_api_key
+
     if settings.agent_weights is not None:
         weights = settings.agent_weights
         total = sum(weights.values())
@@ -497,6 +528,42 @@ async def update_settings(settings: SettingsUpdateRequest):
     if settings.quant_llm_balance is not None:
         config.QUANT_LLM_BALANCE = settings.quant_llm_balance
 
+    # LLM provider / key / model — mutate live config AND persist to .env so the
+    # change survives a restart. Validated against the provider preset table.
+    env_updates: Dict[str, str] = {}
+    if settings.llm_provider is not None:
+        if settings.llm_provider not in PROVIDERS:
+            raise safe_error_response(400, "INVALID_PROVIDER",
+                f"Unknown provider '{settings.llm_provider}'")
+        config.LLM_PROVIDER = settings.llm_provider
+        env_updates["GODS_EYE_LLM_PROVIDER"] = settings.llm_provider
+        # When switching provider, reset inference URL override so the preset wins
+        config.LLM_INFERENCE_URL = ""
+        env_updates["LLM_INFERENCE_URL"] = ""
+
+    if settings.llm_api_key is not None:
+        key = settings.llm_api_key.strip()
+        config.LLM_API_KEY = key
+        env_updates["LLM_API_KEY"] = key
+        # Setting a real key implies leaving mock mode unless explicitly kept on
+        if key and settings.mock_mode is None:
+            config.MOCK_MODE = False
+            env_updates["GODS_EYE_MOCK"] = "false"
+
+    if settings.model is not None:
+        config.MODEL = settings.model
+        env_updates["GODS_EYE_MODEL"] = settings.model
+
+    if settings.mock_mode is not None:
+        config.MOCK_MODE = bool(settings.mock_mode)
+        env_updates["GODS_EYE_MOCK"] = "true" if settings.mock_mode else "false"
+
+    if env_updates:
+        try:
+            write_env_updates(env_updates)
+        except Exception:
+            log_error_safely("Failed to persist .env updates")
+
     return {
         "status": "updated",
         "agent_weights": config.AGENT_WEIGHTS,
@@ -504,7 +571,80 @@ async def update_settings(settings: SettingsUpdateRequest):
         "interaction_rounds": config.INTERACTION_ROUNDS,
         "temperature": config.TEMPERATURE,
         "quant_llm_balance": config.QUANT_LLM_BALANCE,
+        "llm_provider": config.LLM_PROVIDER,
+        "llm_api_key_masked": mask_api_key(config.LLM_API_KEY),
+        "llm_api_key_set": bool(config.LLM_API_KEY),
+        "model": config.MODEL,
+        "mock_mode": config.MOCK_MODE,
     }
+
+
+@protected_router.post("/settings/llm/test")
+async def test_llm_connection():
+    """Send a 1-token ping to the configured LLM provider to verify the key.
+
+    Uses whatever provider/model/key is currently active in ``config``. Returns
+    ``{"ok": true, ...}`` on a successful response, or ``{"ok": false, "error": ...}``
+    with the upstream error message on failure. Never echoes the API key back.
+    """
+    from app.auth.device_auth import PROVIDERS
+
+    if config.MOCK_MODE:
+        return {"ok": False, "error": "Mock mode is enabled — disable it to test a real key.", "mock_mode": True}
+    if not config.LLM_API_KEY:
+        return {"ok": False, "error": "No API key set."}
+
+    provider = PROVIDERS.get(config.LLM_PROVIDER, {})
+    base_url = config.LLM_INFERENCE_URL or provider.get("inference_base", "")
+    api_format = provider.get("api_format", "openai")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            if api_format == "anthropic":
+                resp = await client.post(
+                    f"{base_url}/v1/messages",
+                    headers={
+                        "x-api-key": config.LLM_API_KEY,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": config.MODEL,
+                        "max_tokens": 8,
+                        "messages": [{"role": "user", "content": "ping"}],
+                    },
+                )
+            else:
+                resp = await client.post(
+                    f"{base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {config.LLM_API_KEY}",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": config.MODEL,
+                        "max_tokens": 8,
+                        "messages": [{"role": "user", "content": "ping"}],
+                    },
+                )
+
+        if resp.status_code == 200:
+            return {
+                "ok": True,
+                "provider": config.LLM_PROVIDER,
+                "model": config.MODEL,
+                "base_url": base_url,
+            }
+        # Surface a redacted upstream error
+        body = resp.text[:300]
+        return {
+            "ok": False,
+            "status": resp.status_code,
+            "error": body or f"HTTP {resp.status_code}",
+            "provider": config.LLM_PROVIDER,
+        }
+    except httpx.HTTPError as e:
+        return {"ok": False, "error": f"Network error: {type(e).__name__}"}
 
 
 @protected_router.get("/market/live")

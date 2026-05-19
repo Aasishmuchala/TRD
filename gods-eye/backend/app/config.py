@@ -14,12 +14,11 @@ def _default_cors_origins():
 class Config:
     """Main configuration for the simulation."""
 
-    # LLM Provider Configuration
-    # Provider: "anthropic" (OpusCode Pro) | "openai" | "nous" | "custom"
-    LLM_PROVIDER: str = os.getenv("GODS_EYE_LLM_PROVIDER", "anthropic")
+    # LLM Provider Configuration — locked to ClaudeOpus for this build.
+    LLM_PROVIDER: str = os.getenv("GODS_EYE_LLM_PROVIDER", "claudeopus")
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", os.getenv("ANTHROPIC_API_KEY", os.getenv("OPENAI_API_KEY", "")))
     LLM_INFERENCE_URL: str = os.getenv("LLM_INFERENCE_URL", "")  # Override inference base URL
-    MODEL: str = os.getenv("GODS_EYE_MODEL", "claude-sonnet-4-6")
+    MODEL: str = os.getenv("GODS_EYE_MODEL", "claude-opus-4-6")
     MOCK_MODE: bool = os.getenv("GODS_EYE_MOCK", "false").lower() in ("true", "1", "yes")
 
     # LLM Resilience — streaming SSE keeps connections alive through OpusMax
