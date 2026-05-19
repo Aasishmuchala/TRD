@@ -18,7 +18,7 @@ class Config:
     LLM_PROVIDER: str = os.getenv("GODS_EYE_LLM_PROVIDER", "claudeopus")
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", os.getenv("ANTHROPIC_API_KEY", os.getenv("OPENAI_API_KEY", "")))
     LLM_INFERENCE_URL: str = os.getenv("LLM_INFERENCE_URL", "")  # Override inference base URL
-    MODEL: str = os.getenv("GODS_EYE_MODEL", "claude-opus-4-6")
+    MODEL: str = os.getenv("GODS_EYE_MODEL", "claude-opus-4-7")
     MOCK_MODE: bool = os.getenv("GODS_EYE_MOCK", "false").lower() in ("true", "1", "yes")
 
     # LLM Resilience — streaming SSE keeps connections alive through OpusMax

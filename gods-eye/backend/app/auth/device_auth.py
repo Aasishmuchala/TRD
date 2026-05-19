@@ -146,13 +146,11 @@ PROVIDERS = {
         "scope": "",
         "audience": "",
         "grant_type": "",
-        "default_model": "claude-sonnet-4-6",
+        "default_model": "claude-opus-4-7",
         "api_format": "anthropic",  # Anthropic-compatible /v1/messages
         "key_prefix": "sk-ant-co-",
         "available_models": [
-            "claude-opus-4-6",
-            "claude-sonnet-4-6",
-            "claude-haiku-4-5",
+            "claude-opus-4-7",
         ],
     },
     "custom": {
