@@ -22,6 +22,15 @@ export default function Settings() {
   const [showKey, setShowKey] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState(null)
+  // Dhan state
+  const [dhanCreds, setDhanCreds] = useState({ client_id: '', pin: '', totp_secret: '', access_token: '' })
+  const [dhanStatus, setDhanStatus] = useState({})
+  const [showDhanPin, setShowDhanPin] = useState(false)
+  const [showDhanTotp, setShowDhanTotp] = useState(false)
+  const [showDhanTok, setShowDhanTok] = useState(false)
+  const [dhanTesting, setDhanTesting] = useState(false)
+  const [dhanTestResult, setDhanTestResult] = useState(null)
+  const [dhanSaving, setDhanSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -49,7 +58,73 @@ export default function Settings() {
       }
     }
     fetchSettings()
+
+    // Fetch Dhan status in parallel — non-fatal if it fails
+    apiClient.getDhanSettings()
+      .then(d => {
+        setDhanStatus(d)
+        if (d.client_id) setDhanCreds(prev => ({ ...prev, client_id: d.client_id }))
+      })
+      .catch(() => { /* non-fatal */ })
   }, [])
+
+  const handleDhanFieldChange = (field, value) => {
+    setDhanCreds(prev => ({ ...prev, [field]: value }))
+    setDhanTestResult(null)
+  }
+
+  const handleDhanSave = async () => {
+    setDhanSaving(true)
+    try {
+      const payload = {}
+      if (dhanCreds.client_id) payload.client_id = dhanCreds.client_id
+      if (dhanCreds.pin) payload.pin = dhanCreds.pin
+      if (dhanCreds.totp_secret) payload.totp_secret = dhanCreds.totp_secret
+      if (dhanCreds.access_token) payload.access_token = dhanCreds.access_token
+      const fresh = await apiClient.updateDhanSettings(payload)
+      setDhanStatus(fresh)
+      setDhanCreds({ client_id: fresh.client_id || '', pin: '', totp_secret: '', access_token: '' })
+    } catch (err) {
+      setDhanTestResult({ ok: false, error: err.message || 'Save failed' })
+    } finally {
+      setDhanSaving(false)
+    }
+  }
+
+  const handleDhanTest = async () => {
+    // Auto-save any pending input before testing
+    if (dhanCreds.pin || dhanCreds.totp_secret || dhanCreds.access_token || dhanCreds.client_id) {
+      await handleDhanSave()
+    }
+    setDhanTesting(true)
+    setDhanTestResult(null)
+    try {
+      const res = await apiClient.testDhanConnection()
+      setDhanTestResult(res)
+      // Refresh status (token may have just been minted)
+      const fresh = await apiClient.getDhanSettings()
+      setDhanStatus(fresh)
+    } catch (err) {
+      setDhanTestResult({ ok: false, error: err.message || 'Test failed' })
+    } finally {
+      setDhanTesting(false)
+    }
+  }
+
+  const handleDhanRenew = async () => {
+    setDhanTesting(true)
+    setDhanTestResult(null)
+    try {
+      const res = await apiClient.renewDhanToken()
+      setDhanTestResult({ ok: res.ok, error: res.ok ? null : (res.error || 'Renew failed') })
+      const fresh = await apiClient.getDhanSettings()
+      setDhanStatus(fresh)
+    } catch (err) {
+      setDhanTestResult({ ok: false, error: err.message || 'Renew failed' })
+    } finally {
+      setDhanTesting(false)
+    }
+  }
 
   const currentProvider = providers.find(p => p.id === llmProvider) || {}
   const modelOptions = currentProvider.available_models && currentProvider.available_models.length
@@ -280,6 +355,156 @@ export default function Settings() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 my-5" />
+
+          {/* Dhan Broker Credentials */}
+          <div className="terminal-card p-4 mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <div className="section-header">Dhan API</div>
+              <span className={`text-[10px] font-mono ${
+                dhanStatus.auto_renewal_enabled ? 'text-bull'
+                  : dhanStatus.access_token_set ? 'text-yellow-500'
+                  : 'text-onSurfaceDim'
+              }`}>
+                {dhanStatus.auto_renewal_enabled
+                  ? 'AUTO-RENEW: ON'
+                  : dhanStatus.access_token_set
+                    ? `TOKEN: ${dhanStatus.hours_until_expiry ?? '?'}h LEFT`
+                    : 'NOT CONFIGURED'}
+              </span>
+            </div>
+            <p className="text-[10px] font-mono text-onSurfaceDim mb-4">
+              Paste Client ID + PIN + TOTP secret <span className="text-onSurface">once</span> — token renews automatically forever. No more daily pasting.
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-[10px] font-mono text-onSurfaceDim uppercase mb-1.5">
+                  Client ID
+                </label>
+                <input
+                  type="text"
+                  value={dhanCreds.client_id}
+                  onChange={(e) => handleDhanFieldChange('client_id', e.target.value)}
+                  placeholder="1111059578"
+                  className="input-field font-mono text-sm w-full"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono text-onSurfaceDim uppercase mb-1.5">
+                  PIN {dhanStatus.pin_set && <span className="text-bull normal-case">✓ set</span>}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type={showDhanPin ? 'text' : 'password'}
+                    value={dhanCreds.pin}
+                    onChange={(e) => handleDhanFieldChange('pin', e.target.value)}
+                    placeholder={dhanStatus.pin_set ? 'Leave blank to keep' : '6-digit PIN'}
+                    className="input-field font-mono text-sm flex-1"
+                    autoComplete="off"
+                  />
+                  <button type="button" onClick={() => setShowDhanPin(s => !s)} className="btn-secondary font-mono text-[10px] tracking-wider px-3">
+                    {showDhanPin ? 'HIDE' : 'SHOW'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-[10px] font-mono text-onSurfaceDim uppercase mb-1.5">
+                TOTP Secret {dhanStatus.totp_secret_set && <span className="text-bull normal-case">✓ set ({dhanStatus.totp_secret_masked})</span>}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type={showDhanTotp ? 'text' : 'password'}
+                  value={dhanCreds.totp_secret}
+                  onChange={(e) => handleDhanFieldChange('totp_secret', e.target.value)}
+                  placeholder={dhanStatus.totp_secret_set ? 'Leave blank to keep' : 'Base32 seed from Dhan TOTP setup (e.g. JBSWY3DPEHPK3PXP)'}
+                  className="input-field font-mono text-sm flex-1"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button type="button" onClick={() => setShowDhanTotp(s => !s)} className="btn-secondary font-mono text-[10px] tracking-wider px-3">
+                  {showDhanTotp ? 'HIDE' : 'SHOW'}
+                </button>
+              </div>
+              <p className="text-[9px] font-mono text-onSurfaceDim mt-1">
+                One-time setup. With this, tokens auto-renew every 20h — you never paste an access token again.
+              </p>
+            </div>
+
+            <details className="mb-3">
+              <summary className="text-[10px] font-mono text-onSurfaceDim uppercase cursor-pointer hover:text-onSurface">
+                Advanced — paste one-off access token instead
+              </summary>
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <input
+                    type={showDhanTok ? 'text' : 'password'}
+                    value={dhanCreds.access_token}
+                    onChange={(e) => handleDhanFieldChange('access_token', e.target.value)}
+                    placeholder={dhanStatus.access_token_set ? `current: ${dhanStatus.access_token_masked}` : 'eyJhbGc...'}
+                    className="input-field font-mono text-sm flex-1"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button type="button" onClick={() => setShowDhanTok(s => !s)} className="btn-secondary font-mono text-[10px] tracking-wider px-3">
+                    {showDhanTok ? 'HIDE' : 'SHOW'}
+                  </button>
+                </div>
+                {dhanStatus.access_token_expires_at && (
+                  <p className="text-[9px] font-mono text-onSurfaceDim mt-1">
+                    Expires: {dhanStatus.access_token_expires_at} ({dhanStatus.hours_until_expiry}h left)
+                  </p>
+                )}
+              </div>
+            </details>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleDhanSave}
+                disabled={dhanSaving || (!dhanCreds.pin && !dhanCreds.totp_secret && !dhanCreds.access_token && !dhanCreds.client_id)}
+                className="btn-secondary font-mono text-[10px] tracking-wider px-3 disabled:opacity-40"
+              >
+                {dhanSaving ? 'SAVING…' : 'SAVE'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDhanTest}
+                disabled={dhanTesting}
+                className="btn-secondary font-mono text-[10px] tracking-wider px-3 disabled:opacity-40"
+              >
+                {dhanTesting ? 'TESTING…' : 'TEST CONNECTION'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDhanRenew}
+                disabled={dhanTesting || !dhanStatus.access_token_set}
+                className="btn-secondary font-mono text-[10px] tracking-wider px-3 disabled:opacity-40"
+              >
+                RENEW NOW (+24h)
+              </button>
+            </div>
+
+            {dhanTestResult && (
+              <div className={`mt-3 p-2 border-l-2 ${dhanTestResult.ok ? 'border-bull bg-bull/5' : 'border-bear bg-bear/5'}`}>
+                <p className={`text-[10px] font-mono ${dhanTestResult.ok ? 'text-bull' : 'text-bear'}`}>
+                  {dhanTestResult.ok
+                    ? '✓ DHAN API REACHABLE'
+                    : `✗ ${dhanTestResult.error || 'Test failed'}`}
+                </p>
+                {dhanTestResult.ok && dhanTestResult.probe && (
+                  <p className="text-[9px] font-mono text-onSurfaceDim mt-0.5">
+                    {JSON.stringify(dhanTestResult.probe).slice(0, 200)}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Divider */}

@@ -24,6 +24,12 @@ _ALLOWED_KEYS = {
     "GODS_EYE_MODEL",
     "GODS_EYE_MOCK",
     "LLM_INFERENCE_URL",
+    # Dhan credentials — once set, the TOTP secret enables permanent
+    # auto-renewal so the user never has to paste an access token again.
+    "DHAN_CLIENT_ID",
+    "DHAN_PIN",
+    "DHAN_TOTP_SECRET",
+    "DHAN_ACCESS_TOKEN",
 }
 
 

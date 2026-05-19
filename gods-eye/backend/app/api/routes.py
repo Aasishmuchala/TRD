@@ -647,6 +647,137 @@ async def test_llm_connection():
         return {"ok": False, "error": f"Network error: {type(e).__name__}"}
 
 
+# ─── Dhan Credentials (UI-managed) ────────────────────────────────────────────
+# Lets the user paste DHAN_CLIENT_ID + PIN + TOTP_SECRET *once* via Settings.
+# After that, dhan_token_manager generates and renews tokens automatically,
+# so no one has to keep pasting fresh access tokens every 24h.
+
+class _DhanCredsUpdate(BaseModel):
+    client_id: Optional[str] = Field(default=None, max_length=32)
+    pin: Optional[str] = Field(default=None, max_length=16)
+    totp_secret: Optional[str] = Field(default=None, max_length=128)
+    access_token: Optional[str] = Field(default=None, max_length=2048)
+
+
+@protected_router.get("/settings/dhan")
+async def get_dhan_settings():
+    """Return Dhan credential status — never echoes secrets back."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+    from app.config_writer import mask_api_key
+
+    token = dhan_token_manager.access_token or ""
+    token_exp_iso = None
+    hours_left = None
+    if token and token.count(".") == 2:
+        try:
+            claims = _decode_jwt_claims(token)
+            exp_ts = claims.get("exp")
+            if exp_ts:
+                token_exp_iso = datetime.utcfromtimestamp(int(exp_ts)).isoformat() + "Z"
+                hours_left = round((int(exp_ts) - time.time()) / 3600, 2)
+        except Exception:
+            pass
+
+    return {
+        "client_id": dhan_token_manager.client_id or "",
+        "pin_set": bool(dhan_token_manager.pin),
+        "totp_secret_set": bool(dhan_token_manager.totp_secret),
+        "totp_secret_masked": mask_api_key(dhan_token_manager.totp_secret),
+        "access_token_set": bool(token),
+        "access_token_masked": mask_api_key(token),
+        "access_token_expires_at": token_exp_iso,
+        "hours_until_expiry": hours_left,
+        "auto_renewal_enabled": dhan_token_manager.is_totp_configured(),
+    }
+
+
+@protected_router.post("/settings/dhan")
+async def update_dhan_settings(payload: _DhanCredsUpdate):
+    """Persist Dhan credentials. With TOTP wired up, no manual rotation ever."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+    from app.config_writer import write_env_updates
+
+    env_updates: Dict[str, str] = {}
+
+    if payload.client_id is not None:
+        cid = payload.client_id.strip()
+        if cid:
+            dhan_token_manager.client_id = cid
+            env_updates["DHAN_CLIENT_ID"] = cid
+
+    if payload.pin is not None:
+        pin = payload.pin.strip()
+        if pin:
+            dhan_token_manager.pin = pin
+            env_updates["DHAN_PIN"] = pin
+
+    if payload.totp_secret is not None:
+        secret = payload.totp_secret.strip().replace(" ", "").upper()
+        if secret:
+            dhan_token_manager.totp_secret = secret
+            env_updates["DHAN_TOTP_SECRET"] = secret
+
+    if payload.access_token is not None:
+        tok = payload.access_token.strip()
+        if tok:
+            dhan_token_manager._access_token = tok
+            env_updates["DHAN_ACCESS_TOKEN"] = tok
+            try:
+                claims = _decode_jwt_claims(tok)
+                exp_ts = claims.get("exp")
+                if exp_ts:
+                    dhan_token_manager._token_expiry = datetime.utcfromtimestamp(int(exp_ts))
+            except Exception:
+                pass
+            try:
+                dhan_token_manager._save_token_to_disk()
+            except Exception:
+                pass
+
+    if env_updates:
+        try:
+            write_env_updates(env_updates)
+        except Exception:
+            log_error_safely("Failed to persist Dhan .env updates")
+
+    return await get_dhan_settings()
+
+
+@protected_router.post("/settings/dhan/test")
+async def test_dhan_connection():
+    """Probe Dhan API. If TOTP is configured and no valid token, mint one first."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+    from app.data.dhan_client import dhan_client
+
+    if dhan_token_manager.is_totp_configured() and not dhan_token_manager.is_token_valid():
+        ok = await dhan_token_manager.generate_token_via_totp()
+        if not ok:
+            return {"ok": False, "error": "TOTP token generation failed — check CLIENT_ID / PIN / TOTP_SECRET"}
+
+    if not dhan_token_manager.access_token:
+        return {"ok": False, "error": "No Dhan access token set. Either paste one or configure TOTP for auto-gen."}
+
+    try:
+        probe = await dhan_client.health_check()
+        return {"ok": True, "probe": probe}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:300]}
+
+
+@protected_router.post("/settings/dhan/renew")
+async def renew_dhan_token():
+    """Force a one-shot renewal of the current Dhan token (+24h)."""
+    from app.auth.dhan_token_manager import dhan_token_manager
+
+    if not dhan_token_manager.access_token:
+        return {"ok": False, "error": "No active token to renew."}
+    try:
+        ok = await dhan_token_manager.renew_token()
+        return {"ok": ok, **(await get_dhan_settings())}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)[:300]}
+
+
 @protected_router.get("/market/live")
 async def get_live_market():
     """Get current live market snapshot: Nifty, VIX, FII/DII, breadth."""

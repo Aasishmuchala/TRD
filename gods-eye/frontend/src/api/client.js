@@ -95,6 +95,20 @@ export const apiClient = {
     method: 'POST',
   }, 0, 20000),
 
+  // Dhan credentials (UI-managed; TOTP enables permanent auto-renewal)
+  getDhanSettings: () => request(`${API_BASE}/settings/dhan`),
+  updateDhanSettings: (creds) => request(`${API_BASE}/settings/dhan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(creds),
+  }),
+  testDhanConnection: () => request(`${API_BASE}/settings/dhan/test`, {
+    method: 'POST',
+  }, 0, 30000),
+  renewDhanToken: () => request(`${API_BASE}/settings/dhan/renew`, {
+    method: 'POST',
+  }, 0, 20000),
+
   // Outcome recording
   recordOutcome: (simulationId, actualDirection, notes = '') =>
     request(`${API_BASE}/history/${simulationId}/outcome?actual_direction=${actualDirection}&notes=${encodeURIComponent(notes)}`, {
