@@ -687,7 +687,7 @@ async def get_dhan_settings():
         "access_token_masked": mask_api_key(token),
         "access_token_expires_at": token_exp_iso,
         "hours_until_expiry": hours_left,
-        "auto_renewal_enabled": dhan_token_manager.is_totp_configured(),
+        "auto_renewal_enabled": dhan_token_manager.is_totp_configured,
     }
 
 
@@ -749,7 +749,7 @@ async def test_dhan_connection():
     from app.auth.dhan_token_manager import dhan_token_manager
     from app.data.dhan_client import dhan_client
 
-    if dhan_token_manager.is_totp_configured() and not dhan_token_manager.is_token_valid():
+    if dhan_token_manager.is_totp_configured and not dhan_token_manager.is_token_valid:
         ok = await dhan_token_manager.generate_token_via_totp()
         if not ok:
             return {"ok": False, "error": "TOTP token generation failed — check CLIENT_ID / PIN / TOTP_SECRET"}
