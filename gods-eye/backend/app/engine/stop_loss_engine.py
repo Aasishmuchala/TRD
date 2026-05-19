@@ -176,12 +176,30 @@ class StopLossEngine:
         else:  # SELL / STRONG_SELL
             stop_price = entry_close + distance
 
+        # Round-once-and-stay-consistent: derive every displayed field from
+        # the same rounded distance so the internal identities
+        #   entry_price ± stop_distance_pts == stop_price
+        #   stop_pct == stop_distance_pts / entry_price * 100
+        # hold exactly. (Property tests previously caught the divergence
+        # for small-priced instruments.)
+        entry_rounded = round(entry_close, 2)
+        distance_rounded = round(distance, 2)
+        if direction in ("BUY", "STRONG_BUY"):
+            stop_rounded = round(entry_rounded - distance_rounded, 2)
+        else:
+            stop_rounded = round(entry_rounded + distance_rounded, 2)
+        stop_pct_consistent = (
+            round((distance_rounded / entry_rounded) * 100, 3)
+            if entry_rounded
+            else 0.0
+        )
+
         return StopLossResult(
             direction=direction,
-            entry_price=round(entry_close, 2),
-            stop_price=round(stop_price, 2),
-            stop_distance_pts=round(distance, 2),
-            stop_pct=round((distance / entry_close) * 100, 3),
+            entry_price=entry_rounded,
+            stop_price=stop_rounded,
+            stop_distance_pts=distance_rounded,
+            stop_pct=stop_pct_consistent,
             atr_14=round(atr_14, 2),
             method=method,
         )
