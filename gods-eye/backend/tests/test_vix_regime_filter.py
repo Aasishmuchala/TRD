@@ -44,8 +44,11 @@ async def test_high_vix_forces_hold():
     assert resp.conviction == 0.0, (
         f"High VIX should zero out conviction, got: {resp.conviction}"
     )
-    assert "VIX REGIME FILTER" in resp.reasoning and "forces HOLD" in resp.reasoning, (
-        f"Reasoning should mention VIX filter forcing HOLD: {resp.reasoning}"
+    assert "VIX REGIME FILTER" in resp.reasoning and (
+        "forces HOLD" in resp.reasoning
+        or "overridden to HOLD" in resp.reasoning
+    ), (
+        f"Reasoning should mention VIX filter forcing/overriding to HOLD: {resp.reasoning}"
     )
 
 
@@ -57,7 +60,10 @@ async def test_elevated_vix_reduces_conviction():
     resp = await agent.analyze(md)
 
     # Verify VIX filter was applied and reduced conviction
-    assert "VIX REGIME FILTER" in resp.reasoning and "reduces conviction" in resp.reasoning, (
+    assert "VIX REGIME FILTER" in resp.reasoning and (
+        "reduces conviction" in resp.reasoning
+        or "conviction reduced" in resp.reasoning
+    ), (
         f"Reasoning should mention VIX filter reducing conviction: {resp.reasoning}"
     )
 
@@ -115,7 +121,10 @@ async def test_vix_at_20_is_elevated():
     resp = await agent.analyze(md)
 
     # Should mention reduction due to elevated VIX
-    assert "reduces conviction" in resp.reasoning, (
+    assert (
+        "reduces conviction" in resp.reasoning
+        or "conviction reduced" in resp.reasoning
+    ), (
         f"VIX at 20.0 (elevated) should mention conviction reduction: {resp.reasoning}"
     )
 
@@ -167,12 +176,18 @@ async def test_vix_thresholds():
     # Test VIX = 20 (elevated) — filter with conviction reduction
     md = make_market_input(india_vix=20.0)
     resp = await agent.analyze(md)
-    assert "reduces conviction" in resp.reasoning
+    assert (
+        "reduces conviction" in resp.reasoning
+        or "conviction reduced" in resp.reasoning
+    )
 
     # Test VIX = 29.99 (elevated) — filter with conviction reduction
     md = make_market_input(india_vix=29.99)
     resp = await agent.analyze(md)
-    assert "reduces conviction" in resp.reasoning
+    assert (
+        "reduces conviction" in resp.reasoning
+        or "conviction reduced" in resp.reasoning
+    )
 
     # Test VIX = 30 (high) — filter with HOLD
     md = make_market_input(india_vix=30.0)

@@ -129,18 +129,20 @@ class TestVIXGateBoundaries:
         assert dir_ == "BUY"
 
     # ------------------------------------------------------------------
-    # VIX < 14 normal floor (config.CONVICTION_FLOOR = 65)
+    # VIX < 13 normal floor (VIX_NORMAL_FLOOR = 60)
+    # NOTE: the lower cutoff was lowered from 14 → 13 in a WFO pass; the
+    # normal floor itself dropped from 65 → 60. Test values updated to match.
     # ------------------------------------------------------------------
 
     def test_vix_just_below_14_uses_normal_floor(self):
-        """VIX=13.9 uses config.CONVICTION_FLOOR (65) — lowest bar."""
-        dir_, _ = self.engine._apply_vix_event_gate("BUY", 64.9, 13.9, None, "2024-01-01")
-        assert dir_ == "HOLD"  # 64.9 < 65
+        """VIX=12.9 (below 13 cutoff) uses VIX_NORMAL_FLOOR (60) — lowest bar."""
+        dir_, _ = self.engine._apply_vix_event_gate("BUY", 59.9, 12.9, None, "2024-01-01")
+        assert dir_ == "HOLD"  # 59.9 < 60
 
-        dir_, _ = self.engine._apply_vix_event_gate("BUY", 65.1, 13.9, None, "2024-01-01")
-        assert dir_ == "BUY"   # 65.1 >= 65
+        dir_, _ = self.engine._apply_vix_event_gate("BUY", 60.1, 12.9, None, "2024-01-01")
+        assert dir_ == "BUY"   # 60.1 >= 60
 
     def test_vix_very_low_uses_normal_floor(self):
-        """VIX=10 (calm market) enforces normal floor 65."""
-        dir_, _ = self.engine._apply_vix_event_gate("SELL", 65.0, 10.0, None, "2024-01-01")
+        """VIX=10 (calm market) enforces normal floor 60."""
+        dir_, _ = self.engine._apply_vix_event_gate("SELL", 60.0, 10.0, None, "2024-01-01")
         assert dir_ == "SELL"
